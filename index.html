@@ -8,6 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;600;700;800&family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <style>
   :root{
     --deep-sea:#0B3D4C;
@@ -223,6 +224,30 @@
     font-family:'Sarabun'; font-size:15px; resize:vertical; min-height:80px;
   }
 
+  /* ---- chips (exercise) ---- */
+  .chip-row{display:flex; flex-wrap:wrap; gap:10px;}
+  .chip{
+    padding:10px 16px; border-radius:20px; border:2px solid #E4DFCF; background:#fff;
+    font-size:13.5px; font-weight:600; cursor:pointer; font-family:'Kanit'; color:var(--deep-sea);
+  }
+  .chip.active{background:var(--lagoon); color:#fff; border-color:var(--lagoon);}
+
+  /* ---- level rating rows (หวาน/มัน/เค็ม) ---- */
+  .level-row{display:flex; align-items:center; gap:10px; margin-bottom:12px;}
+  .level-row .lvl-label{width:52px; font-weight:600; font-size:14.5px; font-family:'Kanit'; flex-shrink:0;}
+  .level-btns{display:flex; gap:8px; flex:1;}
+  .level-btn{
+    flex:1; text-align:center; padding:10px 4px; border-radius:10px; border:2px solid #E4DFCF;
+    font-family:'Kanit'; font-weight:600; font-size:12.5px; cursor:pointer; background:#fff; color:#9aa8ab;
+  }
+  .level-btn.active.low{background:#E4F5EC; border-color:var(--green-ok); color:var(--green-ok);}
+  .level-btn.active.ok{background:#FBF0DC; border-color:var(--amber-warn); color:var(--amber-warn);}
+  .level-btn.active.high{background:#FBE6E2; border-color:var(--red-high); color:var(--red-high);}
+
+  /* ---- OCR ---- */
+  .ocr-status{font-size:12.5px; color:#6b7c80; margin-top:8px; line-height:1.5;}
+  .ocr-status b{color:var(--lagoon);}
+
   /* ---- Stats tab ---- */
   .progress-ring-wrap{display:flex; align-items:center; gap:18px;}
   .stat-grid{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:16px;}
@@ -344,7 +369,12 @@
           <label>โซเดียม (มิลลิกรัม)</label>
           <input type="number" id="ciSodium" placeholder="เช่น 850" inputmode="numeric">
         </div>
-        <button class="btn btn-primary btn-block" onclick="calcSodium()">คำนวณ</button>
+
+        <input type="file" accept="image/*" capture="environment" id="labelPhotoInput" style="display:none" onchange="handleLabelPhoto(event)">
+        <button class="btn btn-ghost btn-block" type="button" onclick="document.getElementById('labelPhotoInput').click()">📷 ถ่ายรูปฉลากให้ช่วยอ่าน</button>
+        <div class="ocr-status" id="ocrStatus"></div>
+
+        <button class="btn btn-primary btn-block" style="margin-top:10px;" onclick="calcSodium()">คำนวณ</button>
 
         <div id="gaugeArea" style="display:none;">
           <div class="gauge-wrap">
@@ -377,13 +407,34 @@
     <!-- TAB: LOG -->
     <div class="tabpanel" id="tab-log">
       <div class="card">
-        <h3 style="margin-top:0;">📝 บันทึกพฤติกรรมวันนี้</h3>
-        <p style="color:#6b7c80; font-size:13.5px; margin-top:-8px;">แตะสิ่งที่ทำได้ในวันนี้ (เลือกได้มากกว่า 1 ข้อ)</p>
-        <div id="behaviorList"></div>
+        <h3 style="margin-top:0;">🏃 วันนี้ฉันออกกำลังกาย</h3>
+        <p style="color:#6b7c80; font-size:13.5px; margin-top:-8px;">แตะได้มากกว่า 1 อย่าง</p>
+        <div class="chip-row" id="exerciseChips"></div>
+      </div>
 
-        <div class="field" style="margin-top:16px;">
+      <div class="card">
+        <h3 style="margin-top:0;">🍬🧈🧂 วันนี้ฉันกินหวาน มัน เค็ม แค่ไหน</h3>
+        <p style="color:#6b7c80; font-size:13.5px; margin-top:-8px;">ประเมินตามความรู้สึกจริง ไม่ต้องเป๊ะเป๊ะ</p>
+        <div id="levelRows"></div>
+      </div>
+
+      <div class="card">
+        <h3 style="margin-top:0;">✅ พฤติกรรมสุขภาพอื่น ๆ วันนี้</h3>
+        <div id="otherBehaviorList"></div>
+      </div>
+
+      <div class="card">
+        <div class="field">
+          <label>มื้ออาหาร/เครื่องดื่มวันนี้ (สรุปสั้น ๆ)</label>
+          <textarea id="mealNote" placeholder="เช่น เช้า-ข้าวไข่เจียว, กลางวัน-ก๋วยเตี๋ยว, ของว่าง-ชานมไข่มุก" style="min-height:60px;"></textarea>
+        </div>
+        <div class="field">
           <label>วันนี้ฉันเลือกได้ดีตรงไหน เพราะอะไร</label>
           <textarea id="reflectionText" placeholder="เขียนสั้น ๆ เล่าให้ฟังหน่อย…"></textarea>
+        </div>
+        <div class="field">
+          <label>สิ่งที่ควรปรับปรุงในวันถัดไป</label>
+          <textarea id="improveText" placeholder="พรุ่งนี้อยากทำอะไรให้ดีขึ้น…" style="min-height:60px;"></textarea>
         </div>
         <button class="btn btn-primary btn-block" id="submitLogBtn" onclick="submitDailyLog()">บันทึกของวันนี้</button>
         <div id="alreadyLoggedNote" class="empty-note" style="display:none;">✅ วันนี้บันทึกแล้ว เก่งมาก! กลับมาบันทึกใหม่ได้พรุ่งนี้</div>
@@ -429,7 +480,6 @@
 const firebaseConfig = {
   apiKey: "AIzaSyDV0wpw4bQ6f2uztfpdVjYiC-toIP1B_oA",
   authDomain: "salt-smart-2569.firebaseapp.com",
-  databaseURL: "https://salt-smart-2569-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId: "salt-smart-2569",
   storageBucket: "salt-smart-2569.firebasestorage.app",
   messagingSenderId: "91998754790",
@@ -442,11 +492,29 @@ const db = firebase.firestore();
    CONSTANTS
    ========================================================= */
 const SODIUM_DAILY_MAX = 2000; // mg
-const BEHAVIORS = [
-  {key:'reduceSalt',   label:'ลดเค็ม (โซเดียมรวมวันนี้ไม่เกิน 2,000 มก.)'},
-  {key:'reduceSugar',  label:'ลดหวาน (น้ำตาลไม่เกิน 6 ช้อนชา)'},
-  {key:'reduceFat',    label:'ลดมัน (ไขมันไม่เกิน 6 ช้อนชา)'},
-  {key:'exercise',     label:'ออกกำลังกาย / เคลื่อนไหวร่างกาย'},
+// ออกกำลังกาย: มาจากหน้า "บันทึกรายวัน" ในสมุด (ข้อ 3)
+const EXERCISE_OPTIONS = [
+  {key:'walk',   label:'เดินเร็ว'},
+  {key:'jog',    label:'วิ่งเบา ๆ'},
+  {key:'bike',   label:'ปั่นจักรยาน'},
+  {key:'sport',  label:'เล่นกีฬา'},
+  {key:'stretch',label:'ยืดเหยียด'},
+  {key:'chore',  label:'งานบ้าน/กิจกรรมโรงเรียน'},
+  {key:'other',  label:'อื่น ๆ'}
+];
+// ระดับหวาน/มัน/เค็ม: มาจากหน้า "ปรับพฤติกรรมของตนเอง" ในสมุด (ข้อ 4)
+const LEVEL_ROWS = [
+  {key:'sweet', label:'หวาน'},
+  {key:'fat',   label:'มัน'},
+  {key:'salty', label:'เค็ม'}
+];
+const LEVEL_CHOICES = [
+  {key:'low', label:'น้อย'},
+  {key:'ok',  label:'พอดี'},
+  {key:'high',label:'มาก'}
+];
+// พฤติกรรมสุขภาพอื่น ๆ: มาจากหน้า "เป้าหมายวันนี้ของฉัน" ในสมุด
+const OTHER_BEHAVIORS = [
   {key:'readLabel',    label:'อ่านฉลากโภชนาการก่อนกิน'},
   {key:'readGDA',      label:'อ่านฉลาก GDA (หวาน มัน เค็ม)'},
   {key:'healthyChoice',label:'เลือกผลิตภัณฑ์สัญลักษณ์ทางเลือกสุขภาพ'},
@@ -464,7 +532,7 @@ let state = {
   todayLog:null, // loaded/created dailyLog doc data
   todaysQuiz:[], quizIndex:0, quizAnswers:[], quizFinished:false,
   sodiumChecks:[], pendingCalc:null,
-  behaviorChecked:{}
+  exerciseChecked:{}, levels:{sweet:null, fat:null, salty:null}, otherChecked:{}
 };
 
 function todayStr(){
@@ -644,14 +712,17 @@ async function enterApp(){
   switchTab('tab-check');
   await loadTodayLog();
   await loadQuiz();
-  renderBehaviorList();
+  renderExerciseChips();
+  renderLevelRows();
+  renderOtherBehaviorList();
   await loadLeaderboards();
   renderStats();
 }
 
 function logout(){
   state.selectedStudent=null; state.todayLog=null; state.sodiumChecks=[];
-  state.quizAnswers=[]; state.quizFinished=false; state.behaviorChecked={};
+  state.quizAnswers=[]; state.quizFinished=false;
+  state.exerciseChecked={}; state.levels={sweet:null,fat:null,salty:null}; state.otherChecked={};
   goScreen('screen-student');
 }
 
@@ -671,19 +742,54 @@ async function loadTodayLog(){
   if(snap.exists){
     state.todayLog = snap.data();
     state.sodiumChecks = state.todayLog.sodiumChecks || [];
-    state.behaviorChecked = state.todayLog.behaviors || {};
+    state.exerciseChecked = state.todayLog.exercise || {};
+    state.levels = state.todayLog.levels || {sweet:null,fat:null,salty:null};
+    state.otherChecked = state.todayLog.otherBehaviors || {};
     if(state.todayLog.submitted){
       document.getElementById('submitLogBtn').style.display='none';
       document.getElementById('alreadyLoggedNote').style.display='block';
+      document.getElementById('mealNote').value = state.todayLog.mealNote || '';
+      document.getElementById('mealNote').disabled = true;
       document.getElementById('reflectionText').value = state.todayLog.reflection || '';
       document.getElementById('reflectionText').disabled = true;
+      document.getElementById('improveText').value = state.todayLog.improveNote || '';
+      document.getElementById('improveText').disabled = true;
     }
   } else {
-    state.todayLog = {behaviors:{}, sodiumChecks:[], submitted:false};
+    state.todayLog = {sodiumChecks:[], submitted:false};
     state.sodiumChecks = [];
-    state.behaviorChecked = {};
+    state.exerciseChecked = {};
+    state.levels = {sweet:null,fat:null,salty:null};
+    state.otherChecked = {};
   }
   renderCheckHistory();
+}
+
+/* ---- Sodium checker: OCR from photo ---- */
+async function handleLabelPhoto(event){
+  const file = event.target.files[0];
+  if(!file) return;
+  const statusEl = document.getElementById('ocrStatus');
+  statusEl.innerHTML = '🔎 กำลังอ่านฉลาก... รอสักครู่นะ (ครั้งแรกอาจช้าหน่อยเพราะกำลังโหลดตัวอ่านภาษาไทย)';
+  try{
+    const result = await Tesseract.recognize(file, 'eng+tha');
+    const text = result.data.text || '';
+    // มองหาคำว่า โซเดียม / sodium ตามด้วยตัวเลข แล้วอาจมี มก./mg ตามหลัง
+    const match = text.match(/(?:โซเดียม|sodium)[^0-9]{0,15}(\d{1,5}(?:[.,]\d+)?)/i);
+    if(match){
+      const num = match[1].replace(',', '.');
+      document.getElementById('ciSodium').value = num;
+      statusEl.innerHTML = `พบตัวเลขที่คาดว่าใช่: <b>${num} มก.</b><br>กรุณาเทียบกับฉลากจริงอีกครั้งก่อนกดคำนวณ (บางครั้งอ่านผิดได้)`;
+    } else {
+      const preview = text.trim().slice(0,150).replace(/\n/g,' ');
+      statusEl.innerHTML = `อ่านฉลากไม่ชัดเจน ลองถ่ายให้ใกล้และแสงสว่างขึ้น หรือพิมพ์ตัวเลขเองจากฉลากได้เลย<br>
+        <span style="color:#aab5b8;">ข้อความที่อ่านได้: ${preview || '(ไม่พบข้อความ)'}</span>`;
+    }
+  }catch(e){
+    console.error(e);
+    statusEl.textContent = 'อ่านฉลากไม่สำเร็จ ลองใหม่อีกครั้ง หรือพิมพ์ตัวเลขเองได้เลย';
+  }
+  event.target.value = '';
 }
 
 /* ---- Sodium checker ---- */
@@ -827,45 +933,98 @@ function renderQuizDone(){
     </div>`;
 }
 
-/* ---- Behavior log ---- */
-function renderBehaviorList(){
-  const list = document.getElementById('behaviorList');
+/* ---- Behavior log: exercise chips ---- */
+function renderExerciseChips(){
+  const wrap = document.getElementById('exerciseChips');
+  wrap.innerHTML='';
+  EXERCISE_OPTIONS.forEach(o=>{
+    const active = !!state.exerciseChecked[o.key];
+    const chip = document.createElement('div');
+    chip.className = 'chip' + (active?' active':'');
+    chip.textContent = o.label;
+    chip.onclick = ()=>{
+      if(state.todayLog && state.todayLog.submitted) return;
+      state.exerciseChecked[o.key] = !state.exerciseChecked[o.key];
+      renderExerciseChips();
+    };
+    wrap.appendChild(chip);
+  });
+}
+
+/* ---- Behavior log: sweet/fat/salty level rows ---- */
+function renderLevelRows(){
+  const wrap = document.getElementById('levelRows');
+  wrap.innerHTML='';
+  LEVEL_ROWS.forEach(row=>{
+    const rowEl = document.createElement('div');
+    rowEl.className = 'level-row';
+    let btnsHtml = '';
+    LEVEL_CHOICES.forEach(c=>{
+      const active = state.levels[row.key] === c.key;
+      btnsHtml += `<div class="level-btn ${active?'active '+c.key:''}" data-row="${row.key}" data-choice="${c.key}">${c.label}</div>`;
+    });
+    rowEl.innerHTML = `<div class="lvl-label">${row.label}</div><div class="level-btns">${btnsHtml}</div>`;
+    wrap.appendChild(rowEl);
+  });
+  wrap.querySelectorAll('.level-btn').forEach(btn=>{
+    btn.onclick = ()=>{
+      if(state.todayLog && state.todayLog.submitted) return;
+      state.levels[btn.dataset.row] = btn.dataset.choice;
+      renderLevelRows();
+    };
+  });
+}
+
+/* ---- Behavior log: other behaviors ---- */
+function renderOtherBehaviorList(){
+  const list = document.getElementById('otherBehaviorList');
   list.innerHTML='';
-  BEHAVIORS.forEach(b=>{
-    const checked = !!state.behaviorChecked[b.key];
+  OTHER_BEHAVIORS.forEach(b=>{
+    const checked = !!state.otherChecked[b.key];
     const row = document.createElement('div');
     row.className = 'chk-row' + (checked?' checked':'');
     row.innerHTML = `<div class="chk-box">${checked?'✓':''}</div><div class="chk-label">${b.label}</div>`;
     row.onclick = ()=>{
       if(state.todayLog && state.todayLog.submitted) return;
-      state.behaviorChecked[b.key] = !state.behaviorChecked[b.key];
-      renderBehaviorList();
+      state.otherChecked[b.key] = !state.otherChecked[b.key];
+      renderOtherBehaviorList();
     };
     list.appendChild(row);
   });
 }
 
 async function submitDailyLog(){
+  const mealNote = document.getElementById('mealNote').value.trim();
   const reflection = document.getElementById('reflectionText').value.trim();
-  const checkedCount = Object.values(state.behaviorChecked).filter(Boolean).length;
-  const points = 10 + checkedCount*2;
+  const improveNote = document.getElementById('improveText').value.trim();
+
+  const exerciseCount = Object.values(state.exerciseChecked).filter(Boolean).length;
+  const goodLevelCount = LEVEL_ROWS.filter(r => state.levels[r.key]==='low' || state.levels[r.key]==='ok').length;
+  const otherCount = Object.values(state.otherChecked).filter(Boolean).length;
+  const points = 10 + Math.min(exerciseCount,4)*2 + goodLevelCount*2 + otherCount*2;
 
   await db.collection('dailyLogs').doc(logDocId()).set({
     studentId: state.selectedStudent.id,
     classId: state.selectedClassId,
     date: state.todaysDateStr,
     dayNumber: state.dayNumber,
-    behaviors: state.behaviorChecked,
+    exercise: state.exerciseChecked,
+    levels: state.levels,
+    otherBehaviors: state.otherChecked,
+    mealNote: mealNote,
     reflection: reflection,
+    improveNote: improveNote,
     submitted: true,
-    pointsEarned: firebase.firestore.FieldValue.increment ? points : points
+    pointsEarned: points
   }, {merge:true});
 
   await updateStreakAndPoints(points);
 
   document.getElementById('submitLogBtn').style.display='none';
   document.getElementById('alreadyLoggedNote').style.display='block';
+  document.getElementById('mealNote').disabled = true;
   document.getElementById('reflectionText').disabled = true;
+  document.getElementById('improveText').disabled = true;
   showToast(`เยี่ยม! ได้ ${points} คะแนน 🎉`);
   renderStats();
 }
