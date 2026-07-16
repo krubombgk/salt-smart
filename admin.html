@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Salt Smart | หลังบ้านครู</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;600;700;800&family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<style>
+  :root{
+    --deep-sea:#0B3D4C; --deep-sea-2:#124A5C; --lagoon:#2A9D8F; --lagoon-light:#7FD8CC;
+    --coral:#F4A261; --clay:#E76F51; --sand:#F3ECDD; --salt-white:#FDFBF6; --ink:#0B3D4C;
+    --green-ok:#3FA66B; --red-high:#D9503F;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; font-family:'Sarabun',sans-serif; background:var(--salt-white); color:var(--ink);}
+  h1,h2,h3{font-family:'Kanit',sans-serif;}
+  .topbar{
+    background:linear-gradient(135deg, var(--deep-sea), var(--deep-sea-2), var(--lagoon));
+    color:#fff; padding:18px 24px; display:flex; align-items:center; justify-content:space-between;
+  }
+  .topbar .t{font-family:'Kanit'; font-weight:700; font-size:18px;}
+  .topbar .s{font-size:12.5px; opacity:.85;}
+  .layout{display:flex; min-height:calc(100vh - 66px);}
+  .sidenav{width:220px; background:#fff; border-right:1px solid #EFE9D9; padding:16px 0; flex-shrink:0;}
+  .navitem{
+    padding:13px 22px; font-family:'Kanit'; font-weight:600; font-size:14.5px; cursor:pointer;
+    color:#5c6a6d; border-left:3px solid transparent;
+  }
+  .navitem.active{color:var(--lagoon); background:var(--sand); border-left-color:var(--lagoon);}
+  .content{flex:1; padding:26px 30px; max-width:1100px;}
+  .panel{display:none;} .panel.active{display:block;}
+  .card{background:#fff; border-radius:16px; padding:22px; box-shadow:0 8px 22px rgba(11,61,76,0.08); border:1px solid #EFE9D9; margin-bottom:20px;}
+  .row{display:flex; gap:16px; flex-wrap:wrap;}
+  .kpi{flex:1; min-width:150px; background:var(--sand); border-radius:14px; padding:16px; text-align:center;}
+  .kpi .n{font-family:'Kanit'; font-weight:800; font-size:26px; color:var(--deep-sea);}
+  .kpi .l{font-size:12.5px; color:#6b7c80;}
+  .field{margin-bottom:14px;}
+  .field label{font-size:13.5px; font-weight:600; display:block; margin-bottom:6px; color:#4c5c60;}
+  input, select, textarea{
+    width:100%; padding:12px; border-radius:10px; border:2px solid #E4DFCF; font-family:'Sarabun'; font-size:14.5px;
+  }
+  textarea{min-height:120px; font-family:monospace; font-size:13px;}
+  .btn{font-family:'Kanit'; font-weight:600; border:none; border-radius:10px; padding:11px 18px; cursor:pointer; font-size:14px;}
+  .btn-primary{background:var(--lagoon); color:#fff;}
+  .btn-coral{background:var(--coral); color:#fff;}
+  .btn-danger{background:#fff; color:var(--red-high); border:1.5px solid var(--red-high);}
+  .btn-ghost{background:#fff; color:var(--deep-sea); border:1.5px solid #E4DFCF;}
+  table{width:100%; border-collapse:collapse; font-size:13.5px;}
+  th{text-align:left; padding:10px 8px; color:#6b7c80; font-family:'Kanit'; font-size:12.5px; border-bottom:2px solid #EFE9D9;}
+  td{padding:10px 8px; border-bottom:1px solid #F2EEE1;}
+  .pill{display:inline-block; padding:3px 10px; border-radius:12px; background:var(--sand); font-size:12px; font-weight:600;}
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
+  .tabs-inline{display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap;}
+  .tab-chip{padding:8px 16px; border-radius:20px; background:var(--sand); font-family:'Kanit'; font-weight:600; font-size:13px; cursor:pointer; color:#5c6a6d;}
+  .tab-chip.active{background:var(--lagoon); color:#fff;}
+  .choicebox{display:flex; align-items:center; gap:8px; margin-bottom:8px;}
+  .choicebox input[type=text]{flex:1;}
+  .gate{display:flex; align-items:center; justify-content:center; min-height:100vh; flex-direction:column;}
+  .gate .card{width:320px;}
+  .msg{font-size:13px; color:var(--green-ok); font-weight:600; min-height:18px;}
+  .msg.err{color:var(--red-high);}
+</style>
+</head>
+<body>
+
+<div class="gate" id="gateScreen">
+  <div class="card">
+    <h2 style="margin-top:0;">🔐 เข้าสู่ระบบครู</h2>
+    <div class="field"><label>รหัสผ่านผู้ดูแล</label><input type="password" id="adminPw"></div>
+    <button class="btn btn-primary" style="width:100%;" onclick="checkAdminPw()">เข้าสู่ระบบ</button>
+    <div class="msg" id="gateMsg"></div>
+  </div>
+</div>
+
+<div id="appScreen" style="display:none;">
+  <div class="topbar">
+    <div><div class="t">🧂 Salt Smart — หลังบ้านครู</div><div class="s">รู้เท่าทันความเค็ม เติมเต็มสุขภาพ</div></div>
+    <button class="btn btn-ghost" style="background:transparent;color:#fff;border-color:rgba(255,255,255,0.5);" onclick="location.reload()">ออกจากระบบ</button>
+  </div>
+  <div class="layout">
+    <div class="sidenav">
+      <div class="navitem active" data-p="p-overview" onclick="showPanel('p-overview')">📊 ภาพรวม</div>
+      <div class="navitem" data-p="p-classes" onclick="showPanel('p-classes')">🏫 ห้องเรียน/นักเรียน</div>
+      <div class="navitem" data-p="p-quiz" onclick="showPanel('p-quiz')">❓ คลังคำถาม Quiz</div>
+      <div class="navitem" data-p="p-leaderboard" onclick="showPanel('p-leaderboard')">🏆 อันดับ/รางวัล</div>
+      <div class="navitem" data-p="p-campaign" onclick="showPanel('p-campaign')">⚙️ ตั้งค่าแคมเปญ</div>
+    </div>
+    <div class="content">
+
+      <!-- OVERVIEW -->
+      <div class="panel active" id="p-overview">
+        <h2>ภาพรวมวันนี้</h2>
+        <div class="row">
+          <div class="kpi"><div class="n" id="kpiStudents">-</div><div class="l">นักเรียนทั้งหมด</div></div>
+          <div class="kpi"><div class="n" id="kpiClasses">-</div><div class="l">ห้องเรียน</div></div>
+          <div class="kpi"><div class="n" id="kpiCheckins">-</div><div class="l">บันทึกวันนี้</div></div>
+          <div class="kpi"><div class="n" id="kpiDay">-</div><div class="l">วันที่ของแคมเปญ</div></div>
+        </div>
+        <div class="card" style="margin-top:20px;">
+          <h3 style="margin-top:0;">อันดับคะแนนรวมสูงสุด (Top 10)</h3>
+          <table><thead><tr><th>#</th><th>ชื่อ</th><th>ห้อง</th><th>คะแนน</th><th>Streak</th></tr></thead><tbody id="overviewTop"></tbody></table>
+        </div>
+      </div>
+
+      <!-- CLASSES -->
+      <div class="panel" id="p-classes">
+        <h2>จัดการห้องเรียน / นักเรียน</h2>
+        <div class="grid2">
+          <div class="card">
+            <h3 style="margin-top:0;">เพิ่มห้องเรียน</h3>
+            <div class="field"><label>ชื่อห้อง (เช่น ป.4/1, ม.1/2)</label><input type="text" id="newClassName"></div>
+            <div class="field"><label>ลำดับการแสดงผล</label><input type="number" id="newClassOrder" value="1"></div>
+            <button class="btn btn-primary" onclick="addClass()">เพิ่มห้อง</button>
+            <div class="msg" id="classMsg"></div>
+          </div>
+          <div class="card">
+            <h3 style="margin-top:0;">เพิ่มนักเรียนเป็นชุด</h3>
+            <div class="field"><label>เลือกห้อง</label><select id="bulkClassSelect"></select></div>
+            <div class="field">
+              <label>รายชื่อ (บรรทัดละ 1 คน รูปแบบ "เลขที่,ชื่อ-สกุล")</label>
+              <textarea id="bulkStudentText" placeholder="1,ด.ช.สมชาย ใจดี&#10;2,ด.ญ.สมหญิง ขยัน"></textarea>
+            </div>
+            <button class="btn btn-primary" onclick="bulkAddStudents()">เพิ่มนักเรียน</button>
+            <div class="msg" id="bulkMsg"></div>
+          </div>
+        </div>
+        <div class="card">
+          <h3 style="margin-top:0;">รายชื่อนักเรียนทั้งหมด</h3>
+          <div class="field" style="max-width:260px;"><label>กรองตามห้อง</label><select id="filterClassSelect" onchange="loadStudentTable()"></select></div>
+          <table><thead><tr><th>เลขที่</th><th>ชื่อ</th><th>ห้อง</th><th>คะแนน</th><th>Streak</th><th>PIN</th><th></th></tr></thead><tbody id="studentTable"></tbody></table>
+        </div>
+      </div>
+
+      <!-- QUIZ BANK -->
+      <div class="panel" id="p-quiz">
+        <h2>คลังคำถาม Quiz</h2>
+        <div class="card">
+          <h3 style="margin-top:0;">เพิ่มคำถามใหม่</h3>
+          <div class="field"><label>คำถาม</label><input type="text" id="qText"></div>
+          <div class="field"><label>หมวดหมู่</label>
+            <select id="qCategory">
+              <option value="โซเดียม">โซเดียม</option>
+              <option value="หวาน">หวาน</option>
+              <option value="มัน">มัน</option>
+              <option value="ฉลากอาหาร">ฉลากอาหาร</option>
+              <option value="สุขภาพทั่วไป">สุขภาพทั่วไป</option>
+            </select>
+          </div>
+          <div id="choiceBoxes"></div>
+          <button class="btn btn-primary" onclick="addQuizQuestion()">เพิ่มคำถามนี้</button>
+          <div class="msg" id="quizMsg"></div>
+        </div>
+        <div class="card">
+          <h3 style="margin-top:0;">คำถามทั้งหมด (<span id="quizCount">0</span> ข้อ)</h3>
+          <table><thead><tr><th>คำถาม</th><th>หมวด</th><th>คำตอบ</th><th>สถานะ</th><th></th></tr></thead><tbody id="quizTable"></tbody></table>
+        </div>
+      </div>
+
+      <!-- LEADERBOARD -->
+      <div class="panel" id="p-leaderboard">
+        <h2>อันดับ / รางวัล</h2>
+        <div class="tabs-inline">
+          <div class="tab-chip active" data-c="points" onclick="switchLbCat('points')">คะแนนรวมสูงสุด</div>
+          <div class="tab-chip" data-c="streak" onclick="switchLbCat('streak')">Streak ต่อเนื่องสูงสุด</div>
+          <div class="tab-chip" data-c="days" onclick="switchLbCat('days')">ทำครบวันมากสุด</div>
+        </div>
+        <div class="card">
+          <table><thead><tr><th>#</th><th>ชื่อ</th><th>ห้อง</th><th>ค่า</th></tr></thead><tbody id="lbTable"></tbody></table>
+        </div>
+        <div class="card">
+          <h3 style="margin-top:0;">อันดับห้องเรียน (คะแนนเฉลี่ยต่อคน)</h3>
+          <table><thead><tr><th>#</th><th>ห้อง</th><th>คะแนนเฉลี่ย</th><th>จำนวนนักเรียน</th></tr></thead><tbody id="classLbTable"></tbody></table>
+        </div>
+      </div>
+
+      <!-- CAMPAIGN -->
+      <div class="panel" id="p-campaign">
+        <h2>ตั้งค่าแคมเปญ 21 วัน</h2>
+        <div class="card" style="max-width:420px;">
+          <div class="field"><label>วันเริ่มต้น</label><input type="date" id="campStart"></div>
+          <div class="field"><label>รหัสผ่านผู้ดูแล (แก้ไขได้)</label><input type="text" id="campAdminPw"></div>
+          <button class="btn btn-primary" onclick="saveCampaign()">บันทึกการตั้งค่า</button>
+          <div class="msg" id="campMsg"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyDV0wpw4bQ6f2uztfpdVjYiC-toIP1B_oA",
+  authDomain: "salt-smart-2569.firebaseapp.com",
+  databaseURL: "https://salt-smart-2569-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "salt-smart-2569",
+  storageBucket: "salt-smart-2569.firebasestorage.app",
+  messagingSenderId: "91998754790",
+  appId: "1:91998754790:web:2f50cd0e43a9a1fdd16827"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+let classesCache = [], studentsCache = [], quizCache = [];
+
+async function checkAdminPw(){
+  const pw = document.getElementById('adminPw').value;
+  const snap = await db.collection('settings').doc('admin').get();
+  const correct = snap.exists ? snap.data().password : 'admin1234';
+  if(pw === correct){
+    document.getElementById('gateScreen').style.display='none';
+    document.getElementById('appScreen').style.display='block';
+    boot();
+  } else {
+    document.getElementById('gateMsg').textContent = 'รหัสผ่านไม่ถูกต้อง';
+    document.getElementById('gateMsg').classList.add('err');
+  }
+}
+
+function showPanel(id){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.navitem').forEach(n=>n.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.querySelector(`.navitem[data-p="${id}"]`).classList.add('active');
+  if(id==='p-overview') loadOverview();
+  if(id==='p-leaderboard') switchLbCat(currentLbCat);
+}
+
+async function boot(){
+  renderChoiceBoxes();
+  await loadClasses();
+  await loadStudentsCache();
+  await loadQuizBank();
+  loadOverview();
+  loadStudentTable();
+}
+
+/* ---- OVERVIEW ---- */
+async function loadOverview(){
+  document.getElementById('kpiStudents').textContent = studentsCache.length;
+  document.getElementById('kpiClasses').textContent = classesCache.length;
+  const campSnap = await db.collection('settings').doc('campaign').get();
+  let dayLabel = '-';
+  if(campSnap.exists && campSnap.data().startDate){
+    const start = new Date(campSnap.data().startDate);
+    const today = new Date();
+    const diff = Math.floor((today-start)/(1000*60*60*24))+1;
+    dayLabel = 'Day ' + Math.max(diff,0) + ' / 21';
+  }
+  document.getElementById('kpiDay').textContent = dayLabel;
+
+  const todayStr = new Date().toISOString().slice(0,10);
+  const logsSnap = await db.collection('dailyLogs').where('date','==',todayStr).get();
+  document.getElementById('kpiCheckins').textContent = logsSnap.size;
+
+  const top = [...studentsCache].sort((a,b)=>(b.totalPoints||0)-(a.totalPoints||0)).slice(0,10);
+  document.getElementById('overviewTop').innerHTML = top.map((s,i)=>`
+    <tr><td>${i+1}</td><td>${s.name}</td><td>${classNameOf(s.classId)}</td><td>${s.totalPoints||0}</td><td>${s.currentStreak||0}🔥</td></tr>
+  `).join('');
+}
+
+function classNameOf(id){ const c = classesCache.find(c=>c.id===id); return c?c.name:'-'; }
+
+/* ---- CLASSES ---- */
+async function loadClasses(){
+  const snap = await db.collection('classes').orderBy('order').get();
+  classesCache = snap.docs.map(d=>({id:d.id, ...d.data()}));
+  const selects = ['bulkClassSelect','filterClassSelect'];
+  selects.forEach(id=>{
+    const el = document.getElementById(id);
+    el.innerHTML = (id==='filterClassSelect' ? '<option value="">ทุกห้อง</option>' : '') +
+      classesCache.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+  });
+}
+async function addClass(){
+  const name = document.getElementById('newClassName').value.trim();
+  const order = parseInt(document.getElementById('newClassOrder').value) || 1;
+  if(!name){ setMsg('classMsg','กรอกชื่อห้อง',true); return; }
+  await db.collection('classes').add({name, order, createdAt: new Date().toISOString()});
+  document.getElementById('newClassName').value='';
+  setMsg('classMsg','เพิ่มห้อง "'+name+'" แล้ว');
+  await loadClasses();
+}
+
+async function loadStudentsCache(){
+  const snap = await db.collection('students').get();
+  studentsCache = snap.docs.map(d=>({id:d.id, ...d.data()}));
+}
+
+async function bulkAddStudents(){
+  const classId = document.getElementById('bulkClassSelect').value;
+  const text = document.getElementById('bulkStudentText').value.trim();
+  if(!classId || !text){ setMsg('bulkMsg','เลือกห้องและกรอกรายชื่อ',true); return; }
+  const lines = text.split('\n').map(l=>l.trim()).filter(Boolean);
+  const batch = db.batch();
+  lines.forEach(line=>{
+    const [no, ...rest] = line.split(',');
+    const name = rest.join(',').trim();
+    if(!name) return;
+    const ref = db.collection('students').doc();
+    batch.set(ref, {
+      studentNo: parseInt(no)||0, name, classId, pin:'',
+      totalPoints:0, currentStreak:0, longestStreak:0, daysCompleted:0, lastCheckinDate:''
+    });
+  });
+  await batch.commit();
+  document.getElementById('bulkStudentText').value='';
+  setMsg('bulkMsg', 'เพิ่มนักเรียน ' + lines.length + ' คนแล้ว');
+  await loadStudentsCache();
+  loadStudentTable();
+}
+
+function loadStudentTable(){
+  const filter = document.getElementById('filterClassSelect').value;
+  const list = filter ? studentsCache.filter(s=>s.classId===filter) : studentsCache;
+  document.getElementById('studentTable').innerHTML = list.sort((a,b)=>a.studentNo-b.studentNo).map(s=>`
+    <tr>
+      <td>${s.studentNo}</td><td>${s.name}</td><td>${classNameOf(s.classId)}</td>
+      <td>${s.totalPoints||0}</td><td>${s.currentStreak||0}</td>
+      <td>${s.pin ? '<span class="pill">ตั้งแล้ว</span>' : '<span class="pill">ยังไม่ตั้ง</span>'}</td>
+      <td><button class="btn btn-ghost" style="padding:6px 10px;font-size:12px;" onclick="resetPin('${s.id}')">รีเซ็ต PIN</button></td>
+    </tr>`).join('');
+}
+async function resetPin(id){
+  await db.collection('students').doc(id).update({pin:''});
+  await loadStudentsCache();
+  loadStudentTable();
+}
+
+/* ---- QUIZ BANK ---- */
+function renderChoiceBoxes(){
+  const wrap = document.getElementById('choiceBoxes');
+  wrap.innerHTML = [0,1,2,3].map(i=>`
+    <div class="choicebox">
+      <input type="radio" name="correctChoice" value="${i}" ${i===0?'checked':''}>
+      <input type="text" id="choice${i}" placeholder="ตัวเลือกที่ ${i+1}">
+    </div>`).join('');
+}
+async function addQuizQuestion(){
+  const question = document.getElementById('qText').value.trim();
+  const category = document.getElementById('qCategory').value;
+  const choices = [0,1,2,3].map(i=>document.getElementById('choice'+i).value.trim());
+  const correctIndex = parseInt(document.querySelector('input[name=correctChoice]:checked').value);
+  if(!question || choices.some(c=>!c)){ setMsg('quizMsg','กรอกคำถามและตัวเลือกให้ครบ',true); return; }
+  await db.collection('quizBank').add({question, category, choices, correctIndex, active:true});
+  document.getElementById('qText').value='';
+  [0,1,2,3].forEach(i=>document.getElementById('choice'+i).value='');
+  setMsg('quizMsg','เพิ่มคำถามแล้ว');
+  await loadQuizBank();
+}
+async function loadQuizBank(){
+  const snap = await db.collection('quizBank').get();
+  quizCache = snap.docs.map(d=>({id:d.id, ...d.data()}));
+  document.getElementById('quizCount').textContent = quizCache.length;
+  document.getElementById('quizTable').innerHTML = quizCache.map(q=>`
+    <tr>
+      <td>${q.question}</td><td><span class="pill">${q.category||'-'}</span></td>
+      <td>${q.choices[q.correctIndex]}</td>
+      <td>${q.active?'✅ ใช้งาน':'⛔ ปิด'}</td>
+      <td>
+        <button class="btn btn-ghost" style="padding:6px 10px;font-size:12px;" onclick="toggleQuiz('${q.id}',${!q.active})">${q.active?'ปิด':'เปิด'}</button>
+        <button class="btn btn-danger" style="padding:6px 10px;font-size:12px;" onclick="deleteQuiz('${q.id}')">ลบ</button>
+      </td>
+    </tr>`).join('');
+}
+async function toggleQuiz(id, active){ await db.collection('quizBank').doc(id).update({active}); await loadQuizBank(); }
+async function deleteQuiz(id){ if(confirm('ลบคำถามนี้?')){ await db.collection('quizBank').doc(id).delete(); await loadQuizBank(); } }
+
+/* ---- LEADERBOARD ---- */
+let currentLbCat = 'points';
+function switchLbCat(cat){
+  currentLbCat = cat;
+  document.querySelectorAll('.tab-chip').forEach(c=>c.classList.remove('active'));
+  document.querySelector(`.tab-chip[data-c="${cat}"]`).classList.add('active');
+  const keyMap = {points:'totalPoints', streak:'longestStreak', days:'daysCompleted'};
+  const labelMap = {points:'คะแนน', streak:'วัน (Streak สูงสุด)', days:'วันที่ทำสำเร็จ'};
+  const key = keyMap[cat];
+  const top = [...studentsCache].sort((a,b)=>(b[key]||0)-(a[key]||0)).slice(0,15);
+  document.getElementById('lbTable').innerHTML = top.map((s,i)=>`
+    <tr><td>${i+1}</td><td>${s.name}</td><td>${classNameOf(s.classId)}</td><td>${s[key]||0} ${labelMap[cat]}</td></tr>
+  `).join('');
+
+  const byClass = {};
+  studentsCache.forEach(s=>{
+    if(!byClass[s.classId]) byClass[s.classId]={sum:0,count:0};
+    byClass[s.classId].sum += (s.totalPoints||0); byClass[s.classId].count++;
+  });
+  const classRows = Object.entries(byClass).map(([cid,v])=>({name:classNameOf(cid), avg:(v.sum/v.count).toFixed(1), count:v.count}))
+    .sort((a,b)=>b.avg-a.avg);
+  document.getElementById('classLbTable').innerHTML = classRows.map((c,i)=>`
+    <tr><td>${i+1}</td><td>${c.name}</td><td>${c.avg}</td><td>${c.count}</td></tr>
+  `).join('');
+}
+
+/* ---- CAMPAIGN ---- */
+async function saveCampaign(){
+  const start = document.getElementById('campStart').value;
+  const pw = document.getElementById('campAdminPw').value;
+  await db.collection('settings').doc('campaign').set({startDate:start, active:true}, {merge:true});
+  if(pw) await db.collection('settings').doc('admin').set({password:pw}, {merge:true});
+  setMsg('campMsg','บันทึกการตั้งค่าแล้ว');
+}
+async function loadCampaignForm(){
+  const snap = await db.collection('settings').doc('campaign').get();
+  if(snap.exists && snap.data().startDate) document.getElementById('campStart').value = snap.data().startDate;
+}
+
+function setMsg(id, text, isErr){
+  const el = document.getElementById(id);
+  el.textContent = text;
+  el.classList.toggle('err', !!isErr);
+  setTimeout(()=>{el.textContent='';}, 3000);
+}
+
+loadCampaignForm();
+</script>
+</body>
+</html>

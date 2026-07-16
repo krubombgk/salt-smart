@@ -1,0 +1,952 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<title>Salt Smart | รู้เท่าทันความเค็ม เติมเต็มสุขภาพ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;600;700;800&family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<style>
+  :root{
+    --deep-sea:#0B3D4C;
+    --deep-sea-2:#124A5C;
+    --lagoon:#2A9D8F;
+    --lagoon-light:#7FD8CC;
+    --coral:#F4A261;
+    --clay:#E76F51;
+    --sand:#F3ECDD;
+    --salt-white:#FDFBF6;
+    --ink:#0B3D4C;
+    --green-ok:#3FA66B;
+    --amber-warn:#E8A33D;
+    --red-high:#D9503F;
+    --radius:20px;
+    --radius-sm:12px;
+    --shadow:0 10px 30px rgba(11,61,76,0.12);
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;height:100%;}
+  body{
+    font-family:'Sarabun',sans-serif;
+    background:
+      radial-gradient(circle at 15% 0%, rgba(127,216,204,0.35), transparent 45%),
+      radial-gradient(circle at 100% 100%, rgba(244,162,97,0.18), transparent 40%),
+      var(--salt-white);
+    color:var(--ink);
+    min-height:100vh;
+    overflow-x:hidden;
+  }
+  h1,h2,h3,.display{font-family:'Kanit',sans-serif;}
+  .screen{display:none; min-height:100vh; flex-direction:column;}
+  .screen.active{display:flex;}
+  .wrap{max-width:900px; margin:0 auto; width:100%; padding:24px 20px 100px;}
+
+  /* ---- Top brand bar ---- */
+  .brandbar{
+    background:linear-gradient(135deg, var(--deep-sea) 0%, var(--deep-sea-2) 60%, var(--lagoon) 130%);
+    color:var(--salt-white);
+    padding:22px 20px;
+    position:relative;
+    overflow:hidden;
+  }
+  .brandbar::after{
+    content:"";
+    position:absolute; right:-40px; top:-40px; width:180px; height:180px;
+    background:radial-gradient(circle, rgba(244,162,97,0.35), transparent 70%);
+  }
+  .brand-row{display:flex; align-items:center; gap:12px; max-width:900px; margin:0 auto; position:relative; z-index:1;}
+  .brand-mark{
+    width:44px;height:44px;border-radius:12px;
+    background:var(--coral);
+    display:flex;align-items:center;justify-content:center;
+    font-size:22px; flex-shrink:0;
+    box-shadow:0 6px 14px rgba(244,162,97,0.4);
+  }
+  .brand-title{font-family:'Kanit'; font-weight:700; font-size:19px; letter-spacing:.2px;}
+  .brand-sub{font-size:12.5px; opacity:.85; margin-top:1px;}
+
+  /* ---- Buttons / cards ---- */
+  .btn{
+    font-family:'Kanit'; font-weight:600; font-size:16px;
+    border:none; border-radius:14px; padding:16px 20px;
+    cursor:pointer; transition:transform .12s ease, box-shadow .12s ease;
+    display:flex; align-items:center; justify-content:center; gap:8px;
+  }
+  .btn:active{transform:scale(0.97);}
+  .btn-primary{background:var(--lagoon); color:#fff; box-shadow:0 8px 18px rgba(42,157,143,0.32);}
+  .btn-coral{background:var(--coral); color:#fff; box-shadow:0 8px 18px rgba(244,162,97,0.35);}
+  .btn-ghost{background:#fff; color:var(--deep-sea); border:2px solid #E4DFCF;}
+  .btn-block{width:100%;}
+  .card{
+    background:#fff; border-radius:var(--radius); padding:20px;
+    box-shadow:var(--shadow); border:1px solid #EFE9D9;
+  }
+
+  /* ---- Class / student picker ---- */
+  .picker-title{text-align:center; margin:10px 0 4px;}
+  .picker-title h2{font-size:22px; margin:0;}
+  .picker-title p{color:#6b7c80; font-size:14px; margin:4px 0 0;}
+  .grid-pick{display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:14px; margin-top:22px;}
+  .pick-tile{
+    background:#fff; border:2px solid #EFE9D9; border-radius:16px;
+    padding:20px 12px; text-align:center; cursor:pointer;
+    transition:all .15s ease; font-family:'Kanit'; font-weight:600; color:var(--deep-sea);
+  }
+  .pick-tile:active{transform:scale(0.96); background:var(--sand);}
+  .pick-tile .emoji{font-size:26px; display:block; margin-bottom:6px;}
+  .pick-avatar{
+    width:56px;height:56px;border-radius:50%; margin:0 auto 8px;
+    display:flex;align-items:center;justify-content:center;
+    color:#fff; font-family:'Kanit'; font-weight:700; font-size:20px;
+  }
+  .backlink{
+    display:inline-flex; align-items:center; gap:6px; color:var(--lagoon);
+    font-family:'Kanit'; font-weight:600; font-size:14px; cursor:pointer; margin-bottom:6px;
+  }
+
+  /* ---- PIN pad ---- */
+  .pin-dots{display:flex; justify-content:center; gap:14px; margin:26px 0;}
+  .pin-dot{width:16px;height:16px;border-radius:50%; border:2px solid var(--lagoon); background:transparent;}
+  .pin-dot.filled{background:var(--lagoon);}
+  .keypad{display:grid; grid-template-columns:repeat(3,1fr); gap:12px; max-width:280px; margin:0 auto;}
+  .key{
+    background:#fff; border:2px solid #EFE9D9; border-radius:16px; padding:18px 0;
+    font-family:'Kanit'; font-size:22px; font-weight:600; color:var(--deep-sea); cursor:pointer;
+  }
+  .key:active{background:var(--sand); transform:scale(0.95);}
+  .key.action{color:var(--clay); font-size:15px;}
+
+  /* ---- Tab bar ---- */
+  .tabbar{
+    position:fixed; bottom:0; left:0; right:0; background:#fff;
+    border-top:1px solid #EFE9D9; display:flex; z-index:50;
+    box-shadow:0 -6px 20px rgba(11,61,76,0.08);
+  }
+  .tabbtn{
+    flex:1; text-align:center; padding:10px 4px 8px; cursor:pointer;
+    color:#9aa8ab; font-family:'Kanit'; font-size:11.5px; font-weight:600;
+  }
+  .tabbtn .ic{font-size:22px; display:block; margin-bottom:2px;}
+  .tabbtn.active{color:var(--lagoon);}
+
+  .headerbar{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:16px 20px; background:#fff; border-bottom:1px solid #EFE9D9;
+    position:sticky; top:0; z-index:40;
+  }
+  .hb-name{font-family:'Kanit'; font-weight:700; font-size:16px;}
+  .hb-day{font-size:12px; color:#6b7c80;}
+  .hb-stat{display:flex; gap:14px; align-items:center;}
+  .stat-pill{
+    display:flex; align-items:center; gap:4px; font-family:'Kanit'; font-weight:700; font-size:14px;
+    background:var(--sand); padding:6px 10px; border-radius:20px;
+  }
+
+  .tabpanel{display:none;}
+  .tabpanel.active{display:block;}
+
+  /* ---- Salt gauge (signature element) ---- */
+  .gauge-wrap{display:flex; flex-direction:column; align-items:center; margin:14px 0 6px;}
+  .shaker{
+    width:90px; height:120px; position:relative; margin-bottom:10px;
+  }
+  .shaker-body{
+    position:absolute; bottom:0; width:100%; height:88px;
+    background:#EFE9D9; border-radius:14px 14px 22px 22px; overflow:hidden;
+    border:3px solid #E0D9C4;
+  }
+  .shaker-fill{
+    position:absolute; bottom:0; left:0; right:0; height:0%;
+    background:linear-gradient(180deg, var(--lagoon-light), var(--lagoon));
+    transition:height .5s ease;
+  }
+  .shaker-cap{
+    position:absolute; top:0; left:50%; transform:translateX(-50%);
+    width:44px; height:24px; background:#0B3D4C; border-radius:8px 8px 4px 4px;
+  }
+  .gauge-num{font-family:'Kanit'; font-weight:800; font-size:30px;}
+  .gauge-label{font-size:13px; color:#6b7c80;}
+  .verdict{
+    font-family:'Kanit'; font-weight:700; padding:8px 16px; border-radius:20px; font-size:14px;
+    margin-top:6px;
+  }
+  .verdict.low{background:#E4F5EC; color:var(--green-ok);}
+  .verdict.mid{background:#FBF0DC; color:var(--amber-warn);}
+  .verdict.high{background:#FBE6E2; color:var(--red-high);}
+
+  .field{margin-bottom:14px;}
+  .field label{font-size:13.5px; font-weight:600; color:#4c5c60; display:block; margin-bottom:6px;}
+  .field input, .field select{
+    width:100%; padding:14px; border-radius:12px; border:2px solid #E4DFCF;
+    font-family:'Sarabun'; font-size:16px; background:#fff;
+  }
+  .field input:focus, .field select:focus{outline:none; border-color:var(--lagoon);}
+
+  .check-history{margin-top:18px;}
+  .check-item{
+    display:flex; justify-content:space-between; align-items:center;
+    padding:12px 14px; background:var(--sand); border-radius:12px; margin-bottom:8px;
+  }
+  .check-item .ci-name{font-weight:600; font-size:14px;}
+  .check-item .ci-val{font-family:'Kanit'; font-weight:700; font-size:14px;}
+
+  /* ---- Quiz ---- */
+  .quiz-progress{display:flex; gap:6px; margin-bottom:16px;}
+  .quiz-progress span{flex:1; height:6px; border-radius:4px; background:#EFE9D9;}
+  .quiz-progress span.done{background:var(--lagoon);}
+  .quiz-q{font-family:'Kanit'; font-weight:600; font-size:17px; margin-bottom:16px; line-height:1.5;}
+  .choice{
+    display:block; width:100%; text-align:left; padding:14px 16px; margin-bottom:10px;
+    border-radius:12px; border:2px solid #E4DFCF; background:#fff; font-size:15px; cursor:pointer;
+  }
+  .choice:active{background:var(--sand);}
+  .choice.correct{border-color:var(--green-ok); background:#E4F5EC;}
+  .choice.wrong{border-color:var(--red-high); background:#FBE6E2;}
+  .quiz-done{text-align:center; padding:30px 10px;}
+  .quiz-done .score{font-family:'Kanit'; font-weight:800; font-size:44px; color:var(--lagoon);}
+
+  /* ---- Log tab ---- */
+  .chk-row{
+    display:flex; align-items:center; gap:12px; padding:14px; border-radius:12px;
+    background:var(--sand); margin-bottom:10px; cursor:pointer;
+  }
+  .chk-box{
+    width:26px; height:26px; border-radius:8px; border:2px solid var(--lagoon); flex-shrink:0;
+    display:flex; align-items:center; justify-content:center; background:#fff;
+  }
+  .chk-row.checked .chk-box{background:var(--lagoon); color:#fff;}
+  .chk-label{font-size:14.5px; font-weight:500;}
+  textarea{
+    width:100%; padding:14px; border-radius:12px; border:2px solid #E4DFCF;
+    font-family:'Sarabun'; font-size:15px; resize:vertical; min-height:80px;
+  }
+
+  /* ---- Stats tab ---- */
+  .progress-ring-wrap{display:flex; align-items:center; gap:18px;}
+  .stat-grid{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:16px;}
+  .mini-stat{background:var(--sand); border-radius:14px; padding:14px; text-align:center;}
+  .mini-stat .num{font-family:'Kanit'; font-weight:800; font-size:24px; color:var(--deep-sea);}
+  .mini-stat .lbl{font-size:12px; color:#6b7c80; margin-top:2px;}
+  .lb-row{display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid #F0ECDF;}
+  .lb-rank{font-family:'Kanit'; font-weight:800; width:22px; color:var(--lagoon);}
+  .lb-name{flex:1; font-size:14px; font-weight:600;}
+  .lb-pts{font-family:'Kanit'; font-weight:700; font-size:14px; color:var(--coral);}
+  .section-title{font-family:'Kanit'; font-weight:700; font-size:17px; margin:22px 0 10px;}
+  .toast{
+    position:fixed; bottom:90px; left:50%; transform:translateX(-50%);
+    background:var(--deep-sea); color:#fff; padding:12px 22px; border-radius:30px;
+    font-family:'Kanit'; font-weight:600; font-size:14px; z-index:100; opacity:0;
+    transition:opacity .25s ease; pointer-events:none; white-space:nowrap;
+  }
+  .toast.show{opacity:1;}
+  .badge-chip{
+    display:inline-flex; align-items:center; gap:6px; background:linear-gradient(135deg,var(--coral),var(--clay));
+    color:#fff; padding:8px 14px; border-radius:20px; font-family:'Kanit'; font-weight:600; font-size:13px; margin:4px 4px 0 0;
+  }
+  .empty-note{color:#8b979a; font-size:13.5px; text-align:center; padding:20px 0;}
+  .loading{display:flex; align-items:center; justify-content:center; min-height:100vh; font-family:'Kanit'; color:var(--lagoon); font-weight:600;}
+</style>
+</head>
+<body>
+
+<div id="loadingScreen" class="loading">กำลังโหลด Salt Smart…</div>
+
+<!-- ================= SCREEN: CLASS SELECT ================= -->
+<div class="screen" id="screen-class">
+  <div class="brandbar">
+    <div class="brand-row">
+      <div class="brand-mark">🧂</div>
+      <div>
+        <div class="brand-title">Salt Smart</div>
+        <div class="brand-sub">รู้เท่าทันความเค็ม เติมเต็มสุขภาพ · 21 Day Challenge</div>
+      </div>
+    </div>
+  </div>
+  <div class="wrap">
+    <div class="picker-title">
+      <h2>เลือกห้องเรียนของเรา</h2>
+      <p>แตะเลือกห้องเรียนเพื่อเริ่มต้น</p>
+    </div>
+    <div class="grid-pick" id="classGrid"></div>
+  </div>
+</div>
+
+<!-- ================= SCREEN: STUDENT SELECT ================= -->
+<div class="screen" id="screen-student">
+  <div class="brandbar">
+    <div class="brand-row">
+      <div class="brand-mark">🧂</div>
+      <div>
+        <div class="brand-title">Salt Smart</div>
+        <div class="brand-sub" id="studentBrandSub">เลือกชื่อของเรา</div>
+      </div>
+    </div>
+  </div>
+  <div class="wrap">
+    <div class="backlink" onclick="goScreen('screen-class')">‹ เปลี่ยนห้องเรียน</div>
+    <div class="picker-title">
+      <h2 id="studentClassTitle">ห้อง …</h2>
+      <p>แตะชื่อของตัวเอง</p>
+    </div>
+    <div class="grid-pick" id="studentGrid"></div>
+  </div>
+</div>
+
+<!-- ================= SCREEN: PIN ================= -->
+<div class="screen" id="screen-pin">
+  <div class="brandbar">
+    <div class="brand-row">
+      <div class="brand-mark">🔒</div>
+      <div>
+        <div class="brand-title" id="pinStudentName">สวัสดี</div>
+        <div class="brand-sub" id="pinModeText">ใส่รหัสผ่าน 4 หลัก</div>
+      </div>
+    </div>
+  </div>
+  <div class="wrap" style="max-width:400px;">
+    <div class="backlink" onclick="goScreen('screen-student')">‹ ไม่ใช่ฉัน เปลี่ยนคน</div>
+    <div class="pin-dots" id="pinDots">
+      <div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div>
+    </div>
+    <div id="pinError" style="text-align:center; color:var(--red-high); font-size:13px; font-weight:600; min-height:18px; margin-bottom:8px;"></div>
+    <div class="keypad" id="keypad"></div>
+  </div>
+</div>
+
+<!-- ================= SCREEN: MAIN APP ================= -->
+<div class="screen" id="screen-main">
+  <div class="headerbar">
+    <div>
+      <div class="hb-name" id="mainStudentName">ชื่อนักเรียน</div>
+      <div class="hb-day" id="mainDayLabel">Day 1 / 21</div>
+    </div>
+    <div class="hb-stat">
+      <div class="stat-pill">🔥 <span id="hbStreak">0</span></div>
+      <div class="stat-pill">⭐ <span id="hbPoints">0</span></div>
+      <div class="backlink" style="margin:0;" onclick="logout()">ออก</div>
+    </div>
+  </div>
+
+  <div class="wrap" style="padding-top:18px;">
+
+    <!-- TAB: CHECK LABEL -->
+    <div class="tabpanel" id="tab-check">
+      <div class="card">
+        <h3 style="margin-top:0;">🔍 ตรวจสอบโซเดียมจากฉลาก</h3>
+        <p style="color:#6b7c80; font-size:13.5px; margin-top:-8px;">กรอกค่าโซเดียม (มก.) ต่อหนึ่งหน่วยบริโภคจากฉลากโภชนาการ แล้วดูว่าเค็มแค่ไหนของวันนี้</p>
+        <div class="field">
+          <label>ชื่อสินค้า / เมนู</label>
+          <input type="text" id="ciName" placeholder="เช่น มาม่าคัพ, น้ำปลา">
+        </div>
+        <div class="field">
+          <label>โซเดียม (มิลลิกรัม)</label>
+          <input type="number" id="ciSodium" placeholder="เช่น 850" inputmode="numeric">
+        </div>
+        <button class="btn btn-primary btn-block" onclick="calcSodium()">คำนวณ</button>
+
+        <div id="gaugeArea" style="display:none;">
+          <div class="gauge-wrap">
+            <div class="shaker">
+              <div class="shaker-body"><div class="shaker-fill" id="shakerFill"></div></div>
+              <div class="shaker-cap"></div>
+            </div>
+            <div class="gauge-num" id="gaugePct">0%</div>
+            <div class="gauge-label">ของปริมาณโซเดียมที่แนะนำต่อวัน (2,000 มก.)</div>
+            <div class="verdict" id="gaugeVerdict">-</div>
+          </div>
+          <button class="btn btn-coral btn-block" style="margin-top:14px;" onclick="saveSodiumCheck()">บันทึกรายการนี้</button>
+        </div>
+      </div>
+
+      <div class="check-history">
+        <div class="section-title">รายการที่ตรวจวันนี้</div>
+        <div id="checkHistoryList"><div class="empty-note">ยังไม่มีรายการที่ตรวจวันนี้</div></div>
+      </div>
+    </div>
+
+    <!-- TAB: QUIZ -->
+    <div class="tabpanel" id="tab-quiz">
+      <div class="card" id="quizCard">
+        <h3 style="margin-top:0;">❓ Quiz ประจำวัน</h3>
+        <div id="quizBody"><div class="empty-note">กำลังโหลดคำถาม…</div></div>
+      </div>
+    </div>
+
+    <!-- TAB: LOG -->
+    <div class="tabpanel" id="tab-log">
+      <div class="card">
+        <h3 style="margin-top:0;">📝 บันทึกพฤติกรรมวันนี้</h3>
+        <p style="color:#6b7c80; font-size:13.5px; margin-top:-8px;">แตะสิ่งที่ทำได้ในวันนี้ (เลือกได้มากกว่า 1 ข้อ)</p>
+        <div id="behaviorList"></div>
+
+        <div class="field" style="margin-top:16px;">
+          <label>วันนี้ฉันเลือกได้ดีตรงไหน เพราะอะไร</label>
+          <textarea id="reflectionText" placeholder="เขียนสั้น ๆ เล่าให้ฟังหน่อย…"></textarea>
+        </div>
+        <button class="btn btn-primary btn-block" id="submitLogBtn" onclick="submitDailyLog()">บันทึกของวันนี้</button>
+        <div id="alreadyLoggedNote" class="empty-note" style="display:none;">✅ วันนี้บันทึกแล้ว เก่งมาก! กลับมาบันทึกใหม่ได้พรุ่งนี้</div>
+      </div>
+    </div>
+
+    <!-- TAB: STATS -->
+    <div class="tabpanel" id="tab-stats">
+      <div class="card">
+        <h3 style="margin-top:0;">🏆 สถิติของฉัน</h3>
+        <div class="stat-grid">
+          <div class="mini-stat"><div class="num" id="stStreak">0</div><div class="lbl">วันต่อเนื่อง 🔥</div></div>
+          <div class="mini-stat"><div class="num" id="stPoints">0</div><div class="lbl">คะแนนสะสม ⭐</div></div>
+          <div class="mini-stat"><div class="num" id="stDays">0/21</div><div class="lbl">วันที่ทำสำเร็จ</div></div>
+          <div class="mini-stat"><div class="num" id="stQuiz">0%</div><div class="lbl">ความแม่นยำ Quiz</div></div>
+        </div>
+        <div id="badgeArea" style="margin-top:14px;"></div>
+      </div>
+
+      <div class="section-title">อันดับในห้อง</div>
+      <div class="card" id="classLeaderboard"><div class="empty-note">กำลังโหลด…</div></div>
+
+      <div class="section-title">อันดับรวมทั้งโรงเรียน</div>
+      <div class="card" id="schoolLeaderboard"><div class="empty-note">กำลังโหลด…</div></div>
+    </div>
+
+  </div>
+
+  <div class="tabbar">
+    <div class="tabbtn active" data-tab="tab-check" onclick="switchTab('tab-check')"><span class="ic">🔍</span>ตรวจฉลาก</div>
+    <div class="tabbtn" data-tab="tab-quiz" onclick="switchTab('tab-quiz')"><span class="ic">❓</span>Quiz</div>
+    <div class="tabbtn" data-tab="tab-log" onclick="switchTab('tab-log')"><span class="ic">📝</span>บันทึกวันนี้</div>
+    <div class="tabbtn" data-tab="tab-stats" onclick="switchTab('tab-stats')"><span class="ic">🏆</span>สถิติ</div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* =========================================================
+   FIREBASE CONFIG — แก้ค่าตรงนี้ให้เป็นโปรเจกต์ของโรงเรียน
+   ========================================================= */
+const firebaseConfig = {
+  apiKey: "AIzaSyDV0wpw4bQ6f2uztfpdVjYiC-toIP1B_oA",
+  authDomain: "salt-smart-2569.firebaseapp.com",
+  databaseURL: "https://salt-smart-2569-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "salt-smart-2569",
+  storageBucket: "salt-smart-2569.firebasestorage.app",
+  messagingSenderId: "91998754790",
+  appId: "1:91998754790:web:2f50cd0e43a9a1fdd16827"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+/* =========================================================
+   CONSTANTS
+   ========================================================= */
+const SODIUM_DAILY_MAX = 2000; // mg
+const BEHAVIORS = [
+  {key:'reduceSalt',   label:'ลดเค็ม (โซเดียมรวมวันนี้ไม่เกิน 2,000 มก.)'},
+  {key:'reduceSugar',  label:'ลดหวาน (น้ำตาลไม่เกิน 6 ช้อนชา)'},
+  {key:'reduceFat',    label:'ลดมัน (ไขมันไม่เกิน 6 ช้อนชา)'},
+  {key:'exercise',     label:'ออกกำลังกาย / เคลื่อนไหวร่างกาย'},
+  {key:'readLabel',    label:'อ่านฉลากโภชนาการก่อนกิน'},
+  {key:'readGDA',      label:'อ่านฉลาก GDA (หวาน มัน เค็ม)'},
+  {key:'healthyChoice',label:'เลือกผลิตภัณฑ์สัญลักษณ์ทางเลือกสุขภาพ'},
+  {key:'drinkWater',   label:'ดื่มน้ำเปล่าเพียงพอ'}
+];
+const AVATAR_COLORS = ['#2A9D8F','#F4A261','#E76F51','#0B3D4C','#7FD8CC','#E8A33D'];
+
+let state = {
+  classes:[], selectedClassId:null, selectedClassName:null,
+  students:[], selectedStudent:null,
+  pinBuffer:'', pinMode:'verify', // 'verify' or 'setup' or 'confirm'
+  pendingPin:'',
+  campaign:{startDate:null,endDate:null,active:true},
+  todaysDateStr:null, dayNumber:1,
+  todayLog:null, // loaded/created dailyLog doc data
+  todaysQuiz:[], quizIndex:0, quizAnswers:[], quizFinished:false,
+  sodiumChecks:[], pendingCalc:null,
+  behaviorChecked:{}
+};
+
+function todayStr(){
+  const d = new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2200);
+}
+
+function goScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+/* =========================================================
+   INIT
+   ========================================================= */
+async function init(){
+  state.todaysDateStr = todayStr();
+  try{
+    const campSnap = await db.collection('settings').doc('campaign').get();
+    if(campSnap.exists) state.campaign = campSnap.data();
+    if(state.campaign.startDate){
+      const start = new Date(state.campaign.startDate);
+      const today = new Date(state.todaysDateStr);
+      const diff = Math.floor((today - start)/(1000*60*60*24)) + 1;
+      state.dayNumber = Math.min(Math.max(diff,1),21);
+    }
+    const classSnap = await db.collection('classes').orderBy('order').get();
+    state.classes = classSnap.docs.map(d=>({id:d.id, ...d.data()}));
+    renderClassGrid();
+    document.getElementById('loadingScreen').style.display='none';
+    goScreen('screen-class');
+  }catch(e){
+    document.getElementById('loadingScreen').innerHTML = 'เชื่อมต่อไม่สำเร็จ กรุณาตรวจสอบอินเทอร์เน็ต<br><small style="color:#999">'+e.message+'</small>';
+    console.error(e);
+  }
+}
+
+function renderClassGrid(){
+  const grid = document.getElementById('classGrid');
+  grid.innerHTML='';
+  state.classes.forEach(c=>{
+    const el = document.createElement('div');
+    el.className='pick-tile';
+    el.innerHTML = `<span class="emoji">🏫</span>${c.name}`;
+    el.onclick = ()=>selectClass(c);
+    grid.appendChild(el);
+  });
+  if(state.classes.length===0){
+    grid.innerHTML = '<div class="empty-note">ยังไม่มีห้องเรียน กรุณาให้ครูเพิ่มห้องเรียนในหน้าแอดมิน</div>';
+  }
+}
+
+async function selectClass(c){
+  state.selectedClassId = c.id;
+  state.selectedClassName = c.name;
+  document.getElementById('studentClassTitle').textContent = 'ห้อง ' + c.name;
+  document.getElementById('studentBrandSub').textContent = 'เลือกชื่อของเรา · ' + c.name;
+  const snap = await db.collection('students').where('classId','==',c.id).orderBy('studentNo').get();
+  state.students = snap.docs.map(d=>({id:d.id, ...d.data()}));
+  renderStudentGrid();
+  goScreen('screen-student');
+}
+
+function renderStudentGrid(){
+  const grid = document.getElementById('studentGrid');
+  grid.innerHTML='';
+  state.students.forEach((s,i)=>{
+    const color = AVATAR_COLORS[i % AVATAR_COLORS.length];
+    const el = document.createElement('div');
+    el.className='pick-tile';
+    const initial = s.name.trim().charAt(0);
+    el.innerHTML = `<div class="pick-avatar" style="background:${color}">${initial}</div>${s.studentNo}. ${s.name}`;
+    el.onclick = ()=>selectStudent(s);
+    grid.appendChild(el);
+  });
+  if(state.students.length===0){
+    grid.innerHTML = '<div class="empty-note">ยังไม่มีนักเรียนในห้องนี้</div>';
+  }
+}
+
+function selectStudent(s){
+  state.selectedStudent = s;
+  document.getElementById('pinStudentName').textContent = 'สวัสดี ' + s.name;
+  state.pinMode = s.pin ? 'verify' : 'setup';
+  state.pinBuffer=''; state.pendingPin='';
+  updatePinModeText();
+  renderKeypad();
+  updatePinDots();
+  document.getElementById('pinError').textContent='';
+  goScreen('screen-pin');
+}
+
+function updatePinModeText(){
+  const txt = {
+    verify:'ใส่รหัสผ่าน 4 หลักของเรา',
+    setup:'ครั้งแรก! ตั้งรหัสผ่าน 4 หลักของตัวเอง',
+    confirm:'ใส่รหัส 4 หลักอีกครั้งเพื่อยืนยัน'
+  };
+  document.getElementById('pinModeText').textContent = txt[state.pinMode];
+}
+
+function renderKeypad(){
+  const kp = document.getElementById('keypad');
+  kp.innerHTML='';
+  const keys = ['1','2','3','4','5','6','7','8','9','ลบ','0','เปลี่ยนคน'];
+  keys.forEach(k=>{
+    const el = document.createElement('div');
+    el.className = 'key' + (k==='ลบ'||k==='เปลี่ยนคน' ? ' action':'');
+    el.textContent = k;
+    el.onclick = ()=>pressKey(k);
+    kp.appendChild(el);
+  });
+}
+
+function updatePinDots(){
+  const dots = document.querySelectorAll('#pinDots .pin-dot');
+  dots.forEach((d,i)=> d.classList.toggle('filled', i < state.pinBuffer.length));
+}
+
+function pressKey(k){
+  if(k==='เปลี่ยนคน'){ goScreen('screen-student'); return; }
+  if(k==='ลบ'){ state.pinBuffer = state.pinBuffer.slice(0,-1); updatePinDots(); return; }
+  if(state.pinBuffer.length>=4) return;
+  state.pinBuffer += k;
+  updatePinDots();
+  if(state.pinBuffer.length===4){ setTimeout(handlePinComplete, 150); }
+}
+
+async function handlePinComplete(){
+  const entered = state.pinBuffer;
+  if(state.pinMode==='verify'){
+    if(entered === state.selectedStudent.pin){
+      await enterApp();
+    }else{
+      document.getElementById('pinError').textContent = 'รหัสไม่ถูกต้อง ลองใหม่อีกครั้ง';
+      state.pinBuffer=''; updatePinDots();
+    }
+  } else if(state.pinMode==='setup'){
+    state.pendingPin = entered;
+    state.pinBuffer=''; updatePinDots();
+    state.pinMode='confirm';
+    updatePinModeText();
+  } else if(state.pinMode==='confirm'){
+    if(entered === state.pendingPin){
+      await db.collection('students').doc(state.selectedStudent.id).update({pin:entered});
+      state.selectedStudent.pin = entered;
+      await enterApp();
+    }else{
+      document.getElementById('pinError').textContent = 'รหัสไม่ตรงกัน กรุณาตั้งใหม่';
+      state.pinBuffer=''; state.pendingPin=''; state.pinMode='setup';
+      updatePinModeText(); updatePinDots();
+    }
+  }
+}
+
+/* =========================================================
+   MAIN APP
+   ========================================================= */
+async function enterApp(){
+  document.getElementById('mainStudentName').textContent = state.selectedStudent.name + ' · ' + state.selectedClassName;
+  document.getElementById('mainDayLabel').textContent = 'Day ' + state.dayNumber + ' / 21';
+  document.getElementById('hbStreak').textContent = state.selectedStudent.currentStreak || 0;
+  document.getElementById('hbPoints').textContent = state.selectedStudent.totalPoints || 0;
+  goScreen('screen-main');
+  switchTab('tab-check');
+  await loadTodayLog();
+  await loadQuiz();
+  renderBehaviorList();
+  await loadLeaderboards();
+  renderStats();
+}
+
+function logout(){
+  state.selectedStudent=null; state.todayLog=null; state.sodiumChecks=[];
+  state.quizAnswers=[]; state.quizFinished=false; state.behaviorChecked={};
+  goScreen('screen-student');
+}
+
+function switchTab(tabId){
+  document.querySelectorAll('.tabpanel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tabbtn').forEach(b=>b.classList.remove('active'));
+  document.getElementById(tabId).classList.add('active');
+  document.querySelector(`.tabbtn[data-tab="${tabId}"]`).classList.add('active');
+}
+
+/* ---- Today's log doc ---- */
+function logDocId(){
+  return state.selectedStudent.id + '_' + state.todaysDateStr;
+}
+async function loadTodayLog(){
+  const snap = await db.collection('dailyLogs').doc(logDocId()).get();
+  if(snap.exists){
+    state.todayLog = snap.data();
+    state.sodiumChecks = state.todayLog.sodiumChecks || [];
+    state.behaviorChecked = state.todayLog.behaviors || {};
+    if(state.todayLog.submitted){
+      document.getElementById('submitLogBtn').style.display='none';
+      document.getElementById('alreadyLoggedNote').style.display='block';
+      document.getElementById('reflectionText').value = state.todayLog.reflection || '';
+      document.getElementById('reflectionText').disabled = true;
+    }
+  } else {
+    state.todayLog = {behaviors:{}, sodiumChecks:[], submitted:false};
+    state.sodiumChecks = [];
+    state.behaviorChecked = {};
+  }
+  renderCheckHistory();
+}
+
+/* ---- Sodium checker ---- */
+function calcSodium(){
+  const name = document.getElementById('ciName').value.trim();
+  const sodium = parseFloat(document.getElementById('ciSodium').value);
+  if(!name || isNaN(sodium) || sodium<0){ showToast('กรอกชื่อและค่าโซเดียมให้ครบ'); return; }
+  const pct = Math.min(Math.round((sodium/SODIUM_DAILY_MAX)*100),200);
+  state.pendingCalc = {name, sodium, pct};
+  document.getElementById('gaugeArea').style.display='block';
+  document.getElementById('gaugePct').textContent = pct + '%';
+  document.getElementById('shakerFill').style.height = Math.min(pct,100) + '%';
+  const verdict = document.getElementById('gaugeVerdict');
+  verdict.classList.remove('low','mid','high');
+  if(pct < 20){ verdict.textContent='โซเดียมต่ำ 🟢 เลือกได้ดี!'; verdict.classList.add('low'); }
+  else if(pct < 40){ verdict.textContent='โซเดียมปานกลาง 🟡 กินได้ แต่ระวังมื้ออื่น'; verdict.classList.add('mid'); }
+  else { verdict.textContent='โซเดียมสูง 🔴 ระวัง กินแต่น้อย'; verdict.classList.add('high'); }
+}
+
+async function saveSodiumCheck(){
+  if(!state.pendingCalc) return;
+  state.sodiumChecks.push({...state.pendingCalc, time: new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'})});
+  await db.collection('dailyLogs').doc(logDocId()).set({
+    studentId: state.selectedStudent.id,
+    classId: state.selectedClassId,
+    date: state.todaysDateStr,
+    dayNumber: state.dayNumber,
+    sodiumChecks: state.sodiumChecks
+  }, {merge:true});
+  document.getElementById('ciName').value='';
+  document.getElementById('ciSodium').value='';
+  document.getElementById('gaugeArea').style.display='none';
+  state.pendingCalc=null;
+  renderCheckHistory();
+  showToast('บันทึกแล้ว! +3 คะแนน');
+}
+
+function renderCheckHistory(){
+  const list = document.getElementById('checkHistoryList');
+  if(state.sodiumChecks.length===0){
+    list.innerHTML = '<div class="empty-note">ยังไม่มีรายการที่ตรวจวันนี้</div>';
+    return;
+  }
+  list.innerHTML = state.sodiumChecks.map(c=>`
+    <div class="check-item">
+      <div class="ci-name">${c.name} <span style="color:#9aa8ab;font-weight:400;">· ${c.time||''}</span></div>
+      <div class="ci-val">${c.sodium} มก. (${c.pct}%)</div>
+    </div>
+  `).join('');
+}
+
+/* ---- Quiz ---- */
+function seededShuffle(arr, seed){
+  let s = seed;
+  const rand = ()=>{ s = (s*9301+49297)%233280; return s/233280; };
+  const a = [...arr];
+  for(let i=a.length-1;i>0;i--){
+    const j = Math.floor(rand()*(i+1));
+    [a[i],a[j]] = [a[j],a[i]];
+  }
+  return a;
+}
+function seedFromString(str){
+  let h=0; for(let i=0;i<str.length;i++){ h = (h*31 + str.charCodeAt(i)) % 100000; }
+  return h+1;
+}
+
+async function loadQuiz(){
+  if(state.todayLog && state.todayLog.quizAnswers && state.todayLog.quizAnswers.length>0){
+    state.quizAnswers = state.todayLog.quizAnswers;
+    state.quizFinished = true;
+    state.todaysQuiz = state.todayLog.quizQuestions || [];
+    renderQuizDone();
+    return;
+  }
+  const bankSnap = await db.collection('quizBank').where('active','==',true).get();
+  const bank = bankSnap.docs.map(d=>({id:d.id, ...d.data()}));
+  if(bank.length===0){
+    document.getElementById('quizBody').innerHTML = '<div class="empty-note">ยังไม่มีคำถามในคลัง กรุณารอครูเพิ่มคำถาม</div>';
+    return;
+  }
+  const seed = seedFromString(state.selectedStudent.id + state.todaysDateStr);
+  const picked = seededShuffle(bank, seed).slice(0,3);
+  state.todaysQuiz = picked;
+  state.quizIndex = 0; state.quizAnswers=[]; state.quizFinished=false;
+  renderQuizQuestion();
+}
+
+function renderQuizQuestion(){
+  const q = state.todaysQuiz[state.quizIndex];
+  if(!q){ finishQuiz(); return; }
+  let html = `<div class="quiz-progress">`;
+  for(let i=0;i<state.todaysQuiz.length;i++){
+    html += `<span class="${i<state.quizIndex?'done':''}"></span>`;
+  }
+  html += `</div><div class="quiz-q">${state.quizIndex+1}. ${q.question}</div>`;
+  q.choices.forEach((c,i)=>{
+    html += `<button class="choice" onclick="answerQuiz(${i})">${c}</button>`;
+  });
+  document.getElementById('quizBody').innerHTML = html;
+}
+
+function answerQuiz(idx){
+  const q = state.todaysQuiz[state.quizIndex];
+  const correct = idx===q.correctIndex;
+  document.querySelectorAll('.choice').forEach((b,i)=>{
+    b.onclick=null;
+    if(i===q.correctIndex) b.classList.add('correct');
+    else if(i===idx) b.classList.add('wrong');
+  });
+  state.quizAnswers.push({questionId:q.id, selectedIndex:idx, correct});
+  setTimeout(()=>{
+    state.quizIndex++;
+    renderQuizQuestion();
+  }, 900);
+}
+
+async function finishQuiz(){
+  state.quizFinished = true;
+  const correctCount = state.quizAnswers.filter(a=>a.correct).length;
+  const points = correctCount * 5;
+  await db.collection('dailyLogs').doc(logDocId()).set({
+    studentId: state.selectedStudent.id,
+    classId: state.selectedClassId,
+    date: state.todaysDateStr,
+    dayNumber: state.dayNumber,
+    quizAnswers: state.quizAnswers,
+    quizQuestions: state.todaysQuiz,
+    quizScore: correctCount
+  }, {merge:true});
+  await addPoints(points);
+  renderQuizDone();
+}
+
+function renderQuizDone(){
+  const correctCount = state.quizAnswers.filter(a=>a.correct).length;
+  document.getElementById('quizBody').innerHTML = `
+    <div class="quiz-done">
+      <div class="score">${correctCount}/${state.todaysQuiz.length}</div>
+      <p style="color:#6b7c80;">ข้อถูกวันนี้ · กลับมาทำใหม่พรุ่งนี้นะ</p>
+    </div>`;
+}
+
+/* ---- Behavior log ---- */
+function renderBehaviorList(){
+  const list = document.getElementById('behaviorList');
+  list.innerHTML='';
+  BEHAVIORS.forEach(b=>{
+    const checked = !!state.behaviorChecked[b.key];
+    const row = document.createElement('div');
+    row.className = 'chk-row' + (checked?' checked':'');
+    row.innerHTML = `<div class="chk-box">${checked?'✓':''}</div><div class="chk-label">${b.label}</div>`;
+    row.onclick = ()=>{
+      if(state.todayLog && state.todayLog.submitted) return;
+      state.behaviorChecked[b.key] = !state.behaviorChecked[b.key];
+      renderBehaviorList();
+    };
+    list.appendChild(row);
+  });
+}
+
+async function submitDailyLog(){
+  const reflection = document.getElementById('reflectionText').value.trim();
+  const checkedCount = Object.values(state.behaviorChecked).filter(Boolean).length;
+  const points = 10 + checkedCount*2;
+
+  await db.collection('dailyLogs').doc(logDocId()).set({
+    studentId: state.selectedStudent.id,
+    classId: state.selectedClassId,
+    date: state.todaysDateStr,
+    dayNumber: state.dayNumber,
+    behaviors: state.behaviorChecked,
+    reflection: reflection,
+    submitted: true,
+    pointsEarned: firebase.firestore.FieldValue.increment ? points : points
+  }, {merge:true});
+
+  await updateStreakAndPoints(points);
+
+  document.getElementById('submitLogBtn').style.display='none';
+  document.getElementById('alreadyLoggedNote').style.display='block';
+  document.getElementById('reflectionText').disabled = true;
+  showToast(`เยี่ยม! ได้ ${points} คะแนน 🎉`);
+  renderStats();
+}
+
+/* ---- Points / streak ---- */
+async function addPoints(points){
+  const ref = db.collection('students').doc(state.selectedStudent.id);
+  await db.runTransaction(async (tx)=>{
+    const doc = await tx.get(ref);
+    const cur = doc.data();
+    const newPoints = (cur.totalPoints||0) + points;
+    tx.update(ref, {totalPoints:newPoints});
+    state.selectedStudent.totalPoints = newPoints;
+  });
+  document.getElementById('hbPoints').textContent = state.selectedStudent.totalPoints;
+}
+
+async function updateStreakAndPoints(points){
+  const ref = db.collection('students').doc(state.selectedStudent.id);
+  await db.runTransaction(async (tx)=>{
+    const doc = await tx.get(ref);
+    const cur = doc.data();
+    let streak = cur.currentStreak || 0;
+    const last = cur.lastCheckinDate;
+    const y = new Date(state.todaysDateStr); y.setDate(y.getDate()-1);
+    const yStr = y.getFullYear()+'-'+String(y.getMonth()+1).padStart(2,'0')+'-'+String(y.getDate()).padStart(2,'0');
+    if(last===yStr) streak += 1;
+    else if(last===state.todaysDateStr) { /* already counted today */ }
+    else streak = 1;
+
+    let bonus = 0;
+    if(streak===3) bonus=5; else if(streak===7) bonus=10; else if(streak===14) bonus=20; else if(streak>=21) bonus=30;
+
+    const totalPts = (cur.totalPoints||0) + points + bonus;
+    const daysCompleted = (cur.daysCompleted||0) + 1;
+    const longest = Math.max(cur.longestStreak||0, streak);
+
+    tx.update(ref, {
+      currentStreak: streak, longestStreak: longest, totalPoints: totalPts,
+      lastCheckinDate: state.todaysDateStr, daysCompleted: daysCompleted
+    });
+    state.selectedStudent.currentStreak = streak;
+    state.selectedStudent.totalPoints = totalPts;
+    state.selectedStudent.daysCompleted = daysCompleted;
+    state.selectedStudent.longestStreak = longest;
+  });
+  document.getElementById('hbStreak').textContent = state.selectedStudent.currentStreak;
+  document.getElementById('hbPoints').textContent = state.selectedStudent.totalPoints;
+}
+
+/* ---- Stats tab ---- */
+function renderStats(){
+  document.getElementById('stStreak').textContent = state.selectedStudent.currentStreak || 0;
+  document.getElementById('stPoints').textContent = state.selectedStudent.totalPoints || 0;
+  document.getElementById('stDays').textContent = (state.selectedStudent.daysCompleted||0) + '/21';
+  const qa = state.quizAnswers.length;
+  const qc = state.quizAnswers.filter(a=>a.correct).length;
+  document.getElementById('stQuiz').textContent = qa>0 ? Math.round((qc/qa)*100)+'%' : '-';
+
+  const badges = [];
+  if((state.selectedStudent.longestStreak||0) >= 7) badges.push('🔥 นักสู้ 7 วัน');
+  if((state.selectedStudent.longestStreak||0) >= 21) badges.push('👑 ครบ 21 วัน');
+  if((state.selectedStudent.totalPoints||0) >= 200) badges.push('⭐ นักสะสมคะแนน');
+  document.getElementById('badgeArea').innerHTML = badges.map(b=>`<span class="badge-chip">${b}</span>`).join('') || '<div class="empty-note">ทำภารกิจต่อเนื่องเพื่อปลดล็อกรางวัล</div>';
+}
+
+async function loadLeaderboards(){
+  try{
+    const classSnap = await db.collection('students').where('classId','==',state.selectedClassId).orderBy('totalPoints','desc').limit(5).get();
+    renderLB('classLeaderboard', classSnap.docs.map(d=>d.data()));
+    const schoolSnap = await db.collection('students').orderBy('totalPoints','desc').limit(5).get();
+    renderLB('schoolLeaderboard', schoolSnap.docs.map(d=>d.data()));
+  }catch(e){ console.error(e); }
+}
+function renderLB(elId, list){
+  const el = document.getElementById(elId);
+  if(list.length===0){ el.innerHTML='<div class="empty-note">ยังไม่มีข้อมูล</div>'; return; }
+  el.innerHTML = list.map((s,i)=>`
+    <div class="lb-row">
+      <div class="lb-rank">${i+1}</div>
+      <div class="lb-name">${s.name||'-'}</div>
+      <div class="lb-pts">${s.totalPoints||0} ⭐</div>
+    </div>`).join('');
+}
+
+init();
+</script>
+</body>
+</html>
