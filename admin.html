@@ -320,13 +320,21 @@ function loadStudentTable(){
       <td>${s.studentNo}</td><td>${s.name}</td><td>${classNameOf(s.classId)}</td>
       <td>${s.totalPoints||0}</td><td>${s.currentStreak||0}</td>
       <td>${s.pin ? '<span class="pill">ตั้งแล้ว</span>' : '<span class="pill">ยังไม่ตั้ง</span>'}</td>
-      <td><button class="btn btn-ghost" style="padding:6px 10px;font-size:12px;" onclick="resetPin('${s.id}')">รีเซ็ต PIN</button></td>
+      <td>
+        <button class="btn btn-ghost" style="padding:6px 10px;font-size:12px;" onclick="resetPin('${s.id}')">รีเซ็ต PIN</button>
+        <button class="btn btn-ghost" style="padding:6px 10px;font-size:12px;" onclick="resetTodayLog('${s.id}')">ปลดล็อกบันทึกวันนี้</button>
+      </td>
     </tr>`).join('');
 }
 async function resetPin(id){
   await db.collection('students').doc(id).update({pin:''});
   await loadStudentsCache();
   loadStudentTable();
+}
+async function resetTodayLog(id){
+  const todayStr = new Date().toISOString().slice(0,10);
+  await db.collection('dailyLogs').doc(id + '_' + todayStr).delete();
+  alert('ปลดล็อกบันทึกวันนี้แล้ว นักเรียนคนนี้กลับไปแก้ไข/บันทึกใหม่ได้ (คะแนนที่ได้ไปแล้วยังคงอยู่ ไม่ถูกหักคืน)');
 }
 
 /* ---- QUIZ BANK ---- */

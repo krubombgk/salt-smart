@@ -247,6 +247,18 @@
   /* ---- OCR ---- */
   .ocr-status{font-size:12.5px; color:#6b7c80; margin-top:8px; line-height:1.5;}
   .ocr-status b{color:var(--lagoon);}
+  .ocr-candidates{display:flex; flex-wrap:wrap; gap:8px; margin-top:8px;}
+  .ocr-candidate{
+    padding:8px 14px; border-radius:16px; border:2px solid var(--coral); background:#fff;
+    font-family:'Kanit'; font-weight:600; font-size:13px; cursor:pointer; color:var(--clay);
+  }
+  .ocr-raw{
+    font-size:11px; color:#aab5b8; margin-top:8px; max-height:80px; overflow-y:auto;
+    background:var(--sand); padding:8px; border-radius:8px; line-height:1.5;
+  }
+
+  /* ---- Log locked state ---- */
+  #logFormArea.locked{opacity:0.55; pointer-events:none; filter:grayscale(0.3);}
 
   /* ---- Stats tab ---- */
   .progress-ring-wrap{display:flex; align-items:center; gap:18px;}
@@ -373,6 +385,7 @@
         <input type="file" accept="image/*" capture="environment" id="labelPhotoInput" style="display:none" onchange="handleLabelPhoto(event)">
         <button class="btn btn-ghost btn-block" type="button" onclick="document.getElementById('labelPhotoInput').click()">📷 ถ่ายรูปฉลากให้ช่วยอ่าน</button>
         <div class="ocr-status" id="ocrStatus"></div>
+        <div class="ocr-candidates" id="ocrCandidates"></div>
 
         <button class="btn btn-primary btn-block" style="margin-top:10px;" onclick="calcSodium()">คำนวณ</button>
 
@@ -406,6 +419,11 @@
 
     <!-- TAB: LOG -->
     <div class="tabpanel" id="tab-log">
+      <div class="card" id="logLockedBanner" style="display:none; background:var(--sand); border:2px solid var(--lagoon);">
+        <div style="font-family:'Kanit'; font-weight:700; color:var(--lagoon);">✅ วันนี้บันทึกไปแล้ว</div>
+        <div style="font-size:13.5px; color:#4c5c60; margin-top:4px;">ดูรายการที่บันทึกไว้ได้แต่แก้ไขไม่ได้แล้ว กลับมาบันทึกใหม่ได้พรุ่งนี้นะ</div>
+      </div>
+      <div id="logFormArea">
       <div class="card">
         <h3 style="margin-top:0;">🏃 วันนี้ฉันออกกำลังกาย</h3>
         <p style="color:#6b7c80; font-size:13.5px; margin-top:-8px;">แตะได้มากกว่า 1 อย่าง</p>
@@ -413,7 +431,7 @@
       </div>
 
       <div class="card">
-        <h3 style="margin-top:0;">🍬🧈🧂 วันนี้ฉันกินหวาน มัน เค็ม แค่ไหน</h3>
+        <h3 style="margin-top:0;">🧂 วันนี้ฉันกินเค็มแค่ไหน</h3>
         <p style="color:#6b7c80; font-size:13.5px; margin-top:-8px;">ประเมินตามความรู้สึกจริง ไม่ต้องเป๊ะเป๊ะ</p>
         <div id="levelRows"></div>
       </div>
@@ -437,9 +455,10 @@
           <textarea id="improveText" placeholder="พรุ่งนี้อยากทำอะไรให้ดีขึ้น…" style="min-height:60px;"></textarea>
         </div>
         <button class="btn btn-primary btn-block" id="submitLogBtn" onclick="submitDailyLog()">บันทึกของวันนี้</button>
-        <div id="alreadyLoggedNote" class="empty-note" style="display:none;">✅ วันนี้บันทึกแล้ว เก่งมาก! กลับมาบันทึกใหม่ได้พรุ่งนี้</div>
+      </div>
       </div>
     </div>
+
 
     <!-- TAB: STATS -->
     <div class="tabpanel" id="tab-stats">
@@ -503,9 +522,11 @@ const EXERCISE_OPTIONS = [
   {key:'other',  label:'อื่น ๆ'}
 ];
 // ระดับหวาน/มัน/เค็ม: มาจากหน้า "ปรับพฤติกรรมของตนเอง" ในสมุด (ข้อ 4)
+// ==== ตอนนี้โครงงานโฟกัสแค่ "เค็ม/โซเดียม" เรื่องเดียวก่อน ====
+// เมื่อพร้อมขยายเป็นครบ หวาน มัน เค็ม แค่เอา // ออกหน้า 2 บรรทัดด้านล่างนี้
 const LEVEL_ROWS = [
-  {key:'sweet', label:'หวาน'},
-  {key:'fat',   label:'มัน'},
+  // {key:'sweet', label:'หวาน'},
+  // {key:'fat',   label:'มัน'},
   {key:'salty', label:'เค็ม'}
 ];
 const LEVEL_CHOICES = [
@@ -513,12 +534,12 @@ const LEVEL_CHOICES = [
   {key:'ok',  label:'พอดี'},
   {key:'high',label:'มาก'}
 ];
-// พฤติกรรมสุขภาพอื่น ๆ: มาจากหน้า "เป้าหมายวันนี้ของฉัน" ในสมุด
+// พฤติกรรมสุขภาพอื่น ๆ: มาจากหน้า "เป้าหมายวันนี้ของฉัน" ในสมุด (ปรับคำให้เน้นโซเดียมสำหรับเฟสนี้)
 const OTHER_BEHAVIORS = [
-  {key:'readLabel',    label:'อ่านฉลากโภชนาการก่อนกิน'},
-  {key:'readGDA',      label:'อ่านฉลาก GDA (หวาน มัน เค็ม)'},
+  {key:'readLabel',    label:'อ่านฉลากโภชนาการก่อนกิน (ดูค่าโซเดียม)'},
+  {key:'readGDA',      label:'อ่านฉลาก GDA เพื่อเช็กปริมาณโซเดียม'},
   {key:'healthyChoice',label:'เลือกผลิตภัณฑ์สัญลักษณ์ทางเลือกสุขภาพ'},
-  {key:'drinkWater',   label:'ดื่มน้ำเปล่าเพียงพอ'}
+  {key:'drinkWater',   label:'ดื่มน้ำเปล่าให้เพียงพอ (ช่วยสมดุลโซเดียมในร่างกาย)'}
 ];
 const AVATAR_COLORS = ['#2A9D8F','#F4A261','#E76F51','#0B3D4C','#7FD8CC','#E8A33D'];
 
@@ -745,16 +766,9 @@ async function loadTodayLog(){
     state.exerciseChecked = state.todayLog.exercise || {};
     state.levels = state.todayLog.levels || {sweet:null,fat:null,salty:null};
     state.otherChecked = state.todayLog.otherBehaviors || {};
-    if(state.todayLog.submitted){
-      document.getElementById('submitLogBtn').style.display='none';
-      document.getElementById('alreadyLoggedNote').style.display='block';
-      document.getElementById('mealNote').value = state.todayLog.mealNote || '';
-      document.getElementById('mealNote').disabled = true;
-      document.getElementById('reflectionText').value = state.todayLog.reflection || '';
-      document.getElementById('reflectionText').disabled = true;
-      document.getElementById('improveText').value = state.todayLog.improveNote || '';
-      document.getElementById('improveText').disabled = true;
-    }
+    document.getElementById('mealNote').value = state.todayLog.mealNote || '';
+    document.getElementById('reflectionText').value = state.todayLog.reflection || '';
+    document.getElementById('improveText').value = state.todayLog.improveNote || '';
   } else {
     state.todayLog = {sodiumChecks:[], submitted:false};
     state.sodiumChecks = [];
@@ -762,28 +776,94 @@ async function loadTodayLog(){
     state.levels = {sweet:null,fat:null,salty:null};
     state.otherChecked = {};
   }
+  applyLogLockState();
   renderCheckHistory();
 }
 
+function applyLogLockState(){
+  const locked = !!(state.todayLog && state.todayLog.submitted);
+  document.getElementById('logLockedBanner').style.display = locked ? 'block' : 'none';
+  document.getElementById('logFormArea').classList.toggle('locked', locked);
+  document.getElementById('submitLogBtn').style.display = locked ? 'none' : 'block';
+}
+
 /* ---- Sodium checker: OCR from photo ---- */
+function preprocessLabelImage(file){
+  return new Promise((resolve, reject)=>{
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = ()=>{
+      const scale = Math.min(2.2, 1700 / img.width);
+      const w = Math.max(1, Math.round(img.width * scale));
+      const h = Math.max(1, Math.round(img.height * scale));
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, w, h);
+      const imgData = ctx.getImageData(0, 0, w, h);
+      const d = imgData.data;
+      for(let i=0;i<d.length;i+=4){
+        const gray = 0.299*d[i] + 0.587*d[i+1] + 0.114*d[i+2];
+        const v = gray < 150 ? Math.max(0, gray-25) : Math.min(255, gray+35); // push toward black/white
+        d[i]=d[i+1]=d[i+2]=v;
+      }
+      ctx.putImageData(imgData, 0, 0);
+      URL.revokeObjectURL(url);
+      resolve(canvas);
+    };
+    img.onerror = reject;
+    img.src = url;
+  });
+}
+
+// หาตัวเลขทุกตัวที่ตามด้วย "มก"/"mg" ในข้อความที่อ่านได้ แทนที่จะบังคับให้ต้องเจอคำว่า "โซเดียม" แบบเป๊ะ ๆ
+// (คำภาษาไทยมักถูกอ่านผิดเพี้ยน แต่ตัวเลข+หน่วยละติน "mg"/ตัวย่อ "มก" มักรอดมากกว่า)
+function extractSodiumCandidates(text){
+  const candidates = [];
+  const regex = /(\d{1,5}(?:[.,]\d{1,2})?)\s*(mg|มก)/gi;
+  let m;
+  while((m = regex.exec(text)) !== null){
+    const num = m[1].replace(',', '.');
+    const context = text.slice(Math.max(0, m.index-25), m.index).toLowerCase();
+    const looksLikeSodium = /โซ|sod/.test(context);
+    candidates.push({num, looksLikeSodium});
+  }
+  const byNum = new Map();
+  candidates.forEach(c=>{
+    if(!byNum.has(c.num) || c.looksLikeSodium) byNum.set(c.num, c);
+  });
+  return Array.from(byNum.values()).sort((a,b)=> (b.looksLikeSodium - a.looksLikeSodium));
+}
+
+function pickOcrCandidate(num){
+  document.getElementById('ciSodium').value = num;
+  document.getElementById('ocrStatus').innerHTML = `เลือกแล้ว: <b>${num} มก.</b> — เทียบกับฉลากจริงอีกทีก่อนกดคำนวณนะ`;
+}
+
 async function handleLabelPhoto(event){
   const file = event.target.files[0];
   if(!file) return;
   const statusEl = document.getElementById('ocrStatus');
+  const candEl = document.getElementById('ocrCandidates');
+  candEl.innerHTML = '';
   statusEl.innerHTML = '🔎 กำลังอ่านฉลาก... รอสักครู่นะ (ครั้งแรกอาจช้าหน่อยเพราะกำลังโหลดตัวอ่านภาษาไทย)';
   try{
-    const result = await Tesseract.recognize(file, 'eng+tha');
+    const canvas = await preprocessLabelImage(file);
+    const result = await Tesseract.recognize(canvas, 'eng+tha');
     const text = result.data.text || '';
-    // มองหาคำว่า โซเดียม / sodium ตามด้วยตัวเลข แล้วอาจมี มก./mg ตามหลัง
-    const match = text.match(/(?:โซเดียม|sodium)[^0-9]{0,15}(\d{1,5}(?:[.,]\d+)?)/i);
-    if(match){
-      const num = match[1].replace(',', '.');
-      document.getElementById('ciSodium').value = num;
-      statusEl.innerHTML = `พบตัวเลขที่คาดว่าใช่: <b>${num} มก.</b><br>กรุณาเทียบกับฉลากจริงอีกครั้งก่อนกดคำนวณ (บางครั้งอ่านผิดได้)`;
+    const candidates = extractSodiumCandidates(text);
+
+    if(candidates.length === 1){
+      pickOcrCandidate(candidates[0].num);
+    } else if(candidates.length > 1){
+      statusEl.innerHTML = `เจอตัวเลขหลายจุดบนฉลาก แตะเลือกตัวที่ตรงกับแถว "โซเดียม" บนฉลากจริง:`;
+      candEl.innerHTML = candidates.slice(0,6).map(c=>
+        `<div class="ocr-candidate" onclick="pickOcrCandidate('${c.num}')">${c.num} มก.${c.looksLikeSodium?' ⭐':''}</div>`
+      ).join('');
     } else {
-      const preview = text.trim().slice(0,150).replace(/\n/g,' ');
-      statusEl.innerHTML = `อ่านฉลากไม่ชัดเจน ลองถ่ายให้ใกล้และแสงสว่างขึ้น หรือพิมพ์ตัวเลขเองจากฉลากได้เลย<br>
-        <span style="color:#aab5b8;">ข้อความที่อ่านได้: ${preview || '(ไม่พบข้อความ)'}</span>`;
+      const preview = text.trim().slice(0,180).replace(/\n/g,' ');
+      statusEl.innerHTML = `ระบบอ่านตัวหนังสือภาษาไทยได้ไม่แม่นเท่าภาษาอังกฤษ เลยหาตัวเลขโซเดียมไม่เจอในรูปนี้ ลองพิมพ์ตัวเลขเองจากฉลากได้เลย
+        ${preview ? `<div class="ocr-raw">ข้อความที่อ่านได้ (ดิบ): ${preview}</div>` : ''}`;
     }
   }catch(e){
     console.error(e);
@@ -1020,11 +1100,8 @@ async function submitDailyLog(){
 
   await updateStreakAndPoints(points);
 
-  document.getElementById('submitLogBtn').style.display='none';
-  document.getElementById('alreadyLoggedNote').style.display='block';
-  document.getElementById('mealNote').disabled = true;
-  document.getElementById('reflectionText').disabled = true;
-  document.getElementById('improveText').disabled = true;
+  state.todayLog.submitted = true;
+  applyLogLockState();
   showToast(`เยี่ยม! ได้ ${points} คะแนน 🎉`);
   renderStats();
 }
