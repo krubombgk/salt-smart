@@ -525,14 +525,19 @@ function renderClassGrid(){
 }
 
 async function selectClass(c){
-  state.selectedClassId = c.id;
-  state.selectedClassName = c.name;
-  document.getElementById('studentClassTitle').textContent = 'ห้อง ' + c.name;
-  document.getElementById('studentBrandSub').textContent = 'เลือกชื่อของเรา · ' + c.name;
-  const snap = await db.collection('students').where('classId','==',c.id).orderBy('studentNo').get();
-  state.students = snap.docs.map(d=>({id:d.id, ...d.data()}));
-  renderStudentGrid();
-  goScreen('screen-student');
+  try{
+    state.selectedClassId = c.id;
+    state.selectedClassName = c.name;
+    document.getElementById('studentClassTitle').textContent = 'ห้อง ' + c.name;
+    document.getElementById('studentBrandSub').textContent = 'เลือกชื่อของเรา · ' + c.name;
+    const snap = await db.collection('students').where('classId','==',c.id).get();
+    state.students = snap.docs.map(d=>({id:d.id, ...d.data()})).sort((a,b)=>(a.studentNo||0)-(b.studentNo||0));
+    renderStudentGrid();
+    goScreen('screen-student');
+  }catch(e){
+    console.error(e);
+    showToast('โหลดรายชื่อไม่สำเร็จ: ' + e.message);
+  }
 }
 
 function renderStudentGrid(){
@@ -929,11 +934,12 @@ function renderStats(){
 
 async function loadLeaderboards(){
   try{
-    const classSnap = await db.collection('students').where('classId','==',state.selectedClassId).orderBy('totalPoints','desc').limit(5).get();
-    renderLB('classLeaderboard', classSnap.docs.map(d=>d.data()));
+    const classSnap = await db.collection('students').where('classId','==',state.selectedClassId).get();
+    const classList = classSnap.docs.map(d=>d.data()).sort((a,b)=>(b.totalPoints||0)-(a.totalPoints||0)).slice(0,5);
+    renderLB('classLeaderboard', classList);
     const schoolSnap = await db.collection('students').orderBy('totalPoints','desc').limit(5).get();
     renderLB('schoolLeaderboard', schoolSnap.docs.map(d=>d.data()));
-  }catch(e){ console.error(e); }
+  }catch(e){ console.error(e); showToast('โหลดอันดับไม่สำเร็จ'); }
 }
 function renderLB(elId, list){
   const el = document.getElementById(elId);
