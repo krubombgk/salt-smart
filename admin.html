@@ -85,6 +85,7 @@
       <div class="navitem active" data-p="p-overview" onclick="showPanel('p-overview')">📊 ภาพรวม</div>
       <div class="navitem" data-p="p-classes" onclick="showPanel('p-classes')">🏫 ห้องเรียน/นักเรียน</div>
       <div class="navitem" data-p="p-quiz" onclick="showPanel('p-quiz')">❓ คลังคำถาม Quiz</div>
+      <div class="navitem" data-p="p-cards" onclick="showPanel('p-cards')">💡 การ์ดความรู้</div>
       <div class="navitem" data-p="p-leaderboard" onclick="showPanel('p-leaderboard')">🏆 อันดับ/รางวัล</div>
       <div class="navitem" data-p="p-campaign" onclick="showPanel('p-campaign')">⚙️ ตั้งค่าแคมเปญ</div>
     </div>
@@ -159,6 +160,31 @@
         </div>
       </div>
 
+      <!-- KNOWLEDGE CARDS -->
+      <div class="panel" id="p-cards">
+        <h2>การ์ดความรู้ (สุ่มโชว์ให้นักเรียนหลังบันทึกสำเร็จ)</h2>
+        <div class="card">
+          <h3 style="margin-top:0;">เพิ่มการ์ดใหม่</h3>
+          <div class="field"><label>หมวดหมู่ (โชว์เป็นป้ายบนการ์ด)</label>
+            <select id="cardCategory">
+              <option value="โซเดียมแฝง">โซเดียมแฝง</option>
+              <option value="อ่านฉลาก">อ่านฉลาก</option>
+              <option value="เลือกขนม">เลือกขนม</option>
+              <option value="ชิมก่อนปรุง">ชิมก่อนปรุง</option>
+              <option value="เรื่องจริงหรือหลอก">เรื่องจริงหรือหลอก</option>
+              <option value="ภารกิจพิเศษ">ภารกิจพิเศษ</option>
+            </select>
+          </div>
+          <div class="field"><label>เนื้อหาการ์ด (สั้น ๆ 1-2 ประโยค)</label><textarea id="cardText" placeholder="เช่น โซเดียมไม่ได้มีเฉพาะในอาหารรสเค็มจัด บะหมี่กึ่งสำเร็จรูป 1 ซองมีโซเดียมได้มากถึง 1,500-2,000 มก."></textarea></div>
+          <button class="btn btn-primary" onclick="addKnowledgeCard()">เพิ่มการ์ดนี้</button>
+          <div class="msg" id="cardMsg"></div>
+        </div>
+        <div class="card">
+          <h3 style="margin-top:0;">การ์ดทั้งหมด (<span id="cardCount">0</span> ใบ)</h3>
+          <table><thead><tr><th>เนื้อหา</th><th>หมวด</th><th>สถานะ</th><th></th></tr></thead><tbody id="cardTable"></tbody></table>
+        </div>
+      </div>
+
       <!-- LEADERBOARD -->
       <div class="panel" id="p-leaderboard">
         <h2>อันดับ / รางวัล</h2>
@@ -180,10 +206,23 @@
       <div class="panel" id="p-campaign">
         <h2>ตั้งค่าแคมเปญ 21 วัน</h2>
         <div class="card" style="max-width:420px;">
-          <div class="field"><label>วันเริ่มต้น</label><input type="date" id="campStart"></div>
-          <div class="field"><label>รหัสผ่านผู้ดูแล (แก้ไขได้)</label><input type="text" id="campAdminPw"></div>
+          <div class="field"><label>วันเริ่มต้น</label><input type="date" id="campStart" onchange="updateSchoolDaySummary()"></div>
+          <div class="field"><label>วันสิ้นสุด</label><input type="date" id="campEnd" onchange="updateSchoolDaySummary()"></div>
+          <div class="msg" id="schoolDaySummary" style="color:var(--lagoon);"></div>
+          <div class="field" style="margin-top:10px;"><label>รหัสผ่านผู้ดูแล (แก้ไขได้)</label><input type="text" id="campAdminPw"></div>
           <button class="btn btn-primary" onclick="saveCampaign()">บันทึกการตั้งค่า</button>
           <div class="msg" id="campMsg"></div>
+        </div>
+
+        <div class="card" style="max-width:420px;">
+          <h3 style="margin-top:0;">📅 วันหยุดที่บันทึกย้อนหลังได้</h3>
+          <p style="font-size:12.5px; color:#9aa8ab; margin-top:-6px;">นักเรียนบันทึกของ "เมื่อวาน" เป็นค่าเริ่มต้นทุกวันอยู่แล้ว (24-Hour Recall) ส่วนนี้ใช้เพิ่มเฉพาะวันที่ไม่มีการเรียน (เสาร์-อาทิตย์ปกติ หรือวันหยุดพิเศษ) ที่จะให้บันทึกย้อนหลังได้ ไม่เกิน 3 วันจากวันนี้ ถ้าไม่ระบุไว้ในนี้ นักเรียนจะบันทึกย้อนหลังวันนั้นไม่ได้</p>
+          <div class="field" style="display:flex; gap:8px; align-items:flex-end;">
+            <div style="flex:1;"><label>เพิ่มวันหยุด</label><input type="date" id="newHolidayDate"></div>
+            <button class="btn btn-primary" onclick="addHoliday()">เพิ่ม</button>
+          </div>
+          <div class="msg" id="holidayMsg"></div>
+          <div id="holidayList" style="margin-top:12px;"></div>
         </div>
       </div>
 
@@ -233,6 +272,7 @@ async function boot(){
   await loadClasses();
   await loadStudentsCache();
   await loadQuizBank();
+  await loadKnowledgeCards();
   loadOverview();
   loadStudentTable();
 }
@@ -243,11 +283,13 @@ async function loadOverview(){
   document.getElementById('kpiClasses').textContent = classesCache.length;
   const campSnap = await db.collection('settings').doc('campaign').get();
   let dayLabel = '-';
-  if(campSnap.exists && campSnap.data().startDate){
-    const start = new Date(campSnap.data().startDate);
-    const today = new Date();
-    const diff = Math.floor((today-start)/(1000*60*60*24))+1;
-    dayLabel = 'Day ' + Math.max(diff,0) + ' / 21';
+  if(campSnap.exists && campSnap.data().startDate && campSnap.data().endDate){
+    const start = dateFromStr(campSnap.data().startDate);
+    const end = dateFromStr(campSnap.data().endDate);
+    const today = dateFromStr(new Date().toISOString().slice(0,10));
+    const totalDays = Math.round((end-start)/(1000*60*60*24))+1;
+    const dayNum = Math.min(Math.max(Math.round((today-start)/(1000*60*60*24))+1, 0), totalDays);
+    dayLabel = 'วันที่ ' + dayNum + ' / ' + totalDays;
   }
   document.getElementById('kpiDay').textContent = dayLabel;
 
@@ -322,7 +364,7 @@ function loadStudentTable(){
       <td>${s.pin ? '<span class="pill">ตั้งแล้ว</span>' : '<span class="pill">ยังไม่ตั้ง</span>'}</td>
       <td>
         <button class="btn btn-ghost" style="padding:6px 10px;font-size:12px;" onclick="resetPin('${s.id}')">รีเซ็ต PIN</button>
-        <button class="btn btn-ghost" style="padding:6px 10px;font-size:12px;" onclick="resetTodayLog('${s.id}')">ปลดล็อกบันทึกวันนี้</button>
+        <button class="btn btn-ghost" style="padding:6px 10px;font-size:12px;" onclick="resetTodayLog('${s.id}')">ปลดล็อกบันทึก...</button>
       </td>
     </tr>`).join('');
 }
@@ -333,8 +375,12 @@ async function resetPin(id){
 }
 async function resetTodayLog(id){
   const todayStr = new Date().toISOString().slice(0,10);
-  await db.collection('dailyLogs').doc(id + '_' + todayStr).delete();
-  alert('ปลดล็อกบันทึกวันนี้แล้ว นักเรียนคนนี้กลับไปแก้ไข/บันทึกใหม่ได้ (คะแนนที่ได้ไปแล้วยังคงอยู่ ไม่ถูกหักคืน)');
+  const input = prompt('ปลดล็อกบันทึกของวันที่ (YYYY-MM-DD) ปล่อยว่างไว้ = วันนี้', todayStr);
+  if(input === null) return; // กดยกเลิก
+  const targetDate = input.trim() || todayStr;
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(targetDate)){ alert('รูปแบบวันที่ไม่ถูกต้อง ใช้ YYYY-MM-DD'); return; }
+  await db.collection('dailyLogs').doc(id + '_' + targetDate).delete();
+  alert('ปลดล็อกบันทึกของวันที่ ' + targetDate + ' แล้ว นักเรียนคนนี้กลับไปแก้ไข/บันทึกใหม่ได้ (คะแนนที่ได้ไปแล้วยังคงอยู่ ไม่ถูกหักคืน)');
 }
 
 /* ---- QUIZ BANK ---- */
@@ -376,6 +422,34 @@ async function loadQuizBank(){
 async function toggleQuiz(id, active){ await db.collection('quizBank').doc(id).update({active}); await loadQuizBank(); }
 async function deleteQuiz(id){ if(confirm('ลบคำถามนี้?')){ await db.collection('quizBank').doc(id).delete(); await loadQuizBank(); } }
 
+/* ---- KNOWLEDGE CARDS ---- */
+let cardsCache = [];
+async function addKnowledgeCard(){
+  const text = document.getElementById('cardText').value.trim();
+  const category = document.getElementById('cardCategory').value;
+  if(!text){ setMsg('cardMsg','กรอกเนื้อหาการ์ด',true); return; }
+  await db.collection('knowledgeCards').add({text, category, active:true});
+  document.getElementById('cardText').value='';
+  setMsg('cardMsg','เพิ่มการ์ดแล้ว');
+  await loadKnowledgeCards();
+}
+async function loadKnowledgeCards(){
+  const snap = await db.collection('knowledgeCards').get();
+  cardsCache = snap.docs.map(d=>({id:d.id, ...d.data()}));
+  document.getElementById('cardCount').textContent = cardsCache.length;
+  document.getElementById('cardTable').innerHTML = cardsCache.map(c=>`
+    <tr>
+      <td>${c.text}</td><td><span class="pill">${c.category||'-'}</span></td>
+      <td>${c.active?'✅ ใช้งาน':'⛔ ปิด'}</td>
+      <td>
+        <button class="btn btn-ghost" style="padding:6px 10px;font-size:12px;" onclick="toggleCard('${c.id}',${!c.active})">${c.active?'ปิด':'เปิด'}</button>
+        <button class="btn btn-danger" style="padding:6px 10px;font-size:12px;" onclick="deleteCard('${c.id}')">ลบ</button>
+      </td>
+    </tr>`).join('');
+}
+async function toggleCard(id, active){ await db.collection('knowledgeCards').doc(id).update({active}); await loadKnowledgeCards(); }
+async function deleteCard(id){ if(confirm('ลบการ์ดนี้?')){ await db.collection('knowledgeCards').doc(id).delete(); await loadKnowledgeCards(); } }
+
 /* ---- LEADERBOARD ---- */
 let currentLbCat = 'points';
 function switchLbCat(cat){
@@ -403,16 +477,74 @@ function switchLbCat(cat){
 }
 
 /* ---- CAMPAIGN ---- */
+function dateFromStr(str){ return new Date(str + 'T00:00:00'); }
+function fmtDate(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function schoolDaysInRange(startStr, endStr){
+  const days = [];
+  const d = dateFromStr(startStr);
+  const end = dateFromStr(endStr);
+  while(d <= end){
+    if(d.getDay()!==0 && d.getDay()!==6) days.push(fmtDate(d));
+    d.setDate(d.getDate()+1);
+  }
+  return days;
+}
+function updateSchoolDaySummary(){
+  const start = document.getElementById('campStart').value;
+  const end = document.getElementById('campEnd').value;
+  const el = document.getElementById('schoolDaySummary');
+  if(!start || !end){ el.textContent=''; return; }
+  if(end < start){ el.textContent = 'วันสิ้นสุดต้องอยู่หลังวันเริ่มต้น'; el.classList.add('err'); return; }
+  el.classList.remove('err');
+  const days = schoolDaysInRange(start, end);
+  const totalCalendarDays = Math.round((dateFromStr(end)-dateFromStr(start))/(1000*60*60*24))+1;
+  el.textContent = `รวม ${totalCalendarDays} วันตามปฏิทิน มีวันเรียน (จ-ศ) ${days.length} วัน`;
+}
+
 async function saveCampaign(){
   const start = document.getElementById('campStart').value;
+  const end = document.getElementById('campEnd').value;
   const pw = document.getElementById('campAdminPw').value;
-  await db.collection('settings').doc('campaign').set({startDate:start, active:true}, {merge:true});
+  if(!start || !end || end < start){ setMsg('campMsg','กรุณาใส่วันเริ่มต้น-สิ้นสุดให้ถูกต้อง',true); return; }
+  await db.collection('settings').doc('campaign').set({startDate:start, endDate:end, active:true}, {merge:true});
   if(pw) await db.collection('settings').doc('admin').set({password:pw}, {merge:true});
   setMsg('campMsg','บันทึกการตั้งค่าแล้ว');
 }
+let holidaysCache = [];
 async function loadCampaignForm(){
   const snap = await db.collection('settings').doc('campaign').get();
-  if(snap.exists && snap.data().startDate) document.getElementById('campStart').value = snap.data().startDate;
+  if(snap.exists){
+    if(snap.data().startDate) document.getElementById('campStart').value = snap.data().startDate;
+    if(snap.data().endDate) document.getElementById('campEnd').value = snap.data().endDate;
+    holidaysCache = Array.isArray(snap.data().holidays) ? snap.data().holidays : [];
+    updateSchoolDaySummary();
+  }
+  renderHolidayList();
+}
+async function addHoliday(){
+  const d = document.getElementById('newHolidayDate').value;
+  if(!d){ setMsg('holidayMsg','เลือกวันที่ก่อน',true); return; }
+  if(holidaysCache.includes(d)){ setMsg('holidayMsg','วันนี้อยู่ในรายการแล้ว',true); return; }
+  holidaysCache.push(d);
+  holidaysCache.sort();
+  await db.collection('settings').doc('campaign').set({holidays: holidaysCache}, {merge:true});
+  document.getElementById('newHolidayDate').value='';
+  setMsg('holidayMsg','เพิ่มวันหยุดแล้ว');
+  renderHolidayList();
+}
+async function removeHoliday(d){
+  holidaysCache = holidaysCache.filter(x=>x!==d);
+  await db.collection('settings').doc('campaign').set({holidays: holidaysCache}, {merge:true});
+  renderHolidayList();
+}
+function renderHolidayList(){
+  const el = document.getElementById('holidayList');
+  if(holidaysCache.length===0){ el.innerHTML = '<div class="msg" style="color:#9aa8ab;">ยังไม่มีวันหยุดที่ตั้งไว้</div>'; return; }
+  el.innerHTML = holidaysCache.map(d=>`
+    <div style="display:flex; align-items:center; justify-content:space-between; padding:8px 0; border-bottom:1px solid #F2EEE1;">
+      <span class="pill">${d}</span>
+      <button class="btn btn-danger" style="padding:5px 10px;font-size:12px;" onclick="removeHoliday('${d}')">ลบ</button>
+    </div>`).join('');
 }
 
 function setMsg(id, text, isErr){

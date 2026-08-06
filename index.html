@@ -224,13 +224,28 @@
     font-family:'Sarabun'; font-size:15px; resize:vertical; min-height:80px;
   }
 
-  /* ---- chips (exercise) ---- */
+  /* ---- chips (small pill buttons, used by backfill picker) ---- */
   .chip-row{display:flex; flex-wrap:wrap; gap:10px;}
   .chip{
     padding:10px 16px; border-radius:20px; border:2px solid #E4DFCF; background:#fff;
     font-size:13.5px; font-weight:600; cursor:pointer; font-family:'Kanit'; color:var(--deep-sea);
   }
   .chip.active{background:var(--lagoon); color:#fff; border-color:var(--lagoon);}
+
+  /* ---- sticker buttons (flat sticker MVP style: circular bg + big emoji) ---- */
+  .sticker-row{display:grid; grid-template-columns:repeat(auto-fill,minmax(84px,1fr)); gap:12px;}
+  .sticker-btn{
+    display:flex; flex-direction:column; align-items:center; gap:6px; cursor:pointer;
+    padding:6px 2px; border-radius:16px; border:2px solid transparent; transition:all .12s ease;
+  }
+  .sticker-circle{
+    width:56px; height:56px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    font-size:26px; border:2.5px solid #E4DFCF; background:#fff; transition:all .12s ease;
+  }
+  .sticker-btn .sticker-label{font-size:11.5px; font-weight:600; color:var(--deep-sea); text-align:center; line-height:1.25;}
+  .sticker-btn.active .sticker-circle{border-color:var(--lagoon); background:var(--lagoon-light); box-shadow:0 4px 10px rgba(42,157,143,0.35); transform:scale(1.06);}
+  .sticker-btn.active .sticker-label{color:var(--lagoon);}
+  .sticker-btn:active .sticker-circle{transform:scale(0.94);}
 
   /* ---- level rating rows (หวาน/มัน/เค็ม) ---- */
   .level-row{display:flex; align-items:center; gap:10px; margin-bottom:12px;}
@@ -283,6 +298,45 @@
     color:#fff; padding:8px 14px; border-radius:20px; font-family:'Kanit'; font-weight:600; font-size:13px; margin:4px 4px 0 0;
   }
   .empty-note{color:#8b979a; font-size:13.5px; text-align:center; padding:20px 0;}
+
+  /* ---- knowledge card modal ---- */
+  .kcard-overlay{
+    position:fixed; inset:0; background:rgba(11,61,76,0.55); z-index:200;
+    display:flex; align-items:center; justify-content:center; padding:20px;
+    animation:fadeIn .2s ease;
+  }
+  @keyframes fadeIn{from{opacity:0;} to{opacity:1;}}
+  .kcard-box{
+    background:linear-gradient(160deg,#fff,var(--sand)); border-radius:24px; padding:28px 24px;
+    max-width:360px; width:100%; text-align:center; box-shadow:0 20px 50px rgba(0,0,0,0.3);
+    animation:popIn .25s ease;
+  }
+  @keyframes popIn{from{transform:scale(0.85); opacity:0;} to{transform:scale(1); opacity:1;}}
+  .kcard-tag{
+    display:inline-block; background:var(--coral); color:#fff; font-family:'Kanit'; font-weight:600;
+    font-size:12px; padding:4px 14px; border-radius:14px; margin-bottom:10px;
+  }
+  .kcard-emoji{font-size:44px; margin-bottom:6px;}
+  .kcard-title{font-family:'Kanit'; font-weight:800; font-size:20px; color:var(--deep-sea); margin-bottom:10px;}
+  .kcard-text{font-size:15px; color:#4c5c60; line-height:1.6; margin-bottom:20px;}
+
+  /* ---- progress table (21-day tracker grid) ---- */
+  .ptable-scroll{overflow-x:auto; padding-bottom:6px;}
+  .ptable{border-collapse:collapse; font-size:11px;}
+  .ptable th, .ptable td{padding:4px; text-align:center;}
+  .ptable th.row-label{
+    text-align:left; font-family:'Kanit'; font-weight:600; font-size:11.5px; color:var(--deep-sea);
+    padding-right:10px; white-space:nowrap; position:sticky; left:0; background:#fff;
+  }
+  .ptable th.day-label{font-family:'Kanit'; font-weight:600; color:#9aa8ab; font-size:10px;}
+  .pcell{width:22px; height:22px; border-radius:6px; margin:0 auto;}
+  .pcell.good{background:var(--lagoon);}
+  .pcell.ok{background:var(--amber-warn);}
+  .pcell.poor{background:#F3C9C0;}
+  .pcell.empty{background:#EFE9D9;}
+  .ptable-legend{display:flex; gap:14px; margin-top:10px; flex-wrap:wrap;}
+  .ptable-legend span{display:flex; align-items:center; gap:5px; font-size:11.5px; color:#6b7c80;}
+  .ptable-legend .dot{width:12px; height:12px; border-radius:4px; display:inline-block;}
   .loading{display:flex; align-items:center; justify-content:center; min-height:100vh; font-family:'Kanit'; color:var(--lagoon); font-weight:600;}
 </style>
 </head>
@@ -419,42 +473,58 @@
 
     <!-- TAB: LOG -->
     <div class="tabpanel" id="tab-log">
+      <div class="card" id="backfillPicker" style="display:none; background:var(--sand);">
+        <div style="font-family:'Kanit'; font-weight:700; font-size:14.5px; margin-bottom:8px;">📅 เลือกวันที่จะบันทึก</div>
+        <p style="color:#6b7c80; font-size:13px; margin-top:-4px;">ถ้าวันเสาร์-อาทิตย์ที่ผ่านมายังไม่ได้บันทึก เลือกวันนั้นเพื่อกรอกย้อนหลังได้</p>
+        <div class="chip-row" id="backfillChips"></div>
+      </div>
       <div class="card" id="logLockedBanner" style="display:none; background:var(--sand); border:2px solid var(--lagoon);">
-        <div style="font-family:'Kanit'; font-weight:700; color:var(--lagoon);">✅ วันนี้บันทึกไปแล้ว</div>
-        <div style="font-size:13.5px; color:#4c5c60; margin-top:4px;">ดูรายการที่บันทึกไว้ได้แต่แก้ไขไม่ได้แล้ว กลับมาบันทึกใหม่ได้พรุ่งนี้นะ</div>
+        <div style="font-family:'Kanit'; font-weight:700; color:var(--lagoon);" id="logLockedTitle">✅ บันทึกไปแล้ว</div>
+        <div style="font-size:13.5px; color:#4c5c60; margin-top:4px;">ดูรายการที่บันทึกไว้ได้ แต่แก้ไขไม่ได้แล้ว</div>
       </div>
       <div id="logFormArea">
+      <div id="logDateHeading" style="font-family:'Kanit'; font-weight:700; font-size:15px; color:var(--deep-sea); margin-bottom:10px;"></div>
       <div class="card">
-        <h3 style="margin-top:0;">🏃 วันนี้ฉันออกกำลังกาย</h3>
+        <h3 style="margin-top:0;">🏃 ออกกำลังกาย</h3>
         <p style="color:#6b7c80; font-size:13.5px; margin-top:-8px;">แตะได้มากกว่า 1 อย่าง</p>
-        <div class="chip-row" id="exerciseChips"></div>
+        <div class="sticker-row" id="exerciseChips"></div>
       </div>
 
       <div class="card">
-        <h3 style="margin-top:0;">🧂 วันนี้ฉันกินเค็มแค่ไหน</h3>
+        <h3 style="margin-top:0;">🧂 กินเค็มแค่ไหน</h3>
         <p style="color:#6b7c80; font-size:13.5px; margin-top:-8px;">ประเมินตามความรู้สึกจริง ไม่ต้องเป๊ะเป๊ะ</p>
         <div id="levelRows"></div>
+        <div id="tastePrefRow" style="display:none; margin-top:14px;">
+          <div class="lvl-label" style="font-family:'Kanit'; font-weight:600; font-size:14.5px; margin-bottom:8px;">ชอบรสเค็มระดับนั้นไหม</div>
+          <div class="sticker-row" id="tastePrefChips"></div>
+        </div>
       </div>
 
       <div class="card">
-        <h3 style="margin-top:0;">✅ พฤติกรรมสุขภาพอื่น ๆ วันนี้</h3>
-        <div id="otherBehaviorList"></div>
+        <h3 style="margin-top:0;">🧂 เมื่อวานเติมเครื่องปรุงเพิ่มไหม</h3>
+        <p style="color:#6b7c80; font-size:13.5px; margin-top:-8px;">แตะได้มากกว่า 1 อย่าง (ไม่มีคำตอบไหนได้คะแนนมากกว่ากัน)</p>
+        <div class="sticker-row" id="condimentChips"></div>
+      </div>
+
+      <div class="card">
+        <h3 style="margin-top:0;">✅ พฤติกรรมสุขภาพอื่น ๆ</h3>
+        <div class="sticker-row" id="otherBehaviorList"></div>
       </div>
 
       <div class="card">
         <div class="field">
-          <label>มื้ออาหาร/เครื่องดื่มวันนี้ (สรุปสั้น ๆ)</label>
+          <label>มื้ออาหาร/เครื่องดื่ม (สรุปสั้น ๆ)</label>
           <textarea id="mealNote" placeholder="เช่น เช้า-ข้าวไข่เจียว, กลางวัน-ก๋วยเตี๋ยว, ของว่าง-ชานมไข่มุก" style="min-height:60px;"></textarea>
         </div>
         <div class="field">
-          <label>วันนี้ฉันเลือกได้ดีตรงไหน เพราะอะไร</label>
+          <label>วันนั้นฉันเลือกได้ดีตรงไหน เพราะอะไร</label>
           <textarea id="reflectionText" placeholder="เขียนสั้น ๆ เล่าให้ฟังหน่อย…"></textarea>
         </div>
         <div class="field">
           <label>สิ่งที่ควรปรับปรุงในวันถัดไป</label>
           <textarea id="improveText" placeholder="พรุ่งนี้อยากทำอะไรให้ดีขึ้น…" style="min-height:60px;"></textarea>
         </div>
-        <button class="btn btn-primary btn-block" id="submitLogBtn" onclick="submitDailyLog()">บันทึกของวันนี้</button>
+        <button class="btn btn-primary btn-block" id="submitLogBtn" onclick="submitDailyLog()">บันทึก</button>
       </div>
       </div>
     </div>
@@ -471,6 +541,12 @@
           <div class="mini-stat"><div class="num" id="stQuiz">0%</div><div class="lbl">ความแม่นยำ Quiz</div></div>
         </div>
         <div id="badgeArea" style="margin-top:14px;"></div>
+      </div>
+
+      <div class="section-title">📅 ตารางความก้าวหน้า</div>
+      <div class="card">
+        <p style="color:#6b7c80; font-size:12.5px; margin-top:-4px;">คำนวณอัตโนมัติจากสิ่งที่บันทึกไว้แล้ว — ยิ่งมีจุดสีฟ้าเยอะ ยิ่งเก่ง! ไม่ต้องกังวลถ้ามีวันที่เป็นสีอื่นบ้าง</p>
+        <div id="progressTableWrap"><div class="empty-note">กำลังโหลด…</div></div>
       </div>
 
       <div class="section-title">อันดับในห้อง</div>
@@ -491,6 +567,16 @@
 </div>
 
 <div class="toast" id="toast"></div>
+
+<div class="kcard-overlay" id="kcardOverlay" style="display:none;" onclick="closeKnowledgeCard(event)">
+  <div class="kcard-box">
+    <div class="kcard-tag" id="kcardTag">โซเดียมแฝง</div>
+    <div class="kcard-emoji">💡</div>
+    <div class="kcard-title">รู้หรือไม่?</div>
+    <div class="kcard-text" id="kcardText">กำลังโหลด...</div>
+    <button class="btn btn-coral btn-block" onclick="closeKnowledgeCard(event)">เก็บการ์ดนี้ไว้ 🎉</button>
+  </div>
+</div>
 
 <script>
 /* =========================================================
@@ -513,13 +599,22 @@ const db = firebase.firestore();
 const SODIUM_DAILY_MAX = 2000; // mg
 // ออกกำลังกาย: มาจากหน้า "บันทึกรายวัน" ในสมุด (ข้อ 3)
 const EXERCISE_OPTIONS = [
-  {key:'walk',   label:'เดินเร็ว'},
-  {key:'jog',    label:'วิ่งเบา ๆ'},
-  {key:'bike',   label:'ปั่นจักรยาน'},
-  {key:'sport',  label:'เล่นกีฬา'},
-  {key:'stretch',label:'ยืดเหยียด'},
-  {key:'chore',  label:'งานบ้าน/กิจกรรมโรงเรียน'},
-  {key:'other',  label:'อื่น ๆ'}
+  {key:'walk',   label:'เดินเร็ว',  emoji:'🚶'},
+  {key:'jog',    label:'วิ่งเบา ๆ', emoji:'🏃'},
+  {key:'bike',   label:'ปั่นจักรยาน', emoji:'🚴'},
+  {key:'sport',  label:'เล่นกีฬา', emoji:'⚽'},
+  {key:'stretch',label:'ยืดเหยียด', emoji:'🤸'},
+  {key:'chore',  label:'งานบ้าน/กิจกรรมโรงเรียน', emoji:'🧹'},
+  {key:'other',  label:'อื่น ๆ',   emoji:'✨'}
+];
+// เครื่องปรุงที่เติมเพิ่ม: วัดพฤติกรรม (เติมหรือไม่) ไม่ใช่ปริมาณ mg ที่ประเมินยาก
+// คะแนนเท่ากันทุกตัวเลือกรวม "ไม่เติมเลย" กันไม่ให้เด็กเลี่ยงตอบเพื่อเอาคะแนน
+const CONDIMENT_OPTIONS = [
+  {key:'fishSauce', label:'น้ำปลา',     emoji:'🐟'},
+  {key:'soySauce',  label:'ซีอิ๊ว',      emoji:'🍶'},
+  {key:'sauce',     label:'ซอสปรุงรส',  emoji:'🥫'},
+  {key:'msg',       label:'ผงชูรส',     emoji:'🧂'},
+  {key:'none',      label:'ไม่เติมเลย', emoji:'🚫'}
 ];
 // ระดับหวาน/มัน/เค็ม: มาจากหน้า "ปรับพฤติกรรมของตนเอง" ในสมุด (ข้อ 4)
 // ==== ตอนนี้โครงงานโฟกัสแค่ "เค็ม/โซเดียม" เรื่องเดียวก่อน ====
@@ -534,14 +629,22 @@ const LEVEL_CHOICES = [
   {key:'ok',  label:'พอดี'},
   {key:'high',label:'มาก'}
 ];
+// ความรู้สึกชอบรสเค็มระดับที่ตอบไป (วัดการปรับตัวของลิ้น / taste adaptation ตลอด 21 วัน)
+const TASTE_CHOICES = [
+  {key:'like',    label:'ชอบระดับนี้', emoji:'😋'},
+  {key:'neutral', label:'เฉย ๆ',      emoji:'😐'},
+  {key:'dislike', label:'ไม่ชอบ',     emoji:'😕'}
+];
 // พฤติกรรมสุขภาพอื่น ๆ: มาจากหน้า "เป้าหมายวันนี้ของฉัน" ในสมุด (ปรับคำให้เน้นโซเดียมสำหรับเฟสนี้)
 const OTHER_BEHAVIORS = [
-  {key:'readLabel',    label:'อ่านฉลากโภชนาการก่อนกิน (ดูค่าโซเดียม)'},
-  {key:'readGDA',      label:'อ่านฉลาก GDA เพื่อเช็กปริมาณโซเดียม'},
-  {key:'healthyChoice',label:'เลือกผลิตภัณฑ์สัญลักษณ์ทางเลือกสุขภาพ'},
-  {key:'drinkWater',   label:'ดื่มน้ำเปล่าให้เพียงพอ (ช่วยสมดุลโซเดียมในร่างกาย)'}
+  {key:'readLabel',    label:'อ่านฉลากโภชนาการก่อนกิน (ดูค่าโซเดียม)', emoji:'📋'},
+  {key:'readGDA',      label:'อ่านฉลาก GDA เพื่อเช็กปริมาณโซเดียม',    emoji:'🏷️'},
+  {key:'healthyChoice',label:'เลือกผลิตภัณฑ์สัญลักษณ์ทางเลือกสุขภาพ',  emoji:'💚'},
+  {key:'drinkWater',   label:'ดื่มน้ำเปล่าให้เพียงพอ (ช่วยสมดุลโซเดียมในร่างกาย)', emoji:'💧'}
 ];
 const AVATAR_COLORS = ['#2A9D8F','#F4A261','#E76F51','#0B3D4C','#7FD8CC','#E8A33D'];
+const STICKER_BG = ['#EAF7F4','#FDEEE1','#FBE9E5','#F3ECDD'];
+
 
 let state = {
   classes:[], selectedClassId:null, selectedClassName:null,
@@ -549,7 +652,8 @@ let state = {
   pinBuffer:'', pinMode:'verify', // 'verify' or 'setup' or 'confirm'
   pendingPin:'',
   campaign:{startDate:null,endDate:null,active:true},
-  todaysDateStr:null, dayNumber:1,
+  todaysDateStr:null, dayNumber:1, totalDays:21, targetDate:null, recallDate:null,
+  condiments:{}, tastePref:null,
   todayLog:null, // loaded/created dailyLog doc data
   todaysQuiz:[], quizIndex:0, quizAnswers:[], quizFinished:false,
   sodiumChecks:[], pendingCalc:null,
@@ -559,6 +663,25 @@ let state = {
 function todayStr(){
   const d = new Date();
   return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+
+/* =========================================================
+   DATE HELPERS
+   ทุกวันตามปฏิทิน (รวมเสาร์-อาทิตย์) ควรมีข้อมูลบันทึกจริง ตามทฤษฎี 21 วัน
+   นักเรียนที่มีมือถือ/คอมที่บ้านบันทึกสดได้เลยวันหยุดก็เข้าแอปได้ปกติ
+   ส่วนคนที่ไม่มีจะใช้ตัวเลือก "บันทึกย้อนหลัง" ตอนกลับมาโรงเรียนแทน
+   ========================================================= */
+function dateFromStr(str){ return new Date(str + 'T00:00:00'); }
+function fmtDate(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function addDays(str, n){
+  const d = dateFromStr(str);
+  d.setDate(d.getDate()+n);
+  return fmtDate(d);
+}
+function dayLabelThai(str){
+  const names = ['อาทิตย์','จันทร์','อังคาร','พุธ','พฤหัสบดี','ศุกร์','เสาร์'];
+  const d = dateFromStr(str);
+  return names[d.getDay()] + ' ที่ ' + d.getDate() + '/' + (d.getMonth()+1);
 }
 
 function showToast(msg){
@@ -578,14 +701,19 @@ function goScreen(id){
    ========================================================= */
 async function init(){
   state.todaysDateStr = todayStr();
+  state.recallDate = addDays(state.todaysDateStr, -1); // บันทึกของ "เมื่อวาน" ตามหลัก 24-Hour Recall
+  state.targetDate = state.recallDate;
   try{
     const campSnap = await db.collection('settings').doc('campaign').get();
     if(campSnap.exists) state.campaign = campSnap.data();
-    if(state.campaign.startDate){
-      const start = new Date(state.campaign.startDate);
-      const today = new Date(state.todaysDateStr);
-      const diff = Math.floor((today - start)/(1000*60*60*24)) + 1;
-      state.dayNumber = Math.min(Math.max(diff,1),21);
+    if(!Array.isArray(state.campaign.holidays)) state.campaign.holidays = [];
+    state.totalDays = 21;
+    state.dayNumber = 1;
+    if(state.campaign.startDate && state.campaign.endDate){
+      const totalCalendarDays = Math.round((dateFromStr(state.campaign.endDate) - dateFromStr(state.campaign.startDate))/(1000*60*60*24)) + 1;
+      state.totalDays = totalCalendarDays > 0 ? totalCalendarDays : 21;
+      const diff = Math.round((dateFromStr(state.todaysDateStr) - dateFromStr(state.campaign.startDate))/(1000*60*60*24)) + 1;
+      state.dayNumber = Math.min(Math.max(diff,1), state.totalDays);
     }
     const classSnap = await db.collection('classes').orderBy('order').get();
     state.classes = classSnap.docs.map(d=>({id:d.id, ...d.data()}));
@@ -726,22 +854,20 @@ async function handlePinComplete(){
    ========================================================= */
 async function enterApp(){
   document.getElementById('mainStudentName').textContent = state.selectedStudent.name + ' · ' + state.selectedClassName;
-  document.getElementById('mainDayLabel').textContent = 'Day ' + state.dayNumber + ' / 21';
+  document.getElementById('mainDayLabel').textContent = 'วันที่ ' + state.dayNumber + ' / ' + state.totalDays;
   document.getElementById('hbStreak').textContent = state.selectedStudent.currentStreak || 0;
   document.getElementById('hbPoints').textContent = state.selectedStudent.totalPoints || 0;
   goScreen('screen-main');
   switchTab('tab-check');
   await loadTodayLog();
   await loadQuiz();
-  renderExerciseChips();
-  renderLevelRows();
-  renderOtherBehaviorList();
   await loadLeaderboards();
   renderStats();
+  loadProgressTable();
 }
 
 function logout(){
-  state.selectedStudent=null; state.todayLog=null; state.sodiumChecks=[];
+  state.selectedStudent=null; state.todayLog=null; state.targetLog=null; state.sodiumChecks=[];
   state.quizAnswers=[]; state.quizFinished=false;
   state.exerciseChecked={}; state.levels={sweet:null,fat:null,salty:null}; state.otherChecked={};
   goScreen('screen-student');
@@ -754,37 +880,96 @@ function switchTab(tabId){
   document.querySelector(`.tabbtn[data-tab="${tabId}"]`).classList.add('active');
 }
 
-/* ---- Today's log doc ---- */
-function logDocId(){
-  return state.selectedStudent.id + '_' + state.todaysDateStr;
+/* ---- Log doc for a given date (today, or a backfilled past date) ---- */
+function docIdFor(dateStr){
+  return state.selectedStudent.id + '_' + dateStr;
 }
+function logDocId(){ // ใช้กับข้อมูลของ "วันนี้" เท่านั้น (ตรวจฉลาก, Quiz)
+  return docIdFor(state.todaysDateStr);
+}
+
 async function loadTodayLog(){
+  // โหลดข้อมูล "วันนี้" สำหรับตรวจฉลาก/Quiz (ยังคงเป็นแบบเรียลไทม์ ไม่ใช่ recall)
   const snap = await db.collection('dailyLogs').doc(logDocId()).get();
+  state.todayLog = snap.exists ? snap.data() : {sodiumChecks:[]};
+  state.sodiumChecks = state.todayLog.sodiumChecks || [];
+  renderCheckHistory();
+
+  // เปิดฟอร์มของ "เมื่อวาน" เป็นค่าเริ่มต้น (หลัก 24-Hour Recall) จะโหลดตัวเลือกวันหยุดที่ย้อนหลังได้ให้ในตัวด้วย
+  await loadLogForDate(state.recallDate);
+}
+
+// วันที่ย้อนหลังได้: เฉพาะ "วันหยุด" ที่แอดมินกำหนดไว้ล่วงหน้าเท่านั้น (ไม่ใช่วันเรียนที่แค่ลืมบันทึก)
+// ย้อนได้ไม่เกิน 3 วันจากวันนี้ และต้องยังไม่ได้บันทึก ไม่รวมวันเมื่อวาน (recallDate) เพราะเป็นค่าเริ่มต้นอยู่แล้ว
+async function getBackfillableDates(){
+  const holidays = state.campaign.holidays || [];
+  const cutoff = addDays(state.todaysDateStr, -3);
+  const candidates = holidays.filter(d => d >= cutoff && d < state.todaysDateStr && d !== state.recallDate);
+  if(candidates.length===0) return [];
+  const sorted = candidates.sort();
+  const snaps = await Promise.all(sorted.map(d => db.collection('dailyLogs').doc(docIdFor(d)).get()));
+  return sorted.filter((d,i) => !(snaps[i].exists && snaps[i].data().submitted));
+}
+
+async function renderBackfillChips(){
+  const picker = document.getElementById('backfillPicker');
+  const chipsEl = document.getElementById('backfillChips');
+  const missed = await getBackfillableDates();
+  const recallChip = `<div class="chip ${state.targetDate===state.recallDate?'active':''}" onclick="loadLogForDate('${state.recallDate}')">เมื่อวาน (${dayLabelThai(state.recallDate)})</div>`;
+  if(missed.length===0){
+    // ยังโชว์การ์ดไว้เสมอเพื่อให้กลับไปที่ "เมื่อวาน" ได้ ถ้าตอนนี้กำลังดูวันอื่นอยู่
+    picker.style.display = state.targetDate!==state.recallDate ? 'block' : 'none';
+    chipsEl.innerHTML = recallChip;
+    return;
+  }
+  picker.style.display='block';
+  const missedChips = missed.map(d => `<div class="chip ${state.targetDate===d?'active':''}" onclick="loadLogForDate('${d}')">วันหยุด: ${dayLabelThai(d)}</div>`).join('');
+  chipsEl.innerHTML = missedChips + recallChip;
+}
+
+async function loadLogForDate(dateStr){
+  state.targetDate = dateStr;
+  const snap = await db.collection('dailyLogs').doc(docIdFor(dateStr)).get();
   if(snap.exists){
-    state.todayLog = snap.data();
-    state.sodiumChecks = state.todayLog.sodiumChecks || [];
-    state.exerciseChecked = state.todayLog.exercise || {};
-    state.levels = state.todayLog.levels || {sweet:null,fat:null,salty:null};
-    state.otherChecked = state.todayLog.otherBehaviors || {};
-    document.getElementById('mealNote').value = state.todayLog.mealNote || '';
-    document.getElementById('reflectionText').value = state.todayLog.reflection || '';
-    document.getElementById('improveText').value = state.todayLog.improveNote || '';
+    state.targetLog = snap.data();
+    state.exerciseChecked = state.targetLog.exercise || {};
+    state.levels = state.targetLog.levels || {sweet:null,fat:null,salty:null};
+    state.otherChecked = state.targetLog.otherBehaviors || {};
+    state.condiments = state.targetLog.condiments || {};
+    state.tastePref = state.targetLog.tastePref || null;
+    document.getElementById('mealNote').value = state.targetLog.mealNote || '';
+    document.getElementById('reflectionText').value = state.targetLog.reflection || '';
+    document.getElementById('improveText').value = state.targetLog.improveNote || '';
   } else {
-    state.todayLog = {sodiumChecks:[], submitted:false};
-    state.sodiumChecks = [];
+    state.targetLog = {submitted:false};
     state.exerciseChecked = {};
     state.levels = {sweet:null,fat:null,salty:null};
     state.otherChecked = {};
+    state.condiments = {};
+    state.tastePref = null;
+    document.getElementById('mealNote').value = '';
+    document.getElementById('reflectionText').value = '';
+    document.getElementById('improveText').value = '';
   }
+  document.getElementById('logDateHeading').textContent =
+    dateStr===state.recallDate ? '📝 บันทึกของเมื่อวาน (' + dayLabelThai(dateStr) + ')' : '📝 บันทึกย้อนหลังวันหยุด: ' + dayLabelThai(dateStr);
   applyLogLockState();
-  renderCheckHistory();
+  renderExerciseChips();
+  renderLevelRows();
+  renderCondimentChips();
+  renderOtherBehaviorList();
+  await renderBackfillChips(); // อัปเดตปุ่ม active ให้ตรงกับวันที่เลือกล่าสุด
 }
 
 function applyLogLockState(){
-  const locked = !!(state.todayLog && state.todayLog.submitted);
+  const locked = !!(state.targetLog && state.targetLog.submitted);
   document.getElementById('logLockedBanner').style.display = locked ? 'block' : 'none';
   document.getElementById('logFormArea').classList.toggle('locked', locked);
   document.getElementById('submitLogBtn').style.display = locked ? 'none' : 'block';
+  if(locked){
+    const label = state.targetDate===state.recallDate ? 'เมื่อวาน' : dayLabelThai(state.targetDate);
+    document.getElementById('logLockedTitle').textContent = '✅ บันทึกของ' + (state.targetDate===state.recallDate ? 'เมื่อวาน' : 'วัน' + label) + 'ไปแล้ว';
+  }
 }
 
 /* ---- Sodium checker: OCR from photo ---- */
@@ -904,7 +1089,19 @@ async function saveSodiumCheck(){
   document.getElementById('gaugeArea').style.display='none';
   state.pendingCalc=null;
   renderCheckHistory();
+  await addPoints(3);
+  await incrementSodiumCheckCount();
   showToast('บันทึกแล้ว! +3 คะแนน');
+}
+
+async function incrementSodiumCheckCount(){
+  const ref = db.collection('students').doc(state.selectedStudent.id);
+  await db.runTransaction(async (tx)=>{
+    const doc = await tx.get(ref);
+    const cur = (doc.data().sodiumCheckCount || 0) + 1;
+    tx.update(ref, {sodiumCheckCount: cur});
+    state.selectedStudent.sodiumCheckCount = cur;
+  });
 }
 
 function renderCheckHistory(){
@@ -1014,24 +1211,42 @@ function renderQuizDone(){
 }
 
 /* ---- Behavior log: exercise chips ---- */
+function stickerButton(key, emoji, label, active, onClick){
+  const el = document.createElement('div');
+  el.className = 'sticker-btn' + (active?' active':'');
+  el.innerHTML = `<div class="sticker-circle">${emoji}</div><div class="sticker-label">${label}</div>`;
+  el.onclick = onClick;
+  return el;
+}
+
 function renderExerciseChips(){
   const wrap = document.getElementById('exerciseChips');
   wrap.innerHTML='';
   EXERCISE_OPTIONS.forEach(o=>{
     const active = !!state.exerciseChecked[o.key];
-    const chip = document.createElement('div');
-    chip.className = 'chip' + (active?' active':'');
-    chip.textContent = o.label;
-    chip.onclick = ()=>{
-      if(state.todayLog && state.todayLog.submitted) return;
+    wrap.appendChild(stickerButton(o.key, o.emoji, o.label, active, ()=>{
+      if(state.targetLog && state.targetLog.submitted) return;
       state.exerciseChecked[o.key] = !state.exerciseChecked[o.key];
       renderExerciseChips();
-    };
-    wrap.appendChild(chip);
+    }));
   });
 }
 
-/* ---- Behavior log: sweet/fat/salty level rows ---- */
+/* ---- Behavior log: เครื่องปรุงที่เติมเพิ่ม ---- */
+function renderCondimentChips(){
+  const wrap = document.getElementById('condimentChips');
+  wrap.innerHTML='';
+  CONDIMENT_OPTIONS.forEach(o=>{
+    const active = !!state.condiments[o.key];
+    wrap.appendChild(stickerButton(o.key, o.emoji, o.label, active, ()=>{
+      if(state.targetLog && state.targetLog.submitted) return;
+      state.condiments[o.key] = !state.condiments[o.key];
+      renderCondimentChips();
+    }));
+  });
+}
+
+/* ---- Behavior log: sweet/fat/salty level rows + taste preference ---- */
 function renderLevelRows(){
   const wrap = document.getElementById('levelRows');
   wrap.innerHTML='';
@@ -1048,10 +1263,28 @@ function renderLevelRows(){
   });
   wrap.querySelectorAll('.level-btn').forEach(btn=>{
     btn.onclick = ()=>{
-      if(state.todayLog && state.todayLog.submitted) return;
+      if(state.targetLog && state.targetLog.submitted) return;
       state.levels[btn.dataset.row] = btn.dataset.choice;
       renderLevelRows();
+      renderTastePrefRow();
     };
+  });
+  renderTastePrefRow();
+}
+
+function renderTastePrefRow(){
+  const rowWrap = document.getElementById('tastePrefRow');
+  const chipsWrap = document.getElementById('tastePrefChips');
+  if(!state.levels.salty){ rowWrap.style.display='none'; return; } // ถามหลังตอบระดับเค็มแล้วเท่านั้น
+  rowWrap.style.display='block';
+  chipsWrap.innerHTML='';
+  TASTE_CHOICES.forEach(o=>{
+    const active = state.tastePref === o.key;
+    chipsWrap.appendChild(stickerButton(o.key, o.emoji, o.label, active, ()=>{
+      if(state.targetLog && state.targetLog.submitted) return;
+      state.tastePref = o.key;
+      renderTastePrefRow();
+    }));
   });
 }
 
@@ -1061,15 +1294,11 @@ function renderOtherBehaviorList(){
   list.innerHTML='';
   OTHER_BEHAVIORS.forEach(b=>{
     const checked = !!state.otherChecked[b.key];
-    const row = document.createElement('div');
-    row.className = 'chk-row' + (checked?' checked':'');
-    row.innerHTML = `<div class="chk-box">${checked?'✓':''}</div><div class="chk-label">${b.label}</div>`;
-    row.onclick = ()=>{
-      if(state.todayLog && state.todayLog.submitted) return;
+    list.appendChild(stickerButton(b.key, b.emoji, b.label, checked, ()=>{
+      if(state.targetLog && state.targetLog.submitted) return;
       state.otherChecked[b.key] = !state.otherChecked[b.key];
       renderOtherBehaviorList();
-    };
-    list.appendChild(row);
+    }));
   });
 }
 
@@ -1079,17 +1308,27 @@ async function submitDailyLog(){
   const improveNote = document.getElementById('improveText').value.trim();
 
   const exerciseCount = Object.values(state.exerciseChecked).filter(Boolean).length;
-  const goodLevelCount = LEVEL_ROWS.filter(r => state.levels[r.key]==='low' || state.levels[r.key]==='ok').length;
   const otherCount = Object.values(state.otherChecked).filter(Boolean).length;
-  const points = 10 + Math.min(exerciseCount,4)*2 + goodLevelCount*2 + otherCount*2;
+  const condimentAnswered = Object.values(state.condiments).some(Boolean); // รวม "ไม่เติมเลย" ด้วย ตอบอะไรก็ได้คะแนนเท่ากัน
+  const saltyAnswered = !!state.levels.salty; // ให้คะแนนเพราะ "ตอบ" ไม่ใช่เพราะ "ตอบว่าน้อย/พอดี" กันไม่ให้เด็กเลี่ยงตอบเพื่อเอาแต้ม
+  const tasteAnswered = !!state.tastePref;
 
-  await db.collection('dailyLogs').doc(logDocId()).set({
+  const points = 10
+    + Math.min(exerciseCount,4)*2
+    + (saltyAnswered ? 5 : 0)
+    + (tasteAnswered ? 2 : 0)
+    + (condimentAnswered ? 5 : 0)
+    + otherCount*2;
+  const targetDate = state.targetDate;
+
+  await db.collection('dailyLogs').doc(docIdFor(targetDate)).set({
     studentId: state.selectedStudent.id,
     classId: state.selectedClassId,
-    date: state.todaysDateStr,
-    dayNumber: state.dayNumber,
+    date: targetDate,
     exercise: state.exerciseChecked,
     levels: state.levels,
+    tastePref: state.tastePref,
+    condiments: state.condiments,
     otherBehaviors: state.otherChecked,
     mealNote: mealNote,
     reflection: reflection,
@@ -1098,12 +1337,31 @@ async function submitDailyLog(){
     pointsEarned: points
   }, {merge:true});
 
-  await updateStreakAndPoints(points);
+  await updateStreakAndPoints(points, targetDate);
 
-  state.todayLog.submitted = true;
+  state.targetLog.submitted = true;
   applyLogLockState();
-  showToast(`เยี่ยม! ได้ ${points} คะแนน 🎉`);
+  showToast(targetDate===state.recallDate ? `เยี่ยม! ได้ ${points} คะแนน 🎉` : `บันทึกย้อนหลังสำเร็จ! ได้ ${points} คะแนน 🎉`);
   renderStats();
+  await renderBackfillChips();
+  showKnowledgeCard();
+}
+
+/* ---- Knowledge card (สุ่มโชว์หลังบันทึกสำเร็จ จัดการเนื้อหาผ่านหน้า Admin) ---- */
+async function showKnowledgeCard(){
+  try{
+    const snap = await db.collection('knowledgeCards').where('active','==',true).get();
+    const cards = snap.docs.map(d=>d.data());
+    if(cards.length===0) return;
+    const card = cards[Math.floor(Math.random()*cards.length)];
+    document.getElementById('kcardTag').textContent = card.category || 'ความรู้';
+    document.getElementById('kcardText').textContent = card.text || '';
+    document.getElementById('kcardOverlay').style.display = 'flex';
+  }catch(e){ console.error(e); }
+}
+function closeKnowledgeCard(event){
+  if(event) event.stopPropagation();
+  document.getElementById('kcardOverlay').style.display = 'none';
 }
 
 /* ---- Points / streak ---- */
@@ -1119,21 +1377,33 @@ async function addPoints(points){
   document.getElementById('hbPoints').textContent = state.selectedStudent.totalPoints;
 }
 
-async function updateStreakAndPoints(points){
+async function updateStreakAndPoints(points, targetDate){
   const ref = db.collection('students').doc(state.selectedStudent.id);
+  const expectedPrev = addDays(targetDate, -1);
+  const milestones = [3, 7, Math.min(14, state.totalDays-1), state.totalDays];
   await db.runTransaction(async (tx)=>{
     const doc = await tx.get(ref);
     const cur = doc.data();
+    const last = cur.lastCheckinDate || '';
     let streak = cur.currentStreak || 0;
-    const last = cur.lastCheckinDate;
-    const y = new Date(state.todaysDateStr); y.setDate(y.getDate()-1);
-    const yStr = y.getFullYear()+'-'+String(y.getMonth()+1).padStart(2,'0')+'-'+String(y.getDate()).padStart(2,'0');
-    if(last===yStr) streak += 1;
-    else if(last===state.todaysDateStr) { /* already counted today */ }
-    else streak = 1;
+    let newLast = last;
+    let advances = false;
+
+    if(targetDate > last){
+      advances = true;
+      streak = (last===expectedPrev) ? streak+1 : 1;
+      newLast = targetDate;
+    }
+    // ถ้า targetDate เก่ากว่าหรือเท่ากับวันที่บันทึกล่าสุดที่มีอยู่แล้ว (กรอกย้อนหลังข้ามลำดับ)
+    // จะยังนับคะแนน/จำนวนวันที่ทำสำเร็จให้ แต่จะไม่แก้ไข streak/lastCheckinDate ย้อนหลัง
 
     let bonus = 0;
-    if(streak===3) bonus=5; else if(streak===7) bonus=10; else if(streak===14) bonus=20; else if(streak>=21) bonus=30;
+    if(advances){
+      if(streak===milestones[0]) bonus=5;
+      else if(streak===milestones[1]) bonus=10;
+      else if(streak===milestones[2]) bonus=20;
+      else if(streak>=milestones[3]) bonus=30;
+    }
 
     const totalPts = (cur.totalPoints||0) + points + bonus;
     const daysCompleted = (cur.daysCompleted||0) + 1;
@@ -1141,7 +1411,7 @@ async function updateStreakAndPoints(points){
 
     tx.update(ref, {
       currentStreak: streak, longestStreak: longest, totalPoints: totalPts,
-      lastCheckinDate: state.todaysDateStr, daysCompleted: daysCompleted
+      lastCheckinDate: newLast, daysCompleted: daysCompleted
     });
     state.selectedStudent.currentStreak = streak;
     state.selectedStudent.totalPoints = totalPts;
@@ -1156,16 +1426,74 @@ async function updateStreakAndPoints(points){
 function renderStats(){
   document.getElementById('stStreak').textContent = state.selectedStudent.currentStreak || 0;
   document.getElementById('stPoints').textContent = state.selectedStudent.totalPoints || 0;
-  document.getElementById('stDays').textContent = (state.selectedStudent.daysCompleted||0) + '/21';
+  document.getElementById('stDays').textContent = (state.selectedStudent.daysCompleted||0) + '/' + state.totalDays;
   const qa = state.quizAnswers.length;
   const qc = state.quizAnswers.filter(a=>a.correct).length;
   document.getElementById('stQuiz').textContent = qa>0 ? Math.round((qc/qa)*100)+'%' : '-';
 
   const badges = [];
-  if((state.selectedStudent.longestStreak||0) >= 7) badges.push('🔥 นักสู้ 7 วัน');
-  if((state.selectedStudent.longestStreak||0) >= 21) badges.push('👑 ครบ 21 วัน');
-  if((state.selectedStudent.totalPoints||0) >= 200) badges.push('⭐ นักสะสมคะแนน');
+  const halfway = Math.ceil(state.totalDays/2);
+  if((state.selectedStudent.longestStreak||0) >= halfway) badges.push('⭐ Consistency Star');
+  if((state.selectedStudent.sodiumCheckCount||0) >= 10) badges.push('🔍 Label Detective');
+  if(qa>0 && (qc/qa) >= 0.8) badges.push('🧠 Knowledge Improver');
   document.getElementById('badgeArea').innerHTML = badges.map(b=>`<span class="badge-chip">${b}</span>`).join('') || '<div class="empty-note">ทำภารกิจต่อเนื่องเพื่อปลดล็อกรางวัล</div>';
+}
+
+/* ---- ตารางความก้าวหน้า 21 วัน (คำนวณอัตโนมัติ ไม่ถามเพิ่ม) ---- */
+async function loadProgressTable(){
+  const wrap = document.getElementById('progressTableWrap');
+  try{
+    const start = state.campaign.startDate || addDays(state.todaysDateStr,-20);
+    const end = state.campaign.endDate || state.todaysDateStr;
+    const days = [];
+    let d = start;
+    while(d <= end){ days.push(d); d = addDays(d,1); }
+
+    const snap = await db.collection('dailyLogs').where('studentId','==',state.selectedStudent.id).get();
+    const logByDate = {};
+    snap.docs.forEach(doc=>{ const data = doc.data(); if(data.date) logByDate[data.date] = data; });
+
+    const categories = [
+      {label:'ลดเค็ม', fn:(log)=>{
+        if(!log || !log.levels || !log.levels.salty) return 'empty';
+        if(log.levels.salty==='low') return 'good';
+        if(log.levels.salty==='ok') return 'ok';
+        return 'poor';
+      }},
+      {label:'อ่านฉลากโภชนาการ', fn:(log)=> !log||!log.submitted ? 'empty' : (log.otherBehaviors && log.otherBehaviors.readLabel ? 'good' : 'poor')},
+      {label:'อ่านฉลาก GDA', fn:(log)=> !log||!log.submitted ? 'empty' : (log.otherBehaviors && log.otherBehaviors.readGDA ? 'good' : 'poor')},
+      {label:'เลือกสัญลักษณ์สุขภาพ', fn:(log)=> !log||!log.submitted ? 'empty' : (log.otherBehaviors && log.otherBehaviors.healthyChoice ? 'good' : 'poor')},
+      {label:'ไม่เติมเครื่องปรุงเพิ่ม', fn:(log)=>{
+        if(!log || !log.condiments || Object.values(log.condiments).every(v=>!v)) return 'empty';
+        const count = ['fishSauce','soySauce','sauce','msg'].filter(k=>log.condiments[k]).length;
+        if(count===0) return 'good';
+        if(count===1) return 'ok';
+        return 'poor';
+      }},
+      {label:'ดื่มน้ำเปล่าเพียงพอ', fn:(log)=> !log||!log.submitted ? 'empty' : (log.otherBehaviors && log.otherBehaviors.drinkWater ? 'good' : 'poor')},
+      {label:'ออกกำลังกาย', fn:(log)=> !log||!log.submitted ? 'empty' : (log.exercise && Object.values(log.exercise).some(Boolean) ? 'good' : 'poor')}
+    ];
+
+    let html = '<div class="ptable-scroll"><table class="ptable"><thead><tr><th class="row-label"></th>';
+    days.forEach((dd,i)=>{ html += `<th class="day-label">${i+1}</th>`; });
+    html += '</tr></thead><tbody>';
+    categories.forEach(cat=>{
+      html += `<tr><th class="row-label">${cat.label}</th>`;
+      days.forEach(dd=>{ html += `<td><div class="pcell ${cat.fn(logByDate[dd])}"></div></td>`; });
+      html += '</tr>';
+    });
+    html += '</tbody></table></div>';
+    html += `<div class="ptable-legend">
+      <span><span class="dot" style="background:var(--lagoon)"></span> ดี</span>
+      <span><span class="dot" style="background:var(--amber-warn)"></span> พอใช้</span>
+      <span><span class="dot" style="background:#F3C9C0"></span> ปรับปรุง</span>
+      <span><span class="dot" style="background:#EFE9D9"></span> ยังไม่มีข้อมูล</span>
+    </div>`;
+    wrap.innerHTML = html;
+  }catch(e){
+    console.error(e);
+    wrap.innerHTML = '<div class="empty-note">โหลดตารางไม่สำเร็จ</div>';
+  }
 }
 
 async function loadLeaderboards(){
