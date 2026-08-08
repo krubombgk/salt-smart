@@ -307,31 +307,32 @@
   }
   @keyframes fadeIn{from{opacity:0;} to{opacity:1;}}
   .kcard-box{
-    background:linear-gradient(160deg,#fff,var(--sand)); border-radius:24px; padding:28px 24px;
-    max-width:360px; width:100%; text-align:center; box-shadow:0 20px 50px rgba(0,0,0,0.3);
-    animation:popIn .25s ease;
+    background:#fff; border-radius:20px; padding:0; overflow:hidden;
+    max-width:340px; width:100%; box-shadow:0 20px 50px rgba(0,0,0,0.3);
+    animation:popIn .25s ease; border:3px solid var(--coral);
   }
   @keyframes popIn{from{transform:scale(0.85); opacity:0;} to{transform:scale(1); opacity:1;}}
   .kcard-tag{
-    display:inline-block; background:var(--coral); color:#fff; font-family:'Kanit'; font-weight:600;
-    font-size:12px; padding:4px 14px; border-radius:14px; margin-bottom:10px;
+    display:block; background:var(--coral); color:#fff; font-family:'Kanit'; font-weight:700;
+    font-size:15px; padding:12px 18px; text-align:left;
   }
-  .kcard-emoji{font-size:44px; margin-bottom:6px;}
-  .kcard-title{font-family:'Kanit'; font-weight:800; font-size:20px; color:var(--deep-sea); margin-bottom:10px;}
-  .kcard-text{font-size:15px; color:#4c5c60; line-height:1.6; margin-bottom:20px;}
+  .kcard-imgwrap{
+    margin:14px 14px 0; border-radius:12px; overflow:hidden; background:var(--sand);
+    border:2px solid #E4DFCF; height:170px; display:flex; align-items:center; justify-content:center;
+  }
+  .kcard-imgwrap img{width:100%; height:100%; object-fit:cover; display:block;}
+  .kcard-emoji{font-size:52px;}
+  .kcard-body{padding:16px 18px 20px; text-align:center;}
+  .kcard-text{font-size:15px; color:#4c5c60; line-height:1.6; margin-bottom:18px;}
 
   /* ---- special holographic card ---- */
-  .kcard-box.special{
-    background:linear-gradient(135deg,#fff7e0,#ffe9c7,#fff0d6);
-    border:2px solid #F4C86B;
-    position:relative; overflow:hidden;
-  }
+  .kcard-box.special{ border-color:#F4C86B; position:relative; overflow:hidden; }
   .kcard-box.special::before{
-    content:''; position:absolute; inset:-50%;
-    background:conic-gradient(from 0deg, rgba(255,215,120,0.15), rgba(255,255,255,0.4), rgba(244,162,97,0.2), rgba(255,255,255,0.4), rgba(255,215,120,0.15));
+    content:''; position:absolute; inset:-50%; z-index:0;
+    background:conic-gradient(from 0deg, rgba(255,215,120,0.25), rgba(255,255,255,0.5), rgba(244,162,97,0.3), rgba(255,255,255,0.5), rgba(255,215,120,0.25));
     animation:holoSpin 6s linear infinite;
   }
-  .kcard-box.special > *{position:relative; z-index:1;}
+  .kcard-box.special .kcard-tag, .kcard-box.special .kcard-imgwrap, .kcard-box.special .kcard-body{position:relative; z-index:1;}
   @keyframes holoSpin{from{transform:rotate(0deg);} to{transform:rotate(360deg);}}
   .kcard-tag.special-tag{background:linear-gradient(90deg,#F4A261,#E76F51);}
 
@@ -605,10 +606,11 @@
 <div class="kcard-overlay" id="kcardOverlay" style="display:none;" onclick="collectKnowledgeCard(event)">
   <div class="kcard-box" id="kcardBox" onclick="event.stopPropagation()">
     <div class="kcard-tag" id="kcardTag">โซเดียมแฝง</div>
-    <div class="kcard-emoji" id="kcardEmoji">💡</div>
-    <div class="kcard-title" id="kcardTitle">รู้หรือไม่?</div>
-    <div class="kcard-text" id="kcardText">กำลังโหลด...</div>
-    <button class="btn btn-coral btn-block" id="kcardSaveBtn" onclick="collectKnowledgeCard(event)">เก็บการ์ดนี้ไว้ 🎉</button>
+    <div class="kcard-imgwrap" id="kcardImgWrap"><div class="kcard-emoji" id="kcardEmoji">💡</div></div>
+    <div class="kcard-body">
+      <div class="kcard-text" id="kcardText">กำลังโหลด...</div>
+      <button class="btn btn-coral btn-block" id="kcardSaveBtn" onclick="collectKnowledgeCard(event)">เก็บการ์ดนี้ไว้ 🎉</button>
+    </div>
   </div>
 </div>
 
@@ -1411,8 +1413,10 @@ async function showKnowledgeCard(){
     document.getElementById('kcardBox').classList.toggle('special', isSpecial);
     document.getElementById('kcardTag').className = 'kcard-tag' + (isSpecial?' special-tag':'');
     document.getElementById('kcardTag').textContent = isSpecial ? '🌟 การ์ดพิเศษ' : (cardToShow.category || 'ความรู้');
-    document.getElementById('kcardEmoji').textContent = isSpecial ? '🏆' : '💡';
-    document.getElementById('kcardTitle').textContent = isSpecial ? 'ยินดีด้วย!' : 'รู้หรือไม่?';
+    const imgWrap = document.getElementById('kcardImgWrap');
+    imgWrap.innerHTML = cardToShow.imageUrl
+      ? `<img src="${cardToShow.imageUrl}" alt="" onerror="this.parentElement.innerHTML='<div class=&quot;kcard-emoji&quot;>${isSpecial?'🏆':'💡'}</div>'">`
+      : `<div class="kcard-emoji">${isSpecial?'🏆':'💡'}</div>`;
     document.getElementById('kcardText').textContent = cardToShow.text || '';
     document.getElementById('kcardOverlay').style.display = 'flex';
   }catch(e){ console.error(e); }
@@ -1583,14 +1587,16 @@ async function loadAlbum(){
     let html = '';
     regularCards.forEach(c=>{
       const unlocked = collectedIds.includes(c.id);
+      const thumb = c.imageUrl ? `<img src="${c.imageUrl}" alt="" style="width:100%;height:44px;object-fit:cover;border-radius:8px;" onerror="this.style.display='none'">` : '';
       html += unlocked
-        ? `<div class="album-item unlocked"><div class="album-icon">💡</div><div class="album-cat">${c.category||'ความรู้'}</div><div class="album-text">${c.text}</div></div>`
+        ? `<div class="album-item unlocked">${thumb}<div class="album-icon" style="${thumb?'display:none;':''}">💡</div><div class="album-cat">${c.category||'ความรู้'}</div><div class="album-text">${c.text}</div></div>`
         : `<div class="album-item locked"><div class="album-icon">❓</div><div class="album-cat">${c.category||'ความรู้'}</div></div>`;
     });
     if(specialCard){
       const unlocked = collectedIds.includes(specialCard.id);
+      const thumb = specialCard.imageUrl ? `<img src="${specialCard.imageUrl}" alt="" style="width:100%;height:44px;object-fit:cover;border-radius:8px;" onerror="this.style.display='none'">` : '';
       html += unlocked
-        ? `<div class="album-item unlocked special"><div class="album-icon">🏆</div><div class="album-cat">การ์ดพิเศษ</div><div class="album-text">${specialCard.text}</div></div>`
+        ? `<div class="album-item unlocked special">${thumb}<div class="album-icon" style="${thumb?'display:none;':''}">🏆</div><div class="album-cat">การ์ดพิเศษ</div><div class="album-text">${specialCard.text}</div></div>`
         : `<div class="album-item locked"><div class="album-icon">🔒</div><div class="album-cat">การ์ดพิเศษ</div></div>`;
     }
     gridEl.innerHTML = html || '<div class="empty-note">ยังไม่มีการ์ดในคลัง</div>';

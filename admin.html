@@ -176,6 +176,7 @@
             </select>
           </div>
           <div class="field"><label>เนื้อหาการ์ด (สั้น ๆ 1-2 ประโยค)</label><textarea id="cardText" placeholder="เช่น โซเดียมไม่ได้มีเฉพาะในอาหารรสเค็มจัด บะหมี่กึ่งสำเร็จรูป 1 ซองมีโซเดียมได้มากถึง 1,500-2,000 มก."></textarea></div>
+          <div class="field"><label>ลิงก์รูปภาพประกอบ (ไม่บังคับ — ถ้ายังไม่มีรูป ระบบจะโชว์ไอคอนสำรองแทน)</label><input type="text" id="cardImageUrl" placeholder="เช่น https://raw.githubusercontent.com/krubombgk/salt-smart/main/images/cards/card1.png"></div>
           <div class="field" style="display:flex; align-items:center; gap:8px;">
             <input type="checkbox" id="cardIsSpecial" style="width:18px;height:18px;">
             <label style="margin:0;" for="cardIsSpecial">🌟 การ์ดพิเศษ (โฮโลแกรม) — มอบให้เมื่อเก็บการ์ดปกติครบทุกใบแล้วเท่านั้น ไม่อยู่ในกลุ่มสุ่มปกติ</label>
@@ -431,14 +432,16 @@ let cardsCache = [];
 async function addKnowledgeCard(){
   const text = document.getElementById('cardText').value.trim();
   const category = document.getElementById('cardCategory').value;
+  const imageUrl = document.getElementById('cardImageUrl').value.trim();
   const isSpecial = document.getElementById('cardIsSpecial').checked;
   if(!text){ setMsg('cardMsg','กรอกเนื้อหาการ์ด',true); return; }
   if(isSpecial && cardsCache.some(c=>c.isSpecial)){
     setMsg('cardMsg','มีการ์ดพิเศษอยู่แล้ว 1 ใบ ระบบรองรับการ์ดพิเศษได้แค่ 1 ใบเท่านั้น',true);
     return;
   }
-  await db.collection('knowledgeCards').add({text, category, active:true, isSpecial});
+  await db.collection('knowledgeCards').add({text, category, imageUrl, active:true, isSpecial});
   document.getElementById('cardText').value='';
+  document.getElementById('cardImageUrl').value='';
   document.getElementById('cardIsSpecial').checked=false;
   setMsg('cardMsg','เพิ่มการ์ดแล้ว');
   await loadKnowledgeCards();
@@ -449,7 +452,7 @@ async function loadKnowledgeCards(){
   document.getElementById('cardCount').textContent = cardsCache.filter(c=>!c.isSpecial).length;
   document.getElementById('cardTable').innerHTML = cardsCache.map(c=>`
     <tr>
-      <td>${c.isSpecial?'🌟 ':''}${c.text}</td><td><span class="pill">${c.isSpecial?'การ์ดพิเศษ':(c.category||'-')}</span></td>
+      <td>${c.isSpecial?'🌟 ':''}${c.text}${c.imageUrl?' <span class="pill" style="background:var(--sand);">🖼️ มีรูป</span>':''}</td><td><span class="pill">${c.isSpecial?'การ์ดพิเศษ':(c.category||'-')}</span></td>
       <td>${c.active?'✅ ใช้งาน':'⛔ ปิด'}</td>
       <td>
         <button class="btn btn-ghost" style="padding:6px 10px;font-size:12px;" onclick="toggleCard('${c.id}',${!c.active})">${c.active?'ปิด':'เปิด'}</button>
