@@ -336,17 +336,15 @@
   @keyframes holoSpin{from{transform:rotate(0deg);} to{transform:rotate(360deg);}}
   .kcard-tag.special-tag{background:linear-gradient(90deg,#F4A261,#E76F51);}
 
-  /* ---- card album ---- */
   /* ---- card album shelves (grouped by category) ---- */
-  .album-shelf{display:flex; gap:8px; margin-bottom:14px; align-items:stretch;}
+  .album-shelf{margin-bottom:22px;}
   .album-shelf:last-child{margin-bottom:0;}
-  .album-shelf-label{
-    flex:0 0 62px; width:62px; border-radius:12px; color:#fff;
-    display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center;
-    padding:6px 4px; font-family:'Kanit'; font-weight:700; font-size:11px; line-height:1.25;
+  .album-shelf-header{
+    display:flex; align-items:center; gap:8px; padding:10px 14px; border-radius:10px; margin-bottom:10px;
+    color:#fff; font-family:'Kanit'; font-weight:700; font-size:14.5px;
   }
-  .album-shelf-label .cnt{font-size:10px; font-weight:600; opacity:0.85; margin-top:4px;}
-  .album-grid{display:flex; gap:10px; overflow-x:auto; padding-bottom:6px; -webkit-overflow-scrolling:touch; flex:1;}
+  .album-shelf-header .cnt{margin-left:auto; font-size:12.5px; font-weight:600; opacity:0.85;}
+  .album-grid{display:flex; gap:10px; overflow-x:auto; padding-bottom:6px; -webkit-overflow-scrolling:touch;}
   .album-item{
     border-radius:14px; padding:12px 10px; text-align:center; min-height:110px;
     display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px;
@@ -1649,7 +1647,7 @@ async function loadAlbum(){
       const cardsInCat = regularCards.filter(c=>(c.category||'ความรู้')===cat);
       const collectedInCat = cardsInCat.filter(c=>collectedIds.includes(c.id)).length;
       html += `<div class="album-shelf">
-        <div class="album-shelf-label" style="background:${categoryColor(cat)};">
+        <div class="album-shelf-header" style="background:${categoryColor(cat)};">
           <span>${cat}</span>
           <span class="cnt">${collectedInCat}/${cardsInCat.length}</span>
         </div>
@@ -1659,8 +1657,8 @@ async function loadAlbum(){
     if(specialCard){
       const unlocked = collectedIds.includes(specialCard.id);
       html += `<div class="album-shelf">
-        <div class="album-shelf-label" style="background:#F4C86B;">
-          <span>🌟 พิเศษ</span>
+        <div class="album-shelf-header" style="background:#F4C86B;">
+          <span>🌟 การ์ดพิเศษ</span>
           <span class="cnt">${unlocked?1:0}/1</span>
         </div>
         <div class="album-grid">${renderAlbumItem(specialCard, unlocked, true)}</div>
