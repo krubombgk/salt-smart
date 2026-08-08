@@ -338,13 +338,15 @@
 
   /* ---- card album ---- */
   /* ---- card album shelves (grouped by category) ---- */
-  .album-shelf{margin-bottom:20px;}
+  .album-shelf{display:flex; gap:8px; margin-bottom:14px; align-items:stretch;}
   .album-shelf:last-child{margin-bottom:0;}
-  .album-shelf-header{display:flex; align-items:center; gap:8px; margin-bottom:10px;}
-  .album-shelf-dot{width:12px; height:12px; border-radius:50%; flex-shrink:0;}
-  .album-shelf-title{font-family:'Kanit'; font-weight:700; font-size:14.5px; color:var(--deep-sea); flex:1;}
-  .album-shelf-count{font-family:'Kanit'; font-weight:600; font-size:12.5px; color:#9aa8ab;}
-  .album-grid{display:flex; gap:10px; overflow-x:auto; padding-bottom:6px; -webkit-overflow-scrolling:touch;}
+  .album-shelf-label{
+    flex:0 0 62px; width:62px; border-radius:12px; color:#fff;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center;
+    padding:6px 4px; font-family:'Kanit'; font-weight:700; font-size:11px; line-height:1.25;
+  }
+  .album-shelf-label .cnt{font-size:10px; font-weight:600; opacity:0.85; margin-top:4px;}
+  .album-grid{display:flex; gap:10px; overflow-x:auto; padding-bottom:6px; -webkit-overflow-scrolling:touch; flex:1;}
   .album-item{
     border-radius:14px; padding:12px 10px; text-align:center; min-height:110px;
     display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px;
@@ -1647,10 +1649,9 @@ async function loadAlbum(){
       const cardsInCat = regularCards.filter(c=>(c.category||'ความรู้')===cat);
       const collectedInCat = cardsInCat.filter(c=>collectedIds.includes(c.id)).length;
       html += `<div class="album-shelf">
-        <div class="album-shelf-header">
-          <span class="album-shelf-dot" style="background:${categoryColor(cat)};"></span>
-          <span class="album-shelf-title">${cat}</span>
-          <span class="album-shelf-count">${collectedInCat}/${cardsInCat.length}</span>
+        <div class="album-shelf-label" style="background:${categoryColor(cat)};">
+          <span>${cat}</span>
+          <span class="cnt">${collectedInCat}/${cardsInCat.length}</span>
         </div>
         <div class="album-grid">${cardsInCat.map(c=>renderAlbumItem(c, collectedIds.includes(c.id), false)).join('')}</div>
       </div>`;
@@ -1658,10 +1659,9 @@ async function loadAlbum(){
     if(specialCard){
       const unlocked = collectedIds.includes(specialCard.id);
       html += `<div class="album-shelf">
-        <div class="album-shelf-header">
-          <span class="album-shelf-dot" style="background:#F4C86B;"></span>
-          <span class="album-shelf-title">🌟 การ์ดพิเศษ</span>
-          <span class="album-shelf-count">${unlocked?1:0}/1</span>
+        <div class="album-shelf-label" style="background:#F4C86B;">
+          <span>🌟 พิเศษ</span>
+          <span class="cnt">${unlocked?1:0}/1</span>
         </div>
         <div class="album-grid">${renderAlbumItem(specialCard, unlocked, true)}</div>
       </div>`;
