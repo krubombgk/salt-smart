@@ -320,6 +320,34 @@
   .kcard-title{font-family:'Kanit'; font-weight:800; font-size:20px; color:var(--deep-sea); margin-bottom:10px;}
   .kcard-text{font-size:15px; color:#4c5c60; line-height:1.6; margin-bottom:20px;}
 
+  /* ---- special holographic card ---- */
+  .kcard-box.special{
+    background:linear-gradient(135deg,#fff7e0,#ffe9c7,#fff0d6);
+    border:2px solid #F4C86B;
+    position:relative; overflow:hidden;
+  }
+  .kcard-box.special::before{
+    content:''; position:absolute; inset:-50%;
+    background:conic-gradient(from 0deg, rgba(255,215,120,0.15), rgba(255,255,255,0.4), rgba(244,162,97,0.2), rgba(255,255,255,0.4), rgba(255,215,120,0.15));
+    animation:holoSpin 6s linear infinite;
+  }
+  .kcard-box.special > *{position:relative; z-index:1;}
+  @keyframes holoSpin{from{transform:rotate(0deg);} to{transform:rotate(360deg);}}
+  .kcard-tag.special-tag{background:linear-gradient(90deg,#F4A261,#E76F51);}
+
+  /* ---- card album ---- */
+  .album-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(120px,1fr)); gap:10px;}
+  .album-item{
+    border-radius:14px; padding:12px 10px; text-align:center; min-height:110px;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px;
+  }
+  .album-item.locked{background:var(--sand); border:2px dashed #DDD3BC;}
+  .album-item.unlocked{background:#fff; border:2px solid var(--lagoon-light); box-shadow:0 4px 10px rgba(42,157,143,0.15);}
+  .album-item.unlocked.special{background:linear-gradient(135deg,#fff7e0,#ffe9c7); border-color:#F4C86B;}
+  .album-item .album-icon{font-size:26px;}
+  .album-item .album-cat{font-size:10.5px; font-weight:600; color:#9aa8ab;}
+  .album-item .album-text{font-size:10.5px; color:#4c5c60; line-height:1.35;}
+
   /* ---- progress table (21-day tracker grid) ---- */
   .ptable-scroll{overflow-x:auto; padding-bottom:6px;}
   .ptable{border-collapse:collapse; font-size:11px;}
@@ -549,6 +577,12 @@
         <div id="progressTableWrap"><div class="empty-note">กำลังโหลด…</div></div>
       </div>
 
+      <div class="section-title">🎴 อัลบั้มการ์ดความรู้</div>
+      <div class="card">
+        <div id="albumProgress" style="font-family:'Kanit'; font-weight:700; color:var(--lagoon); margin-bottom:10px;">กำลังโหลด…</div>
+        <div class="album-grid" id="albumGrid"></div>
+      </div>
+
       <div class="section-title">อันดับในห้อง</div>
       <div class="card" id="classLeaderboard"><div class="empty-note">กำลังโหลด…</div></div>
 
@@ -568,13 +602,13 @@
 
 <div class="toast" id="toast"></div>
 
-<div class="kcard-overlay" id="kcardOverlay" style="display:none;" onclick="closeKnowledgeCard(event)">
-  <div class="kcard-box">
+<div class="kcard-overlay" id="kcardOverlay" style="display:none;" onclick="collectKnowledgeCard(event)">
+  <div class="kcard-box" id="kcardBox" onclick="event.stopPropagation()">
     <div class="kcard-tag" id="kcardTag">โซเดียมแฝง</div>
-    <div class="kcard-emoji">💡</div>
-    <div class="kcard-title">รู้หรือไม่?</div>
+    <div class="kcard-emoji" id="kcardEmoji">💡</div>
+    <div class="kcard-title" id="kcardTitle">รู้หรือไม่?</div>
     <div class="kcard-text" id="kcardText">กำลังโหลด...</div>
-    <button class="btn btn-coral btn-block" onclick="closeKnowledgeCard(event)">เก็บการ์ดนี้ไว้ 🎉</button>
+    <button class="btn btn-coral btn-block" id="kcardSaveBtn" onclick="collectKnowledgeCard(event)">เก็บการ์ดนี้ไว้ 🎉</button>
   </div>
 </div>
 
@@ -653,7 +687,7 @@ let state = {
   pendingPin:'',
   campaign:{startDate:null,endDate:null,active:true},
   todaysDateStr:null, dayNumber:1, totalDays:21, targetDate:null, recallDate:null,
-  condiments:{}, tastePref:null,
+  condiments:{}, tastePref:null, pendingCard:null,
   todayLog:null, // loaded/created dailyLog doc data
   todaysQuiz:[], quizIndex:0, quizAnswers:[], quizFinished:false,
   sodiumChecks:[], pendingCalc:null,
@@ -864,12 +898,14 @@ async function enterApp(){
   await loadLeaderboards();
   renderStats();
   loadProgressTable();
+  loadAlbum();
 }
 
 function logout(){
   state.selectedStudent=null; state.todayLog=null; state.targetLog=null; state.sodiumChecks=[];
-  state.quizAnswers=[]; state.quizFinished=false;
+  state.quizAnswers=[]; state.quizFinished=false; state.pendingCard=null;
   state.exerciseChecked={}; state.levels={sweet:null,fat:null,salty:null}; state.otherChecked={};
+  document.getElementById('kcardOverlay').style.display = 'none';
   goScreen('screen-student');
 }
 
@@ -1348,19 +1384,53 @@ async function submitDailyLog(){
 }
 
 /* ---- Knowledge card (สุ่มโชว์หลังบันทึกสำเร็จ จัดการเนื้อหาผ่านหน้า Admin) ---- */
+async function getCollectedCardIds(){
+  const snap = await db.collection('cardCollections').where('studentId','==',state.selectedStudent.id).get();
+  return snap.docs.map(d=>d.data().cardId);
+}
+
 async function showKnowledgeCard(){
   try{
     const snap = await db.collection('knowledgeCards').where('active','==',true).get();
-    const cards = snap.docs.map(d=>d.data());
-    if(cards.length===0) return;
-    const card = cards[Math.floor(Math.random()*cards.length)];
-    document.getElementById('kcardTag').textContent = card.category || 'ความรู้';
-    document.getElementById('kcardText').textContent = card.text || '';
+    const allCards = snap.docs.map(d=>({id:d.id, ...d.data()}));
+    const regularCards = allCards.filter(c=>!c.isSpecial);
+    const specialCard = allCards.find(c=>c.isSpecial);
+    const collectedIds = await getCollectedCardIds();
+    const uncollectedRegular = regularCards.filter(c=>!collectedIds.includes(c.id));
+
+    let cardToShow, isSpecial=false;
+    if(uncollectedRegular.length>0){
+      cardToShow = uncollectedRegular[Math.floor(Math.random()*uncollectedRegular.length)];
+    } else if(specialCard && !collectedIds.includes(specialCard.id)){
+      cardToShow = specialCard; isSpecial=true;
+    } else {
+      return; // เก็บครบทุกใบแล้ว (รวมใบพิเศษ) ไม่มีการ์ดให้โชว์เพิ่ม
+    }
+
+    state.pendingCard = cardToShow;
+    document.getElementById('kcardBox').classList.toggle('special', isSpecial);
+    document.getElementById('kcardTag').className = 'kcard-tag' + (isSpecial?' special-tag':'');
+    document.getElementById('kcardTag').textContent = isSpecial ? '🌟 การ์ดพิเศษ' : (cardToShow.category || 'ความรู้');
+    document.getElementById('kcardEmoji').textContent = isSpecial ? '🏆' : '💡';
+    document.getElementById('kcardTitle').textContent = isSpecial ? 'ยินดีด้วย!' : 'รู้หรือไม่?';
+    document.getElementById('kcardText').textContent = cardToShow.text || '';
     document.getElementById('kcardOverlay').style.display = 'flex';
   }catch(e){ console.error(e); }
 }
-function closeKnowledgeCard(event){
+
+async function collectKnowledgeCard(event){
   if(event) event.stopPropagation();
+  if(state.pendingCard){
+    try{
+      await db.collection('cardCollections').doc(state.selectedStudent.id + '_' + state.pendingCard.id).set({
+        studentId: state.selectedStudent.id,
+        cardId: state.pendingCard.id,
+        collectedAt: new Date().toISOString()
+      });
+    }catch(e){ console.error(e); }
+    state.pendingCard = null;
+    loadAlbum();
+  }
   document.getElementById('kcardOverlay').style.display = 'none';
 }
 
@@ -1493,6 +1563,40 @@ async function loadProgressTable(){
   }catch(e){
     console.error(e);
     wrap.innerHTML = '<div class="empty-note">โหลดตารางไม่สำเร็จ</div>';
+  }
+}
+
+/* ---- อัลบั้มการ์ดความรู้ ---- */
+async function loadAlbum(){
+  const gridEl = document.getElementById('albumGrid');
+  const progEl = document.getElementById('albumProgress');
+  try{
+    const snap = await db.collection('knowledgeCards').where('active','==',true).get();
+    const allCards = snap.docs.map(d=>({id:d.id, ...d.data()}));
+    const regularCards = allCards.filter(c=>!c.isSpecial);
+    const specialCard = allCards.find(c=>c.isSpecial);
+    const collectedIds = await getCollectedCardIds();
+
+    const collectedRegularCount = regularCards.filter(c=>collectedIds.includes(c.id)).length;
+    progEl.textContent = `เก็บแล้ว ${collectedRegularCount}/${regularCards.length} ใบ` + (specialCard ? (collectedIds.includes(specialCard.id) ? ' 🌟 + การ์ดพิเศษ' : '') : '');
+
+    let html = '';
+    regularCards.forEach(c=>{
+      const unlocked = collectedIds.includes(c.id);
+      html += unlocked
+        ? `<div class="album-item unlocked"><div class="album-icon">💡</div><div class="album-cat">${c.category||'ความรู้'}</div><div class="album-text">${c.text}</div></div>`
+        : `<div class="album-item locked"><div class="album-icon">❓</div><div class="album-cat">${c.category||'ความรู้'}</div></div>`;
+    });
+    if(specialCard){
+      const unlocked = collectedIds.includes(specialCard.id);
+      html += unlocked
+        ? `<div class="album-item unlocked special"><div class="album-icon">🏆</div><div class="album-cat">การ์ดพิเศษ</div><div class="album-text">${specialCard.text}</div></div>`
+        : `<div class="album-item locked"><div class="album-icon">🔒</div><div class="album-cat">การ์ดพิเศษ</div></div>`;
+    }
+    gridEl.innerHTML = html || '<div class="empty-note">ยังไม่มีการ์ดในคลัง</div>';
+  }catch(e){
+    console.error(e);
+    gridEl.innerHTML = '<div class="empty-note">โหลดอัลบั้มไม่สำเร็จ</div>';
   }
 }
 
