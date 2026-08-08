@@ -578,17 +578,22 @@
         <div id="progressTableWrap"><div class="empty-note">กำลังโหลด…</div></div>
       </div>
 
-      <div class="section-title">🎴 อัลบั้มการ์ดความรู้</div>
-      <div class="card">
-        <div id="albumProgress" style="font-family:'Kanit'; font-weight:700; color:var(--lagoon); margin-bottom:10px;">กำลังโหลด…</div>
-        <div class="album-grid" id="albumGrid"></div>
-      </div>
-
       <div class="section-title">อันดับในห้อง</div>
       <div class="card" id="classLeaderboard"><div class="empty-note">กำลังโหลด…</div></div>
 
       <div class="section-title">อันดับรวมทั้งโรงเรียน</div>
       <div class="card" id="schoolLeaderboard"><div class="empty-note">กำลังโหลด…</div></div>
+    </div>
+
+    <!-- TAB: ALBUM -->
+    <div class="tabpanel" id="tab-album">
+      <div class="card" style="text-align:center;">
+        <h3 style="margin-top:0;">🎴 ห้องเก็บการ์ด</h3>
+        <div id="albumProgress" style="font-family:'Kanit'; font-weight:700; color:var(--lagoon);">กำลังโหลด…</div>
+      </div>
+      <div class="card">
+        <div class="album-grid" id="albumGrid"></div>
+      </div>
     </div>
 
   </div>
@@ -597,6 +602,7 @@
     <div class="tabbtn active" data-tab="tab-check" onclick="switchTab('tab-check')"><span class="ic">🔍</span>ตรวจฉลาก</div>
     <div class="tabbtn" data-tab="tab-quiz" onclick="switchTab('tab-quiz')"><span class="ic">❓</span>Quiz</div>
     <div class="tabbtn" data-tab="tab-log" onclick="switchTab('tab-log')"><span class="ic">📝</span>บันทึกวันนี้</div>
+    <div class="tabbtn" data-tab="tab-album" onclick="switchTab('tab-album')"><span class="ic">🎴</span>การ์ด</div>
     <div class="tabbtn" data-tab="tab-stats" onclick="switchTab('tab-stats')"><span class="ic">🏆</span>สถิติ</div>
   </div>
 </div>
@@ -680,6 +686,15 @@ const OTHER_BEHAVIORS = [
 ];
 const AVATAR_COLORS = ['#2A9D8F','#F4A261','#E76F51','#0B3D4C','#7FD8CC','#E8A33D'];
 const STICKER_BG = ['#EAF7F4','#FDEEE1','#FBE9E5','#F3ECDD'];
+// สีประจำหมวดหมู่การ์ดความรู้ — ใช้กับแถบหัวข้อบนการ์ดและป้ายในอัลบั้ม
+const CARD_CATEGORY_COLORS = {
+  'โซเดียมแฝง': '#E76F51',
+  'อ่านฉลาก': '#2A9D8F',
+  'เลือกขนม': '#E8A33D',
+  'ชิมก่อนปรุง': '#8B7FD6',
+  'เรื่องจริงหรือหลอก': '#D9503F'
+};
+function categoryColor(category){ return CARD_CATEGORY_COLORS[category] || '#9aa8ab'; }
 
 
 let state = {
@@ -689,7 +704,7 @@ let state = {
   pendingPin:'',
   campaign:{startDate:null,endDate:null,active:true},
   todaysDateStr:null, dayNumber:1, totalDays:21, targetDate:null, recallDate:null,
-  condiments:{}, tastePref:null, pendingCard:null,
+  condiments:{}, tastePref:null, pendingCard:null, albumCardsCache:[],
   todayLog:null, // loaded/created dailyLog doc data
   todaysQuiz:[], quizIndex:0, quizAnswers:[], quizFinished:false,
   sodiumChecks:[], pendingCalc:null,
@@ -1408,18 +1423,34 @@ async function showKnowledgeCard(){
     } else {
       return; // เก็บครบทุกใบแล้ว (รวมใบพิเศษ) ไม่มีการ์ดให้โชว์เพิ่ม
     }
-
-    state.pendingCard = cardToShow;
-    document.getElementById('kcardBox').classList.toggle('special', isSpecial);
-    document.getElementById('kcardTag').className = 'kcard-tag' + (isSpecial?' special-tag':'');
-    document.getElementById('kcardTag').textContent = isSpecial ? '🌟 การ์ดพิเศษ' : (cardToShow.category || 'ความรู้');
-    const imgWrap = document.getElementById('kcardImgWrap');
-    imgWrap.innerHTML = cardToShow.imageUrl
-      ? `<img src="${cardToShow.imageUrl}" alt="" onerror="this.parentElement.innerHTML='<div class=&quot;kcard-emoji&quot;>${isSpecial?'🏆':'💡'}</div>'">`
-      : `<div class="kcard-emoji">${isSpecial?'🏆':'💡'}</div>`;
-    document.getElementById('kcardText').textContent = cardToShow.text || '';
-    document.getElementById('kcardOverlay').style.display = 'flex';
+    renderCardModal(cardToShow, isSpecial, true);
   }catch(e){ console.error(e); }
+}
+
+// เปิดดูการ์ดที่เก็บไปแล้วซ้ำจากอัลบั้ม (ไม่นับเป็นการเก็บใหม่ ไม่เขียนซ้ำลง Firestore)
+function viewCollectedCard(cardId){
+  const card = (state.albumCardsCache||[]).find(c=>c.id===cardId);
+  if(!card) return;
+  renderCardModal(card, !!card.isSpecial, false);
+}
+
+function renderCardModal(card, isSpecial, isNew){
+  state.pendingCard = isNew ? card : null;
+  document.getElementById('kcardBox').classList.toggle('special', isSpecial);
+  const tagEl = document.getElementById('kcardTag');
+  const boxEl = document.getElementById('kcardBox');
+  tagEl.className = 'kcard-tag' + (isSpecial?' special-tag':'');
+  const catColor = categoryColor(card.category);
+  tagEl.style.background = isSpecial ? '' : catColor;
+  boxEl.style.borderColor = isSpecial ? '' : catColor;
+  tagEl.textContent = isSpecial ? '🌟 การ์ดพิเศษ' : (card.category || 'ความรู้');
+  const imgWrap = document.getElementById('kcardImgWrap');
+  imgWrap.innerHTML = card.imageUrl
+    ? `<img src="${card.imageUrl}" alt="" onerror="this.parentElement.innerHTML='<div class=&quot;kcard-emoji&quot;>${isSpecial?'🏆':'💡'}</div>'">`
+    : `<div class="kcard-emoji">${isSpecial?'🏆':'💡'}</div>`;
+  document.getElementById('kcardText').textContent = card.text || '';
+  document.getElementById('kcardSaveBtn').textContent = isNew ? 'เก็บการ์ดนี้ไว้ 🎉' : 'ปิด';
+  document.getElementById('kcardOverlay').style.display = 'flex';
 }
 
 async function collectKnowledgeCard(event){
@@ -1580,6 +1611,7 @@ async function loadAlbum(){
     const regularCards = allCards.filter(c=>!c.isSpecial);
     const specialCard = allCards.find(c=>c.isSpecial);
     const collectedIds = await getCollectedCardIds();
+    state.albumCardsCache = allCards;
 
     const collectedRegularCount = regularCards.filter(c=>collectedIds.includes(c.id)).length;
     progEl.textContent = `เก็บแล้ว ${collectedRegularCount}/${regularCards.length} ใบ` + (specialCard ? (collectedIds.includes(specialCard.id) ? ' 🌟 + การ์ดพิเศษ' : '') : '');
@@ -1588,16 +1620,19 @@ async function loadAlbum(){
     regularCards.forEach(c=>{
       const unlocked = collectedIds.includes(c.id);
       const thumb = c.imageUrl ? `<img src="${c.imageUrl}" alt="" style="width:100%;height:44px;object-fit:cover;border-radius:8px;" onerror="this.style.display='none'">` : '';
+      const catStyle = `border-top:4px solid ${categoryColor(c.category)};` + (unlocked ? 'cursor:pointer;' : '');
+      const clickAttr = unlocked ? `onclick="viewCollectedCard('${c.id}')"` : '';
       html += unlocked
-        ? `<div class="album-item unlocked">${thumb}<div class="album-icon" style="${thumb?'display:none;':''}">💡</div><div class="album-cat">${c.category||'ความรู้'}</div><div class="album-text">${c.text}</div></div>`
-        : `<div class="album-item locked"><div class="album-icon">❓</div><div class="album-cat">${c.category||'ความรู้'}</div></div>`;
+        ? `<div class="album-item unlocked" style="${catStyle}" ${clickAttr}>${thumb}<div class="album-icon" style="${thumb?'display:none;':''}">💡</div><div class="album-cat">${c.category||'ความรู้'}</div><div class="album-text">${c.text}</div></div>`
+        : `<div class="album-item locked" style="${catStyle}"><div class="album-icon">❓</div><div class="album-cat">${c.category||'ความรู้'}</div></div>`;
     });
     if(specialCard){
       const unlocked = collectedIds.includes(specialCard.id);
       const thumb = specialCard.imageUrl ? `<img src="${specialCard.imageUrl}" alt="" style="width:100%;height:44px;object-fit:cover;border-radius:8px;" onerror="this.style.display='none'">` : '';
+      const clickAttr = unlocked ? `onclick="viewCollectedCard('${specialCard.id}')"` : '';
       html += unlocked
-        ? `<div class="album-item unlocked special">${thumb}<div class="album-icon" style="${thumb?'display:none;':''}">🏆</div><div class="album-cat">การ์ดพิเศษ</div><div class="album-text">${specialCard.text}</div></div>`
-        : `<div class="album-item locked"><div class="album-icon">🔒</div><div class="album-cat">การ์ดพิเศษ</div></div>`;
+        ? `<div class="album-item unlocked special" style="border-top:4px solid #F4C86B;cursor:pointer;" ${clickAttr}>${thumb}<div class="album-icon" style="${thumb?'display:none;':''}">🏆</div><div class="album-cat">การ์ดพิเศษ</div><div class="album-text">${specialCard.text}</div></div>`
+        : `<div class="album-item locked" style="border-top:4px solid #F4C86B;"><div class="album-icon">🔒</div><div class="album-cat">การ์ดพิเศษ</div></div>`;
     }
     gridEl.innerHTML = html || '<div class="empty-note">ยังไม่มีการ์ดในคลัง</div>';
   }catch(e){
