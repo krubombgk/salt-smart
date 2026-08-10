@@ -9,6 +9,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-functions-compat.js"></script>
+<script src="who-bmi-data.js"></script>
 <style>
   :root{
     --deep-sea:#0B3D4C;
@@ -144,6 +145,15 @@
     display:flex; align-items:center; gap:4px; font-family:'Kanit'; font-weight:700; font-size:14px;
     background:var(--sand); padding:6px 10px; border-radius:20px;
   }
+  .health-icon-btn{
+    font-size:18px; cursor:pointer; width:32px; height:32px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center; background:var(--sand);
+  }
+  .health-history-row{
+    display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid #F2EEE1;
+    font-size:13.5px;
+  }
+  .health-history-row:last-child{border-bottom:none;}
 
   .tabpanel{display:none;}
   .tabpanel.active{display:block;}
@@ -455,6 +465,7 @@
     <div class="hb-stat">
       <div class="stat-pill">🔥 <span id="hbStreak">0</span></div>
       <div class="stat-pill">⭐ <span id="hbPoints">0</span></div>
+      <div class="health-icon-btn" onclick="openHealthScreen()" title="สุขภาพของฉัน">🩺</div>
       <div class="backlink" style="margin:0;" onclick="logout()">ออก</div>
     </div>
   </div>
@@ -622,6 +633,79 @@
     <div class="tabbtn" data-tab="tab-log" onclick="switchTab('tab-log')"><span class="ic">📝</span>บันทึกวันนี้</div>
     <div class="tabbtn" data-tab="tab-album" onclick="switchTab('tab-album')"><span class="ic">🎴</span>การ์ด</div>
     <div class="tabbtn" data-tab="tab-stats" onclick="switchTab('tab-stats')"><span class="ic">🏆</span>สถิติ</div>
+  </div>
+</div>
+
+<!-- ================= SCREEN: สุขภาพของฉัน (แยกขาดจากเกม ไม่มีคะแนน/อันดับ) ================= -->
+<div class="screen" id="screen-health">
+  <div class="brandbar">
+    <div class="brand-row">
+      <div class="brand-mark">🩺</div>
+      <div>
+        <div class="brand-title">สุขภาพของฉัน</div>
+        <div class="brand-sub">บันทึกส่วนตัว ไม่มีคะแนน ไม่มีอันดับ ไม่มีใครเห็นนอกจากตัวเอง</div>
+      </div>
+    </div>
+  </div>
+  <div class="wrap" style="padding-top:18px; max-width:480px;">
+    <div class="backlink" onclick="closeHealthScreen()">‹ กลับไปหน้าหลัก</div>
+
+    <div id="healthSetupArea" style="display:none;">
+      <div class="card">
+        <h3 style="margin-top:0;">ตั้งค่าครั้งแรก</h3>
+        <p style="color:#6b7c80; font-size:13.5px; margin-top:-8px;">ใช้แค่คำนวณ BMI ตามช่วงวัยให้แม่นยำเท่านั้น ไม่แสดงให้ใครเห็น</p>
+        <div class="field">
+          <label>เพศ</label>
+          <select id="healthSex">
+            <option value="male">ชาย</option>
+            <option value="female">หญิง</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>วันเกิด</label>
+          <input type="date" id="healthBirthDate">
+        </div>
+        <button class="btn btn-primary btn-block" onclick="saveHealthProfile()">บันทึกและเริ่มใช้งาน</button>
+        <div class="msg" id="healthSetupMsg" style="font-size:13px; color:var(--red-high); min-height:18px; margin-top:6px;"></div>
+      </div>
+    </div>
+
+    <div id="healthMainArea" style="display:none;">
+      <div class="card">
+        <h3 style="margin-top:0;">บันทึกน้ำหนัก/ส่วนสูง</h3>
+        <div class="field">
+          <label>น้ำหนัก (กิโลกรัม)</label>
+          <input type="number" step="0.1" id="healthWeight" placeholder="เช่น 38.5">
+        </div>
+        <div class="field">
+          <label>ส่วนสูง (เซนติเมตร)</label>
+          <input type="number" step="0.1" id="healthHeight" placeholder="เช่น 140">
+        </div>
+        <button class="btn btn-primary btn-block" onclick="saveHealthEntry()">บันทึก</button>
+        <div class="msg" id="healthEntryMsg" style="font-size:13px; color:var(--red-high); min-height:18px; margin-top:6px;"></div>
+      </div>
+
+      <div class="card" id="healthResultCard" style="display:none;">
+        <h3 style="margin-top:0;">ผลล่าสุด</h3>
+        <div class="stat-grid">
+          <div class="mini-stat"><div class="num" id="healthBmiNum">-</div><div class="lbl">BMI</div></div>
+          <div class="mini-stat"><div class="num" id="healthCatLabel" style="font-size:16px;">-</div><div class="lbl">แปลผลตามช่วงวัย</div></div>
+        </div>
+        <p id="healthExplain" style="font-size:13px; color:#6b7c80; line-height:1.6; margin-top:12px;"></p>
+        <div id="healthReferral" style="display:none; background:var(--sand); border-radius:12px; padding:14px; margin-top:10px; font-size:13.5px; line-height:1.6;"></div>
+      </div>
+
+      <div class="section-title">แนวโน้มของฉัน</div>
+      <div class="card">
+        <div id="healthHistoryList"><div class="empty-note">ยังไม่มีประวัติ</div></div>
+      </div>
+
+      <div class="card" style="background:var(--sand);">
+        <p style="font-size:12.5px; color:#6b7c80; line-height:1.6; margin:0;">
+          💡 BMI (ดัชนีมวลกาย) คือตัวเลขคร่าว ๆ ที่เทียบน้ำหนักกับส่วนสูง ใช้เป็นข้อมูลประกอบเบื้องต้นเท่านั้น ไม่ใช่ตัวชี้วัดสุขภาพทั้งหมด ร่างกายเด็กแต่ละคนเติบโตไม่เท่ากัน ถ้ามีข้อสงสัยควรปรึกษาครูอนามัยหรือเจ้าหน้าที่สาธารณสุขที่ดูแลโครงการนี้โดยตรง
+        </p>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -1651,6 +1735,146 @@ function renderAlbumItem(c, unlocked, isSpecial){
     return `<div class="album-item unlocked${isSpecial?' special':''}" style="${style}" ${clickAttr}>${thumb}<div class="album-icon" style="${thumb?'display:none;':''}">${icon}</div><div class="album-cat">${catLabel}</div><div class="album-text">${c.text}</div></div>`;
   }
   return `<div class="album-item locked" style="${style}"><div class="album-icon">${icon}</div><div class="album-cat">${catLabel}</div></div>`;
+}
+
+/* =========================================================
+   สุขภาพของฉัน — แยกขาดจากเกม ไม่มีคะแนน/อันดับ/แจ้งเตือน ไม่มีใครเห็นนอกจากตัวเอง
+   คำนวณ BMI-for-age ด้วยตาราง LMS จริงจาก WHO Growth Reference 2007 (5-19 ปี)
+   ========================================================= */
+function calcBmiZScore(bmi, ageMonths, sex){
+  const table = sex === 'female' ? WHO_BMI_LMS.girls : WHO_BMI_LMS.boys;
+  let idx = Math.round(ageMonths) - WHO_BMI_LMS.monthStart;
+  idx = Math.max(0, Math.min(table.length - 1, idx));
+  const [L, M, S] = table[idx];
+  if (Math.abs(L) < 1e-9) return Math.log(bmi / M) / S;
+  return (Math.pow(bmi / M, L) - 1) / (L * S);
+}
+function zToPercentile(z){
+  // ประมาณค่า CDF ของการแจกแจงปกติมาตรฐาน (ความแม่นยำเพียงพอสำหรับแสดงผลทั่วไป)
+  const t = 1 / (1 + 0.2316419 * Math.abs(z));
+  const d = 0.3989423 * Math.exp(-z * z / 2);
+  let p = d * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274))));
+  if (z > 0) p = 1 - p;
+  return Math.max(0.1, Math.min(99.9, p * 100));
+}
+function bmiCategory(z){
+  if (z < -3) return { label: 'ผอมมาก', level: 'severe_thin', normal:false };
+  if (z < -2) return { label: 'ผอม', level: 'thin', normal:false };
+  if (z <= 1) return { label: 'ปกติ', level: 'normal', normal:true };
+  if (z <= 2) return { label: 'น้ำหนักเกิน', level: 'overweight', normal:false };
+  return { label: 'อ้วน', level: 'obese', normal:false };
+}
+function monthsBetween(birthDateStr, todayDateStr){
+  const b = dateFromStr(birthDateStr);
+  const t = dateFromStr(todayDateStr);
+  let months = (t.getFullYear() - b.getFullYear()) * 12 + (t.getMonth() - b.getMonth());
+  if (t.getDate() < b.getDate()) months--;
+  return months;
+}
+
+function openHealthScreen(){
+  goScreen('screen-health');
+  const s = state.selectedStudent;
+  const hasProfile = s && s.sex && s.birthDate;
+  document.getElementById('healthSetupArea').style.display = hasProfile ? 'none' : 'block';
+  document.getElementById('healthMainArea').style.display = hasProfile ? 'block' : 'none';
+  if (hasProfile) loadHealthHistory();
+}
+function closeHealthScreen(){
+  goScreen('screen-main');
+}
+
+async function saveHealthProfile(){
+  const sex = document.getElementById('healthSex').value;
+  const birthDate = document.getElementById('healthBirthDate').value;
+  const msgEl = document.getElementById('healthSetupMsg');
+  if (!birthDate) { msgEl.textContent = 'เลือกวันเกิดก่อนนะ'; return; }
+  const ageMonths = monthsBetween(birthDate, state.todaysDateStr);
+  if (ageMonths < WHO_BMI_LMS.monthStart || ageMonths > WHO_BMI_LMS.monthEnd) {
+    msgEl.textContent = 'ระบบรองรับช่วงอายุ 5-19 ปีเท่านั้น ลองเช็ควันเกิดอีกครั้ง';
+    return;
+  }
+  await db.collection('students').doc(state.selectedStudent.id).update({ sex, birthDate });
+  state.selectedStudent.sex = sex;
+  state.selectedStudent.birthDate = birthDate;
+  document.getElementById('healthSetupArea').style.display = 'none';
+  document.getElementById('healthMainArea').style.display = 'block';
+  loadHealthHistory();
+}
+
+async function saveHealthEntry(){
+  const weight = parseFloat(document.getElementById('healthWeight').value);
+  const height = parseFloat(document.getElementById('healthHeight').value);
+  const msgEl = document.getElementById('healthEntryMsg');
+  if (!weight || !height || weight <= 0 || height <= 0) {
+    msgEl.textContent = 'กรอกน้ำหนักและส่วนสูงให้ครบก่อนนะ';
+    return;
+  }
+  const s = state.selectedStudent;
+  const ageMonths = monthsBetween(s.birthDate, state.todaysDateStr);
+  const heightM = height / 100;
+  const bmi = weight / (heightM * heightM);
+  const z = calcBmiZScore(bmi, ageMonths, s.sex);
+  const cat = bmiCategory(z);
+
+  await db.collection('healthLogs').add({
+    studentId: s.id,
+    date: state.todaysDateStr,
+    weightKg: weight,
+    heightCm: height,
+    bmi: Math.round(bmi * 10) / 10,
+    zScore: Math.round(z * 100) / 100,
+    category: cat.level,
+    loggedAt: new Date().toISOString()
+  });
+
+  document.getElementById('healthWeight').value = '';
+  document.getElementById('healthHeight').value = '';
+  msgEl.textContent = '';
+  showToast('บันทึกแล้ว 🙂');
+  loadHealthHistory();
+}
+
+function renderHealthResult(entry){
+  const card = document.getElementById('healthResultCard');
+  card.style.display = 'block';
+  const cat = bmiCategory(entry.zScore);
+  document.getElementById('healthBmiNum').textContent = entry.bmi;
+  document.getElementById('healthCatLabel').textContent = cat.label;
+
+  document.getElementById('healthExplain').textContent =
+    'BMI คำนวณจากน้ำหนักหารด้วยส่วนสูง (เมตร) ยกกำลังสอง แล้วเทียบกับช่วงวัยและเพศตามเกณฑ์ WHO Growth Reference (ไม่ใช้เกณฑ์ผู้ใหญ่) ค่าที่ได้เป็นข้อมูลอ้างอิงคร่าว ๆ เท่านั้น';
+
+  const referralEl = document.getElementById('healthReferral');
+  if (!cat.normal) {
+    referralEl.style.display = 'block';
+    referralEl.innerHTML = '💬 ค่านี้อยู่นอกช่วง "ปกติ" ที่พบทั่วไปในเด็กวัยเดียวกัน ไม่ได้แปลว่าต้องกังวลทันที แต่ลองพูดคุยกับ<b>ครูอนามัยหรือเจ้าหน้าที่สาธารณสุขที่ดูแลโครงการนี้</b>เพื่อขอคำแนะนำที่เหมาะกับตัวเองโดยเฉพาะดีกว่าครับ';
+  } else {
+    referralEl.style.display = 'none';
+  }
+}
+
+async function loadHealthHistory(){
+  const listEl = document.getElementById('healthHistoryList');
+  try{
+    const snap = await db.collection('healthLogs').where('studentId', '==', state.selectedStudent.id).get();
+    const entries = snap.docs.map(d => d.data()).sort((a, b) => a.date < b.date ? 1 : -1); // ใหม่สุดก่อน
+    if (entries.length === 0) {
+      listEl.innerHTML = '<div class="empty-note">ยังไม่มีประวัติ ลองบันทึกครั้งแรกดูสิ</div>';
+      document.getElementById('healthResultCard').style.display = 'none';
+      return;
+    }
+    renderHealthResult(entries[0]);
+    listEl.innerHTML = entries.map(e => `
+      <div class="health-history-row">
+        <span>${dayLabelThai(e.date)}</span>
+        <span>${e.weightKg} กก. / ${e.heightCm} ซม.</span>
+        <span style="font-family:'Kanit'; font-weight:700; color:var(--lagoon);">BMI ${e.bmi}</span>
+      </div>`).join('');
+  }catch(err){
+    console.error(err);
+    listEl.innerHTML = '<div class="empty-note">โหลดประวัติไม่สำเร็จ</div>';
+  }
 }
 
 async function loadAlbum(){
