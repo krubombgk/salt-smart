@@ -149,6 +149,11 @@
     font-size:18px; cursor:pointer; width:32px; height:32px; border-radius:50%;
     display:flex; align-items:center; justify-content:center; background:var(--sand);
   }
+  .back-btn{
+    width:34px; height:34px; border-radius:50%; background:rgba(255,255,255,0.2);
+    display:flex; align-items:center; justify-content:center; font-size:22px; color:#fff;
+    cursor:pointer; flex-shrink:0; font-family:'Kanit'; font-weight:700;
+  }
   .health-history-row{
     display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid #F2EEE1;
     font-size:13.5px;
@@ -640,6 +645,7 @@
 <div class="screen" id="screen-health">
   <div class="brandbar">
     <div class="brand-row">
+      <div class="back-btn" onclick="closeHealthScreen()">‹</div>
       <div class="brand-mark">🩺</div>
       <div>
         <div class="brand-title">สุขภาพของฉัน</div>
@@ -648,7 +654,6 @@
     </div>
   </div>
   <div class="wrap" style="padding-top:18px; max-width:480px;">
-    <div class="backlink" onclick="closeHealthScreen()">‹ กลับไปหน้าหลัก</div>
 
     <div id="healthSetupArea" style="display:none;">
       <div class="card">
