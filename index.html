@@ -9,6 +9,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-functions-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
 <script src="who-bmi-data.js"></script>
 <style>
   :root{
@@ -159,6 +160,18 @@
     font-size:13.5px;
   }
   .health-history-row:last-child{border-bottom:none;}
+
+  /* ---- mission tab ---- */
+  .mission-text{
+    background:var(--sand); border-radius:14px; padding:16px; font-size:15px; line-height:1.6;
+    font-weight:500; color:var(--deep-sea); margin-bottom:12px;
+  }
+  .mission-status{
+    font-family:'Kanit'; font-weight:600; font-size:13.5px; padding:10px 14px; border-radius:10px; margin-bottom:12px;
+  }
+  .mission-status.pending{background:#FBF0DC; color:var(--amber-warn);}
+  .mission-status.approved{background:#E4F5EC; color:var(--green-ok);}
+  .mission-status.rejected{background:#FBE6E2; color:var(--red-high);}
 
   .tabpanel{display:none;}
   .tabpanel.active{display:block;}
@@ -525,6 +538,14 @@
       </div>
     </div>
 
+    <!-- TAB: MISSION -->
+    <div class="tabpanel" id="tab-mission">
+      <div class="card">
+        <h3 style="margin-top:0;">🎯 ภารกิจวันนี้</h3>
+        <div id="missionBody"><div class="empty-note">กำลังโหลด…</div></div>
+      </div>
+    </div>
+
     <!-- TAB: LOG -->
     <div class="tabpanel" id="tab-log">
       <div class="card" id="backfillPicker" style="display:none; background:var(--sand);">
@@ -635,6 +656,7 @@
   <div class="tabbar">
     <div class="tabbtn active" data-tab="tab-check" onclick="switchTab('tab-check')"><span class="ic">🔍</span>ตรวจฉลาก</div>
     <div class="tabbtn" data-tab="tab-quiz" onclick="switchTab('tab-quiz')"><span class="ic">❓</span>Quiz</div>
+    <div class="tabbtn" data-tab="tab-mission" onclick="switchTab('tab-mission')"><span class="ic">🎯</span>ภารกิจ</div>
     <div class="tabbtn" data-tab="tab-log" onclick="switchTab('tab-log')"><span class="ic">📝</span>บันทึกวันนี้</div>
     <div class="tabbtn" data-tab="tab-album" onclick="switchTab('tab-album')"><span class="ic">🎴</span>การ์ด</div>
     <div class="tabbtn" data-tab="tab-stats" onclick="switchTab('tab-stats')"><span class="ic">🏆</span>สถิติ</div>
@@ -741,6 +763,7 @@ const firebaseConfig = {
 };
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
+const storage = firebase.storage();
 
 /* =========================================================
    CONSTANTS
@@ -812,6 +835,7 @@ let state = {
   campaign:{startDate:null,endDate:null,active:true},
   todaysDateStr:null, dayNumber:1, totalDays:21, targetDate:null, recallDate:null,
   condiments:{}, tastePref:null, pendingCard:null, albumCardsCache:[],
+  todaysMission:null, missionPendingPhotoFile:null,
   todayLog:null, // loaded/created dailyLog doc data
   todaysQuiz:[], quizIndex:0, quizAnswers:[], quizFinished:false,
   sodiumChecks:[], pendingCalc:null,
@@ -1020,6 +1044,7 @@ async function enterApp(){
   switchTab('tab-check');
   await loadTodayLog();
   await loadQuiz();
+  await loadMission();
   await loadLeaderboards();
   renderStats();
   loadProgressTable();
@@ -1259,6 +1284,127 @@ function seededShuffle(arr, seed){
 function seedFromString(str){
   let h=0; for(let i=0;i<str.length;i++){ h = (h*31 + str.charCodeAt(i)) % 100000; }
   return h+1;
+}
+
+/* =========================================================
+   ภารกิจประจำวัน — ทั้งโรงเรียนได้ภารกิจเดียวกันตามลำดับวันแคมเปญ
+   ต้องส่งหลักฐานให้ครู/ยุวทูตตรวจ ไม่ใช่เช็คอัตโนมัติ ได้คะแนนก็ต่อเมื่อผ่านการอนุมัติ
+   ========================================================= */
+async function loadMission(){
+  const bodyEl = document.getElementById('missionBody');
+  try{
+    const snap = await db.collection('missions').where('active', '==', true).get();
+    const missions = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (a.order || 0) - (b.order || 0));
+    if (missions.length === 0) {
+      bodyEl.innerHTML = '<div class="empty-note">ยังไม่มีภารกิจในระบบ รอครูเพิ่มก่อนนะ</div>';
+      return;
+    }
+    const idx = (state.dayNumber - 1) % missions.length;
+    const mission = missions[idx];
+    state.todaysMission = mission;
+
+    const subSnap = await db.collection('missionSubmissions').doc(state.selectedStudent.id + '_' + state.todaysDateStr).get();
+    const sub = subSnap.exists ? subSnap.data() : null;
+    renderMissionUI(mission, sub);
+  }catch(e){
+    console.error(e);
+    bodyEl.innerHTML = '<div class="empty-note">โหลดภารกิจไม่สำเร็จ</div>';
+  }
+}
+
+function renderMissionUI(mission, sub){
+  const bodyEl = document.getElementById('missionBody');
+  let statusHtml = '';
+  if (sub) {
+    if (sub.status === 'pending') statusHtml = `<div class="mission-status pending">⏳ ส่งแล้ว รอครู/ยุวทูตตรวจ</div>`;
+    else if (sub.status === 'approved') statusHtml = `<div class="mission-status approved">✅ ผ่านแล้ว! ได้ ${sub.pointsAwarded || 0} คะแนน</div>`;
+    else if (sub.status === 'rejected') statusHtml = `<div class="mission-status rejected">❌ ยังไม่ผ่าน${sub.reviewNote ? ': ' + sub.reviewNote : ''} — ลองส่งใหม่ได้เลย</div>`;
+  }
+
+  const needsPhoto = mission.evidenceType === 'photo' || mission.evidenceType === 'both';
+  const needsText = mission.evidenceType === 'text' || mission.evidenceType === 'both';
+  const locked = sub && (sub.status === 'pending' || sub.status === 'approved');
+
+  let formHtml = '';
+  if (!locked) {
+    formHtml = `
+      ${needsPhoto ? `
+        <input type="file" accept="image/*" capture="environment" id="missionPhotoInput" style="display:none" onchange="previewMissionPhoto(event)">
+        <button class="btn btn-ghost btn-block" type="button" onclick="document.getElementById('missionPhotoInput').click()">📷 ถ่ายรูปหลักฐาน</button>
+        <div id="missionPhotoPreview" style="margin-top:8px;"></div>
+      ` : ''}
+      ${needsText ? `
+        <div class="field" style="margin-top:12px;">
+          <label>อธิบายสิ่งที่ทำ</label>
+          <textarea id="missionTextInput" placeholder="เล่าให้ฟังหน่อยว่าทำอะไรมา...">${sub && sub.evidenceText ? sub.evidenceText : ''}</textarea>
+        </div>
+      ` : ''}
+      <button class="btn btn-primary btn-block" style="margin-top:12px;" onclick="submitMission()">ส่งภารกิจ</button>
+      <div class="msg" id="missionSubmitMsg" style="font-size:13px; min-height:18px;"></div>
+    `;
+  } else if (sub && sub.evidenceText) {
+    formHtml = `<p style="font-size:13.5px; color:#6b7c80; margin-top:10px;">สิ่งที่ส่งไป: ${sub.evidenceText}</p>`;
+  }
+  if (sub && sub.evidencePhotoUrl) {
+    formHtml = `<img src="${sub.evidencePhotoUrl}" style="width:100%;max-height:200px;object-fit:cover;border-radius:12px;margin-top:10px;">` + formHtml;
+  }
+
+  bodyEl.innerHTML = `<div class="mission-text">${mission.text}</div>${statusHtml}${formHtml}`;
+  state.missionPendingPhotoFile = null;
+}
+
+function previewMissionPhoto(event){
+  const file = event.target.files[0];
+  if (!file) return;
+  state.missionPendingPhotoFile = file;
+  const url = URL.createObjectURL(file);
+  document.getElementById('missionPhotoPreview').innerHTML = `<img src="${url}" style="width:100%;max-height:200px;object-fit:cover;border-radius:12px;">`;
+}
+
+async function submitMission(){
+  const mission = state.todaysMission;
+  const msgEl = document.getElementById('missionSubmitMsg');
+  const needsPhotoOnly = mission.evidenceType === 'photo';
+  const needsTextOnly = mission.evidenceType === 'text';
+  const isBoth = mission.evidenceType === 'both';
+  const textEl = document.getElementById('missionTextInput');
+  const textVal = textEl ? textEl.value.trim() : '';
+  const photoFile = state.missionPendingPhotoFile;
+
+  if (needsPhotoOnly && !photoFile) { msgEl.style.color = 'var(--red-high)'; msgEl.textContent = 'ต้องถ่ายรูปหลักฐานก่อนส่ง'; return; }
+  if (needsTextOnly && !textVal) { msgEl.style.color = 'var(--red-high)'; msgEl.textContent = 'ต้องเขียนอธิบายก่อนส่ง'; return; }
+  if (isBoth && !photoFile && !textVal) { msgEl.style.color = 'var(--red-high)'; msgEl.textContent = 'ต้องมีรูปหรือข้อความอย่างน้อย 1 อย่าง'; return; }
+
+  msgEl.style.color = 'var(--lagoon)';
+  msgEl.textContent = 'กำลังส่ง...';
+
+  try{
+    let photoUrl = '';
+    if (photoFile) {
+      const path = `missionEvidence/${state.selectedStudent.id}/${state.todaysDateStr}_${Date.now()}.jpg`;
+      const ref = storage.ref().child(path);
+      await ref.put(photoFile);
+      photoUrl = await ref.getDownloadURL();
+    }
+    await db.collection('missionSubmissions').doc(state.selectedStudent.id + '_' + state.todaysDateStr).set({
+      studentId: state.selectedStudent.id,
+      classId: state.selectedClassId,
+      missionId: mission.id,
+      missionText: mission.text,
+      date: state.todaysDateStr,
+      evidenceText: textVal,
+      evidencePhotoUrl: photoUrl,
+      status: 'pending',
+      pointsValue: mission.points || 15,
+      submittedAt: new Date().toISOString()
+    });
+    showToast('ส่งภารกิจแล้ว รอครูตรวจนะ 🎉');
+    loadMission();
+  }catch(e){
+    console.error(e);
+    msgEl.style.color = 'var(--red-high)';
+    msgEl.textContent = 'ส่งไม่สำเร็จ ลองใหม่อีกครั้ง';
+  }
 }
 
 async function loadQuiz(){

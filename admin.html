@@ -86,6 +86,7 @@
       <div class="navitem" data-p="p-classes" onclick="showPanel('p-classes')">🏫 ห้องเรียน/นักเรียน</div>
       <div class="navitem" data-p="p-quiz" onclick="showPanel('p-quiz')">❓ คลังคำถาม Quiz</div>
       <div class="navitem" data-p="p-cards" onclick="showPanel('p-cards')">💡 การ์ดความรู้</div>
+      <div class="navitem" data-p="p-missions" onclick="showPanel('p-missions')">🎯 ภารกิจ/ตรวจสอบ</div>
       <div class="navitem" data-p="p-leaderboard" onclick="showPanel('p-leaderboard')">🏆 อันดับ/รางวัล</div>
       <div class="navitem" data-p="p-campaign" onclick="showPanel('p-campaign')">⚙️ ตั้งค่าแคมเปญ</div>
     </div>
@@ -100,6 +101,14 @@
           <div class="kpi"><div class="n" id="kpiCheckins">-</div><div class="l">บันทึกวันนี้</div></div>
           <div class="kpi"><div class="n" id="kpiDay">-</div><div class="l">วันที่ของแคมเปญ</div></div>
         </div>
+
+        <div class="card" style="margin-top:20px;">
+          <h3 style="margin-top:0;">📥 ส่งออกข้อมูลเป็น CSV</h3>
+          <p style="font-size:12.5px; color:#9aa8ab; margin-top:-6px;">โหลดไฟล์ไปเปิดใน Excel/Google Sheets เพื่อทำกราฟ/ตารางในรายงานได้เลย</p>
+          <button class="btn btn-primary" onclick="exportStudentSummaryCSV()">สรุปรายนักเรียน (คะแนน/Streak/สถิติ)</button>
+          <button class="btn btn-ghost" onclick="exportDailyLogsCSV()">บันทึกพฤติกรรมรายวันทั้งหมด</button>
+        </div>
+
         <div class="card" style="margin-top:20px;">
           <h3 style="margin-top:0;">อันดับคะแนนรวมสูงสุด (Top 10)</h3>
           <table><thead><tr><th>#</th><th>ชื่อ</th><th>ห้อง</th><th>คะแนน</th><th>Streak</th></tr></thead><tbody id="overviewTop"></tbody></table>
@@ -219,6 +228,49 @@
         </div>
       </div>
 
+      <!-- MISSIONS -->
+      <div class="panel" id="p-missions">
+        <h2>ภารกิจประจำวัน</h2>
+
+        <div class="card" id="missionBankSection">
+          <h3 style="margin-top:0;">เพิ่มภารกิจเป็นชุด (นำเข้าทีเดียว)</h3>
+          <p style="font-size:12.5px; color:#9aa8ab; margin-top:-6px;">รูปแบบ: <code>วันที่ | ชนิดหลักฐาน(photo/text/both) | คะแนน | เนื้อหาภารกิจ</code> บรรทัดละ 1 ข้อ — ใส่ร่าง 21 ข้อที่เตรียมไว้ให้แล้ว แก้ไข/ลบ/เพิ่มเองก่อนนำเข้าได้เลย</p>
+          <textarea id="bulkMissionText" style="min-height:280px; font-family:monospace; font-size:12px;">1 | text | 15 | ถามผู้ปกครองว่าเมนูโปรดของครอบครัวเค็มมากน้อยแค่ไหน เขียนสรุปสั้น ๆ
+2 | text | 15 | ลองงดเติมน้ำปลา/ซอสเพิ่มในมื้ออาหาร 1 มื้อวันนี้ เขียนบอกว่ารสชาติเป็นอย่างไร
+3 | text | 15 | อ่านฉลาก GDA ของขนม 1 ชิ้น เขียนบอกว่าโซเดียมคิดเป็นกี่ % ของปริมาณที่แนะนำต่อวัน
+4 | text | 15 | สอนน้อง/เพื่อน/คนในบ้าน 1 คน ว่าโซเดียม 2,000 มก. เทียบเท่าเกลือกี่ช้อนชา เขียนสรุปว่าเขาตอบว่าอะไร
+5 | text | 15 | ชิมอาหารก่อนปรุงเพิ่มทุกมื้อวันนี้ เขียนบอกว่ามื้อไหนที่คิดว่าไม่ต้องเติมเพิ่มแล้ว
+6 | text | 15 | อ่านข้อมูลเรื่องโซเดียม/โรค NCDs ให้คนในครอบครัวฟัง 1 เรื่อง เขียนว่าเล่าเรื่องอะไรให้ฟัง
+7 | text | 20 | สรุปสิ่งที่ได้เรียนรู้ในสัปดาห์แรกเรื่องโซเดียม เขียน 2-3 ประโยค
+8 | photo | 15 | ถ่ายรูปอาหารหรือขนมที่กินวันนี้ 1 อย่างที่คิดว่าอาจมีโซเดียมสูง
+9 | photo | 15 | หาขนม/อาหารที่บ้าน 1 ชนิด ถ่ายรูปฉลากโภชนาการที่เห็นคำว่า "โซเดียม" ชัดเจน
+10 | photo | 15 | หาเครื่องปรุงรสในบ้าน (น้ำปลา/ซีอิ๊ว/ซอส) มา 1 ขวด ถ่ายรูปคู่กับตัวเอง
+11 | photo | 15 | หาอาหารกึ่งสำเร็จรูป (มาม่า/โจ๊กซอง) 1 ชนิด ถ่ายรูปฉลากโซเดียม
+12 | photo | 15 | หาผลิตภัณฑ์คล้ายกัน 2 ชนิด (เช่น มาม่า 2 ยี่ห้อ) เปรียบเทียบโซเดียมว่าใครเยอะกว่า ถ่ายรูปทั้งคู่
+13 | photo | 15 | หาผลิตภัณฑ์ที่มีสัญลักษณ์ "ทางเลือกสุขภาพ" ถ่ายรูปมา 1 ชิ้น
+14 | text | 20 | สรุปสิ่งที่ได้เรียนรู้สัปดาห์ที่ 2 เรื่องการอ่านฉลาก เขียน 2-3 ประโยค
+15 | photo | 15 | หาผลิตภัณฑ์ที่มีโซเดียมมากกว่า 500 มก. ต่อหนึ่งหน่วยบริโภค ถ่ายรูปฉลาก
+16 | photo | 15 | ถ่ายรูปตัวเองตอนกำลังอ่านฉลากโภชนาการก่อนซื้อของที่ร้านค้า/ตลาด
+17 | photo | 15 | เลือกของว่างที่โซเดียมต่ำกว่าที่เคยกินปกติ 1 อย่าง ถ่ายรูปมาโชว์
+18 | text | 15 | ตั้งเป้าหมายเล็ก ๆ ของตัวเองเรื่องลดเค็มในสัปดาห์หน้า เขียนลงมา 1 ข้อ
+19 | photo | 15 | ถ่ายรูปมื้ออาหารวันนี้ที่คิดว่า "เค็มพอดี ไม่มากไป" ของตัวเอง
+20 | photo | 15 | ชวนเพื่อนหรือคนในครอบครัว 1 คน มาลองอ่านฉลากโซเดียมด้วยกัน ถ่ายรูปเป็นหลักฐาน
+21 | text | 25 | สรุปสิ่งที่ได้เรียนรู้ตลอด 21 วัน เขียนอย่างน้อย 3 ประโยค ว่าตัวเองเปลี่ยนพฤติกรรมอะไรไปบ้าง</textarea>
+          <button class="btn btn-primary" style="margin-top:10px;" onclick="bulkAddMissions()">นำเข้าภารกิจทั้งหมด</button>
+          <div class="msg" id="bulkMissionMsg"></div>
+        </div>
+
+        <div class="card" id="missionBankTableSection">
+          <h3 style="margin-top:0;">ภารกิจทั้งหมด (<span id="missionCount">0</span> ข้อ) — ควรมีให้ครบ 21 ข้อก่อนเปิดแคมเปญ</h3>
+          <table><thead><tr><th>วัน</th><th>เนื้อหา</th><th>หลักฐาน</th><th>คะแนน</th><th>สถานะ</th><th></th></tr></thead><tbody id="missionTable"></tbody></table>
+        </div>
+
+        <div class="card">
+          <h3 style="margin-top:0;">🔍 คิวตรวจภารกิจ (<span id="pendingCount">0</span> รอตรวจ)</h3>
+          <div id="reviewQueue"><div class="empty-note">กำลังโหลด…</div></div>
+        </div>
+      </div>
+
       <!-- LEADERBOARD -->
       <div class="panel" id="p-leaderboard">
         <h2>อันดับ / รางวัล</h2>
@@ -244,6 +296,7 @@
           <div class="field"><label>วันสิ้นสุด</label><input type="date" id="campEnd" onchange="updateSchoolDaySummary()"></div>
           <div class="msg" id="schoolDaySummary" style="color:var(--lagoon);"></div>
           <div class="field" style="margin-top:10px;"><label>รหัสผ่านผู้ดูแล (แก้ไขได้)</label><input type="text" id="campAdminPw"></div>
+          <div class="field"><label>รหัสผ่านยุวทูต อย.น้อย (เข้าได้แค่หน้าตรวจภารกิจ)</label><input type="text" id="campYouthPw"></div>
           <button class="btn btn-primary" onclick="saveCampaign()">บันทึกการตั้งค่า</button>
           <div class="msg" id="campMsg"></div>
         </div>
@@ -278,37 +331,65 @@ const db = firebase.firestore();
 
 let classesCache = [], studentsCache = [], quizCache = [];
 
+let currentRole = 'admin'; // 'admin' | 'youth'
 async function checkAdminPw(){
   const pw = document.getElementById('adminPw').value;
   const snap = await db.collection('settings').doc('admin').get();
-  const correct = snap.exists ? snap.data().password : 'admin1234';
-  if(pw === correct){
-    document.getElementById('gateScreen').style.display='none';
-    document.getElementById('appScreen').style.display='block';
-    boot();
+  const data = snap.exists ? snap.data() : {};
+  const adminPw = data.password || 'admin1234';
+  const youthPw = data.youthAmbassadorPassword || '';
+
+  if(pw === adminPw){
+    currentRole = 'admin';
+    enterAdminApp();
+  } else if(youthPw && pw === youthPw){
+    currentRole = 'youth';
+    enterAdminApp();
   } else {
     document.getElementById('gateMsg').textContent = 'รหัสผ่านไม่ถูกต้อง';
     document.getElementById('gateMsg').classList.add('err');
   }
 }
 
+function enterAdminApp(){
+  document.getElementById('gateScreen').style.display='none';
+  document.getElementById('appScreen').style.display='block';
+  if(currentRole === 'youth'){
+    // ยุวทูต อย.น้อย เห็นแค่คิวตรวจภารกิจ ไม่เห็นเมนูจัดการอื่น ๆ ของครู
+    document.querySelectorAll('.navitem').forEach(n=>{
+      n.style.display = (n.dataset.p === 'p-missions') ? '' : 'none';
+    });
+    document.getElementById('missionBankSection').style.display = 'none';
+    document.getElementById('missionBankTableSection').style.display = 'none';
+  }
+  boot();
+  if(currentRole === 'youth') showPanel('p-missions');
+}
+
 function showPanel(id){
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.navitem').forEach(n=>n.classList.remove('active'));
   document.getElementById(id).classList.add('active');
-  document.querySelector(`.navitem[data-p="${id}"]`).classList.add('active');
+  const navEl = document.querySelector(`.navitem[data-p="${id}"]`);
+  if(navEl) navEl.classList.add('active');
   if(id==='p-overview') loadOverview();
   if(id==='p-leaderboard') switchLbCat(currentLbCat);
+  if(id==='p-missions') loadReviewQueue();
 }
 
 async function boot(){
   renderChoiceBoxes();
   await loadClasses();
   await loadStudentsCache();
-  await loadQuizBank();
-  await loadKnowledgeCards();
-  loadOverview();
-  loadStudentTable();
+  if(currentRole === 'admin'){
+    await loadQuizBank();
+    await loadKnowledgeCards();
+    await loadMissionBank();
+    loadOverview();
+    loadStudentTable();
+  } else {
+    await loadReviewQueue();
+  }
 }
 
 /* ---- OVERVIEW ---- */
@@ -338,6 +419,56 @@ async function loadOverview(){
 }
 
 function classNameOf(id){ const c = classesCache.find(c=>c.id===id); return c?c.name:'-'; }
+
+/* ---- CSV EXPORT ---- */
+function downloadCSV(filename, rows){
+  const csvContent = rows.map(row => row.map(cell => {
+    const s = String(cell ?? '');
+    if(s.includes(',') || s.includes('"') || s.includes('\n')){
+      return '"' + s.replace(/"/g,'""') + '"';
+    }
+    return s;
+  }).join(',')).join('\r\n');
+  const blob = new Blob(['\uFEFF' + csvContent], {type:'text/csv;charset=utf-8;'}); // \uFEFF = UTF-8 BOM กัน Excel อ่านภาษาไทยเพี้ยน
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function exportStudentSummaryCSV(){
+  if(studentsCache.length===0){ alert('ยังไม่มีข้อมูลนักเรียน'); return; }
+  const rows = [['เลขที่','ชื่อ','ห้อง','คะแนนรวม','Streak ปัจจุบัน','Streak สูงสุด','จำนวนวันที่ทำสำเร็จ','จำนวนครั้งตรวจฉลาก']];
+  studentsCache.sort((a,b)=>a.studentNo-b.studentNo).forEach(s=>{
+    rows.push([s.studentNo, s.name, classNameOf(s.classId), s.totalPoints||0, s.currentStreak||0, s.longestStreak||0, s.daysCompleted||0, s.sodiumCheckCount||0]);
+  });
+  downloadCSV('salt-smart-student-summary.csv', rows);
+}
+
+async function exportDailyLogsCSV(){
+  const snap = await db.collection('dailyLogs').get();
+  const rows = [['วันที่','ชื่อ','ห้อง','ออกกำลังกาย','ระดับเค็ม','เติมเครื่องปรุง','ชอบรสเค็ม','อ่านฉลากโภชนาการ','อ่านฉลากGDA','เลือกสัญลักษณ์สุขภาพ','ดื่มน้ำ','มื้ออาหาร','สะท้อนผล','สิ่งที่ควรปรับปรุง']];
+  snap.docs.forEach(d=>{
+    const log = d.data();
+    if(!log.submitted) return; // ข้ามเอกสารที่มีแค่ผลตรวจฉลาก ยังไม่ได้กดบันทึกเต็มรูปแบบ
+    const student = studentsCache.find(s=>s.id===log.studentId);
+    const name = student ? student.name : log.studentId;
+    const className = student ? classNameOf(student.classId) : '';
+    const exercise = log.exercise ? Object.keys(log.exercise).filter(k=>log.exercise[k]).join('/') : '';
+    const salty = log.levels ? (log.levels.salty || '') : '';
+    const condiments = log.condiments ? Object.keys(log.condiments).filter(k=>log.condiments[k]).join('/') : '';
+    const other = log.otherBehaviors || {};
+    rows.push([
+      log.date, name, className, exercise, salty, condiments, log.tastePref || '',
+      other.readLabel ? 'Y' : '', other.readGDA ? 'Y' : '', other.healthyChoice ? 'Y' : '', other.drinkWater ? 'Y' : '',
+      log.mealNote || '', log.reflection || '', log.improveNote || ''
+    ]);
+  });
+  downloadCSV('salt-smart-daily-logs.csv', rows);
+}
 
 /* ---- CLASSES ---- */
 async function loadClasses(){
@@ -493,6 +624,102 @@ async function addSpecialCardPreset(){
   await loadKnowledgeCards();
 }
 
+/* ---- MISSIONS ---- */
+let missionsCache = [];
+async function bulkAddMissions(){
+  const raw = document.getElementById('bulkMissionText').value.trim();
+  if(!raw){ setMsg('bulkMissionMsg','ไม่มีเนื้อหาให้นำเข้า',true); return; }
+  const lines = raw.split('\n').map(l=>l.trim()).filter(Boolean);
+  const batch = db.batch();
+  let count = 0;
+  lines.forEach(line=>{
+    const parts = line.split('|').map(p=>p.trim());
+    if(parts.length < 4) return;
+    const order = parseInt(parts[0]) || 0;
+    const evidenceType = ['photo','text','both'].includes(parts[1]) ? parts[1] : 'text';
+    const points = parseInt(parts[2]) || 15;
+    const text = parts.slice(3).join('|').trim();
+    if(!text) return;
+    const ref = db.collection('missions').doc();
+    batch.set(ref, {order, evidenceType, points, text, active:true});
+    count++;
+  });
+  if(count===0){ setMsg('bulkMissionMsg','ไม่พบบรรทัดที่ถูกต้อง (ตรวจรูปแบบ วันที่ | หลักฐาน | คะแนน | เนื้อหา)',true); return; }
+  await batch.commit();
+  setMsg('bulkMissionMsg', `นำเข้าภารกิจสำเร็จ ${count} ข้อ`);
+  await loadMissionBank();
+}
+async function loadMissionBank(){
+  const snap = await db.collection('missions').get();
+  missionsCache = snap.docs.map(d=>({id:d.id, ...d.data()})).sort((a,b)=>(a.order||0)-(b.order||0));
+  document.getElementById('missionCount').textContent = missionsCache.filter(m=>m.active).length;
+  const evLabel = {photo:'📷 รูป', text:'📝 ข้อความ', both:'📷📝 ทั้งคู่'};
+  document.getElementById('missionTable').innerHTML = missionsCache.map(m=>`
+    <tr>
+      <td>${m.order}</td><td>${m.text}</td><td>${evLabel[m.evidenceType]||m.evidenceType}</td><td>${m.points||15}</td>
+      <td>${m.active?'✅ ใช้งาน':'⛔ ปิด'}</td>
+      <td>
+        <button class="btn btn-ghost" style="padding:6px 10px;font-size:12px;" onclick="toggleMission('${m.id}',${!m.active})">${m.active?'ปิด':'เปิด'}</button>
+        <button class="btn btn-danger" style="padding:6px 10px;font-size:12px;" onclick="deleteMission('${m.id}')">ลบ</button>
+      </td>
+    </tr>`).join('');
+}
+async function toggleMission(id, active){ await db.collection('missions').doc(id).update({active}); await loadMissionBank(); }
+async function deleteMission(id){ if(confirm('ลบภารกิจนี้?')){ await db.collection('missions').doc(id).delete(); await loadMissionBank(); } }
+
+/* ---- REVIEW QUEUE ---- */
+async function loadReviewQueue(){
+  const wrap = document.getElementById('reviewQueue');
+  try{
+    const snap = await db.collection('missionSubmissions').where('status','==','pending').get();
+    const subs = snap.docs.map(d=>({id:d.id, ...d.data()})).sort((a,b)=> a.submittedAt < b.submittedAt ? -1 : 1);
+    document.getElementById('pendingCount').textContent = subs.length;
+    if(subs.length===0){ wrap.innerHTML = '<div class="empty-note">ไม่มีภารกิจรอตรวจตอนนี้ 🎉</div>'; return; }
+    wrap.innerHTML = subs.map(s=>{
+      const student = studentsCache.find(st=>st.id===s.studentId);
+      const name = student ? `${student.name} (${classNameOf(student.classId)})` : s.studentId;
+      const photoHtml = s.evidencePhotoUrl ? `<img src="${s.evidencePhotoUrl}" style="max-width:220px;border-radius:10px;display:block;margin:8px 0;">` : '';
+      const textHtml = s.evidenceText ? `<p style="font-size:13.5px; margin:6px 0;">"${s.evidenceText}"</p>` : '';
+      return `
+        <div class="card" style="margin-bottom:12px; background:var(--sand);">
+          <div style="font-family:'Kanit'; font-weight:700; font-size:13.5px;">${name} — ${s.date}</div>
+          <div style="font-size:13px; color:#6b7c80; margin:4px 0;">ภารกิจ: ${s.missionText}</div>
+          ${photoHtml}${textHtml}
+          <div style="margin-top:8px; display:flex; gap:8px;">
+            <button class="btn btn-primary" style="padding:8px 16px;font-size:13px;" onclick="reviewMission('${s.id}','approved')">✅ ผ่าน</button>
+            <button class="btn btn-danger" style="padding:8px 16px;font-size:13px;" onclick="reviewMission('${s.id}','rejected')">❌ ไม่ผ่าน</button>
+          </div>
+        </div>`;
+    }).join('');
+  }catch(e){
+    console.error(e);
+    wrap.innerHTML = '<div class="empty-note">โหลดคิวตรวจไม่สำเร็จ</div>';
+  }
+}
+async function reviewMission(subId, decision){
+  const subRef = db.collection('missionSubmissions').doc(subId);
+  const subSnap = await subRef.get();
+  if(!subSnap.exists) return;
+  const sub = subSnap.data();
+  let reviewNote = '';
+  if(decision === 'rejected'){
+    reviewNote = prompt('เหตุผลที่ไม่ผ่าน (ไม่บังคับ)') || '';
+  }
+  await subRef.update({
+    status: decision, reviewedAt: new Date().toISOString(), reviewNote,
+    pointsAwarded: decision==='approved' ? (sub.pointsValue||15) : 0
+  });
+  if(decision === 'approved'){
+    const studentRef = db.collection('students').doc(sub.studentId);
+    await db.runTransaction(async (tx)=>{
+      const doc = await tx.get(studentRef);
+      const cur = (doc.data().totalPoints||0) + (sub.pointsValue||15);
+      tx.update(studentRef, {totalPoints: cur});
+    });
+  }
+  await loadReviewQueue();
+}
+
 async function addKnowledgeCard(){
   const text = document.getElementById('cardText').value.trim();
   const category = document.getElementById('cardCategory').value;
@@ -582,9 +809,15 @@ async function saveCampaign(){
   const start = document.getElementById('campStart').value;
   const end = document.getElementById('campEnd').value;
   const pw = document.getElementById('campAdminPw').value;
+  const youthPw = document.getElementById('campYouthPw').value;
   if(!start || !end || end < start){ setMsg('campMsg','กรุณาใส่วันเริ่มต้น-สิ้นสุดให้ถูกต้อง',true); return; }
   await db.collection('settings').doc('campaign').set({startDate:start, endDate:end, active:true}, {merge:true});
-  if(pw) await db.collection('settings').doc('admin').set({password:pw}, {merge:true});
+  if(pw || youthPw){
+    const adminUpdate = {};
+    if(pw) adminUpdate.password = pw;
+    if(youthPw) adminUpdate.youthAmbassadorPassword = youthPw;
+    await db.collection('settings').doc('admin').set(adminUpdate, {merge:true});
+  }
   setMsg('campMsg','บันทึกการตั้งค่าแล้ว');
 }
 let holidaysCache = [];
