@@ -4,6 +4,17 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
 <title>Salt Smart | รู้เท่าทันความเค็ม เติมเต็มสุขภาพ</title>
+
+<!-- PWA: ทำให้เพิ่มไอคอนหน้าจอหลักได้ทั้ง Android และ iOS -->
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="favicon.png">
+<meta name="theme-color" content="#2A9D8F">
+<!-- iOS ไม่อ่าน manifest.json เต็มรูปแบบ ต้องใส่ meta/link พวกนี้เพิ่มเฉพาะสำหรับ Safari -->
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Salt Smart">
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;600;700;800&family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -300,6 +311,22 @@
 
   /* ---- OCR ---- */
   .ocr-status{font-size:12.5px; color:#6b7c80; margin-top:8px; line-height:1.5;}
+
+  /* ---- product match suggestions (ฐานข้อมูลสินค้ากลาง) ---- */
+  .product-suggest-wrap{margin-top:8px;}
+  .product-suggest-hint{font-size:12px; color:#9aa8ab; margin-bottom:6px;}
+  .product-suggest-card{
+    display:flex; justify-content:space-between; align-items:center; gap:8px;
+    background:var(--sand); border:2px solid #E4DFCF; border-radius:12px; padding:10px 12px; margin-bottom:6px;
+    cursor:pointer;
+  }
+  .product-suggest-card:active{border-color:var(--lagoon);}
+  .product-suggest-name{font-family:'Kanit'; font-weight:600; font-size:13.5px; color:var(--deep-sea);}
+  .product-suggest-meta{font-size:11.5px; color:#9aa8ab; margin-top:2px;}
+  .product-suggest-sodium{font-family:'Kanit'; font-weight:700; color:var(--lagoon); font-size:14px; white-space:nowrap;}
+  .product-suggest-skip{
+    text-align:center; font-size:12.5px; color:#9aa8ab; padding:8px; cursor:pointer; text-decoration:underline;
+  }
   .ocr-status b{color:var(--lagoon);}
 
   /* ---- Log locked state ---- */
@@ -497,7 +524,8 @@
         <p style="color:#6b7c80; font-size:13.5px; margin-top:-8px;">กรอกค่าโซเดียม (มก.) ต่อหนึ่งหน่วยบริโภคจากฉลากโภชนาการ แล้วดูว่าเค็มแค่ไหนของวันนี้</p>
         <div class="field">
           <label>ชื่อสินค้า / เมนู</label>
-          <input type="text" id="ciName" placeholder="เช่น มาม่าคัพ, น้ำปลา">
+          <input type="text" id="ciName" placeholder="เช่น มาม่าคัพ, น้ำปลา" oninput="debouncedProductMatch()">
+          <div id="productSuggestions"></div>
         </div>
         <div class="field">
           <label>โซเดียม (มิลลิกรัม)</label>
@@ -836,6 +864,7 @@ let state = {
   todaysDateStr:null, dayNumber:1, totalDays:21, targetDate:null, recallDate:null,
   condiments:{}, tastePref:null, pendingCard:null, albumCardsCache:[],
   todaysMission:null, missionPendingPhotoFile:null,
+  currentProductMatches:[], lastAiReadExtra:null,
   todayLog:null, // loaded/created dailyLog doc data
   todaysQuiz:[], quizIndex:0, quizAnswers:[], quizFinished:false,
   sodiumChecks:[], pendingCalc:null,
@@ -1123,6 +1152,10 @@ async function loadLogForDate(dateStr){
     state.otherChecked = state.targetLog.otherBehaviors || {};
     state.condiments = state.targetLog.condiments || {};
     state.tastePref = state.targetLog.tastePref || null;
+    // ถ้า AI เคยเห็นสัญลักษณ์ทางเลือกสุขภาพตอนตรวจฉลากของวันนี้ไว้ ให้ติ๊กล่วงหน้าให้ (ยังแก้ไขได้ก่อนบันทึกจริง)
+    if(state.targetLog.aiDetectedHealthyChoice && !state.targetLog.submitted && state.otherChecked.healthyChoice === undefined){
+      state.otherChecked.healthyChoice = true;
+    }
     document.getElementById('mealNote').value = state.targetLog.mealNote || '';
     document.getElementById('reflectionText').value = state.targetLog.reflection || '';
     document.getElementById('improveText').value = state.targetLog.improveNote || '';
@@ -1196,17 +1229,136 @@ async function handleLabelPhoto(event){
 
     if(data.error === 'daily_limit_reached'){
       statusEl.textContent = data.message;
-    } else if(data.found && data.sodium_mg){
-      document.getElementById('ciSodium').value = data.sodium_mg;
-      statusEl.innerHTML = `AI อ่านได้: <b>${data.sodium_mg} มก.</b> — เทียบกับฉลากจริงอีกทีก่อนกดคำนวณนะ <span style="color:#aab5b8;">(เหลือ ${data.remainingToday} ครั้งวันนี้)</span>`;
-    } else {
-      statusEl.innerHTML = 'AI อ่านฉลากนี้ไม่เจอค่าโซเดียม ลองถ่ายให้ใกล้/ชัดขึ้น หรือพิมพ์ตัวเลขเองจากฉลากได้เลย' + (data.note ? `<br><span style="color:#aab5b8;">${data.note}</span>` : '');
+      event.target.value = '';
+      return;
     }
+
+    let msgParts = [];
+    if(data.found && data.sodium_mg){
+      document.getElementById('ciSodium').value = data.sodium_mg;
+      msgParts.push(`AI อ่านโซเดียมได้: <b>${data.sodium_mg} มก.</b>`);
+    } else {
+      msgParts.push('AI อ่านฉลากนี้ไม่เจอค่าโซเดียม ลองถ่ายให้ใกล้/ชัดขึ้น หรือพิมพ์ตัวเลขเองจากฉลากได้เลย');
+    }
+
+    if(data.product_name){
+      document.getElementById('ciName').value = data.product_name;
+      msgParts.push(`เห็นชื่อสินค้า: <b>${data.product_name}</b>`);
+      triggerProductMatch(); // มีชื่อแล้ว ลองหาของที่เคยตรวจไว้มาเทียบให้เลย
+    }
+
+    if(data.healthy_choice_logo){
+      msgParts.push('💚 เห็นสัญลักษณ์ "ทางเลือกสุขภาพ" ด้วย! ระบบจะติ๊กให้อัตโนมัติตอนบันทึกพฤติกรรมของวันนี้นะ');
+      // เก็บ flag ไว้ที่เอกสารของวันนี้ (docId เดียวกับที่ recall form จะมาโหลดใช้ทีหลัง)
+      await db.collection('dailyLogs').doc(logDocId()).set({ aiDetectedHealthyChoice: true }, { merge:true });
+    }
+
+    // เก็บค่าพลังงาน/น้ำตาล/ไขมันไว้ใช้ตอนบันทึกยืนยัน (ไม่ได้โชว์ในหน้าจอ แค่ช่วยแยกสินค้าชื่อคล้ายกันในฐานข้อมูลกลาง)
+    state.lastAiReadExtra = {
+      energyKcal: data.energy_kcal ?? null,
+      sugarG: data.sugar_g ?? null,
+      fatG: data.fat_g ?? null
+    };
+
+    statusEl.innerHTML = msgParts.join(' · ') + (data.note ? `<br><span style="color:#aab5b8;">${data.note}</span>` : '') + `<br><span style="color:#aab5b8;">(เหลือ ${data.remainingToday} ครั้งวันนี้)</span>`;
   }catch(e){
     console.error(e);
     statusEl.textContent = 'เชื่อมต่อ AI ไม่สำเร็จ ลองใหม่อีกครั้ง หรือพิมพ์ตัวเลขเองจากฉลากได้เลย';
   }
   event.target.value = '';
+}
+
+/* ---- ฐานข้อมูลสินค้าที่เคยยืนยันแล้วทั้งโรงเรียน (จับคู่ด้วยชื่อ ไม่ใช่ตัวเลข) ---- */
+let verifiedProductsCache = null;
+async function getVerifiedProducts(){
+  if(verifiedProductsCache) return verifiedProductsCache;
+  const snap = await db.collection('verifiedProducts').get();
+  verifiedProductsCache = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  return verifiedProductsCache;
+}
+function normalizeProductName(s){
+  return (s || '').trim().toLowerCase().replace(/\s+/g, ' ');
+}
+function productSimilarity(a, b){
+  const na = normalizeProductName(a), nb = normalizeProductName(b);
+  if (!na || !nb) return 0;
+  if (na === nb) return 100;
+  if (na.includes(nb) || nb.includes(na)) return 80;
+  const wa = na.split(' ').filter(w => w.length >= 2);
+  const wb = nb.split(' ').filter(w => w.length >= 2);
+  if (wa.length === 0 || wb.length === 0) return 0;
+  const common = wa.filter(w => wb.includes(w));
+  if (common.length === 0) return 0;
+  return Math.round(50 * common.length / Math.max(wa.length, wb.length));
+}
+let productMatchTimer = null;
+function debouncedProductMatch(){
+  clearTimeout(productMatchTimer);
+  productMatchTimer = setTimeout(triggerProductMatch, 500);
+}
+async function triggerProductMatch(){
+  const query = document.getElementById('ciName').value.trim();
+  const wrap = document.getElementById('productSuggestions');
+  if (query.length < 2) { wrap.innerHTML = ''; return; }
+  const products = await getVerifiedProducts();
+  const scored = products
+    .map(p => ({ ...p, score: productSimilarity(query, p.name) }))
+    .filter(p => p.score >= 40)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 3);
+  renderProductSuggestions(scored);
+}
+function renderProductSuggestions(matches){
+  const wrap = document.getElementById('productSuggestions');
+  state.currentProductMatches = matches;
+  if (matches.length === 0) { wrap.innerHTML = ''; return; }
+  wrap.innerHTML = `<div class="product-suggest-wrap">
+    <div class="product-suggest-hint">💡 เจอชื่อใกล้เคียงในระบบ — เลือกให้ตรงที่สุด หรือพิมพ์เองต่อได้เลย</div>
+    ${matches.map((m, i) => `
+      <div class="product-suggest-card" onclick="selectProductSuggestion(${i})">
+        <div>
+          <div class="product-suggest-name">${m.name}</div>
+          <div class="product-suggest-meta">ตรวจแล้ว ${m.timesChecked || 1} ครั้ง</div>
+        </div>
+        <div class="product-suggest-sodium">${m.sodiumMg} มก.</div>
+      </div>`).join('')}
+    <div class="product-suggest-skip" onclick="dismissProductSuggestions()">ไม่ใช่ทั้งหมด กรอกเอง</div>
+  </div>`;
+}
+function selectProductSuggestion(i){
+  const m = state.currentProductMatches && state.currentProductMatches[i];
+  if (!m) return;
+  document.getElementById('ciName').value = m.name;
+  document.getElementById('ciSodium').value = m.sodiumMg;
+  document.getElementById('productSuggestions').innerHTML = '';
+}
+function dismissProductSuggestions(){
+  document.getElementById('productSuggestions').innerHTML = '';
+}
+async function upsertVerifiedProduct(name, sodium, extra){
+  try{
+    const products = await getVerifiedProducts();
+    const norm = normalizeProductName(name);
+    const exact = products.find(p => normalizeProductName(p.name) === norm);
+    const extraFields = {};
+    if (extra.energyKcal != null) extraFields.energyKcal = extra.energyKcal;
+    if (extra.sugarG != null) extraFields.sugarG = extra.sugarG;
+    if (extra.fatG != null) extraFields.fatG = extra.fatG;
+
+    if (exact) {
+      const newCount = (exact.timesChecked || 1) + 1;
+      await db.collection('verifiedProducts').doc(exact.id).update({
+        sodiumMg: sodium, timesChecked: newCount, lastCheckedAt: new Date().toISOString(), ...extraFields
+      });
+      exact.sodiumMg = sodium; exact.timesChecked = newCount;
+    } else {
+      const ref = await db.collection('verifiedProducts').add({
+        name, sodiumMg: sodium, timesChecked: 1, lastCheckedAt: new Date().toISOString(),
+        energyKcal: extra.energyKcal ?? null, sugarG: extra.sugarG ?? null, fatG: extra.fatG ?? null
+      });
+      products.push({ id: ref.id, name, sodiumMg: sodium, timesChecked: 1 });
+    }
+  }catch(e){ console.error('upsertVerifiedProduct failed', e); } // ไม่ให้ error ตรงนี้ทำให้บันทึกหลักล้มเหลว
 }
 
 /* ---- Sodium checker ---- */
@@ -1236,10 +1388,13 @@ async function saveSodiumCheck(){
     dayNumber: state.dayNumber,
     sodiumChecks: state.sodiumChecks
   }, {merge:true});
+  await upsertVerifiedProduct(state.pendingCalc.name, state.pendingCalc.sodium, state.lastAiReadExtra || {});
   document.getElementById('ciName').value='';
   document.getElementById('ciSodium').value='';
+  document.getElementById('productSuggestions').innerHTML = '';
   document.getElementById('gaugeArea').style.display='none';
   state.pendingCalc=null;
+  state.lastAiReadExtra=null;
   renderCheckHistory();
   await addPoints(3);
   await incrementSodiumCheckCount();
