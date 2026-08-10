@@ -8,7 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;600;700;800&family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-functions-compat.js"></script>
 <style>
   :root{
     --deep-sea:#0B3D4C;
@@ -224,6 +224,17 @@
     font-family:'Sarabun'; font-size:15px; resize:vertical; min-height:80px;
   }
 
+  /* ---- voice input (speech-to-text mic button) ---- */
+  .voice-input-row{position:relative;}
+  .voice-input-row textarea{padding-right:52px;}
+  .mic-btn{
+    position:absolute; right:8px; bottom:8px; width:36px; height:36px; border-radius:50%;
+    border:none; background:var(--sand); font-size:16px; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; transition:all .15s ease;
+  }
+  .mic-btn.recording{background:var(--clay); color:#fff; animation:micPulse 1s ease-in-out infinite;}
+  @keyframes micPulse{0%,100%{box-shadow:0 0 0 0 rgba(231,111,81,0.5);} 50%{box-shadow:0 0 0 8px rgba(231,111,81,0);}}
+
   /* ---- chips (small pill buttons, used by backfill picker) ---- */
   .chip-row{display:flex; flex-wrap:wrap; gap:10px;}
   .chip{
@@ -262,15 +273,6 @@
   /* ---- OCR ---- */
   .ocr-status{font-size:12.5px; color:#6b7c80; margin-top:8px; line-height:1.5;}
   .ocr-status b{color:var(--lagoon);}
-  .ocr-candidates{display:flex; flex-wrap:wrap; gap:8px; margin-top:8px;}
-  .ocr-candidate{
-    padding:8px 14px; border-radius:16px; border:2px solid var(--coral); background:#fff;
-    font-family:'Kanit'; font-weight:600; font-size:13px; cursor:pointer; color:var(--clay);
-  }
-  .ocr-raw{
-    font-size:11px; color:#aab5b8; margin-top:8px; max-height:80px; overflow-y:auto;
-    background:var(--sand); padding:8px; border-radius:8px; line-height:1.5;
-  }
 
   /* ---- Log locked state ---- */
   #logFormArea.locked{opacity:0.55; pointer-events:none; filter:grayscale(0.3);}
@@ -476,7 +478,6 @@
         <input type="file" accept="image/*" capture="environment" id="labelPhotoInput" style="display:none" onchange="handleLabelPhoto(event)">
         <button class="btn btn-ghost btn-block" type="button" onclick="document.getElementById('labelPhotoInput').click()">📷 ถ่ายรูปฉลากให้ช่วยอ่าน</button>
         <div class="ocr-status" id="ocrStatus"></div>
-        <div class="ocr-candidates" id="ocrCandidates"></div>
 
         <button class="btn btn-primary btn-block" style="margin-top:10px;" onclick="calcSodium()">คำนวณ</button>
 
@@ -551,15 +552,24 @@
       <div class="card">
         <div class="field">
           <label>มื้ออาหาร/เครื่องดื่ม (สรุปสั้น ๆ)</label>
-          <textarea id="mealNote" placeholder="เช่น เช้า-ข้าวไข่เจียว, กลางวัน-ก๋วยเตี๋ยว, ของว่าง-ชานมไข่มุก" style="min-height:60px;"></textarea>
+          <div class="voice-input-row">
+            <textarea id="mealNote" placeholder="เช่น เช้า-ข้าวไข่เจียว, กลางวัน-ก๋วยเตี๋ยว, ของว่าง-ชานมไข่มุก" style="min-height:60px;"></textarea>
+            <button type="button" class="mic-btn" id="micBtn-mealNote" onclick="toggleVoiceInput('mealNote')">🎤</button>
+          </div>
         </div>
         <div class="field">
           <label>วันนั้นฉันเลือกได้ดีตรงไหน เพราะอะไร</label>
-          <textarea id="reflectionText" placeholder="เขียนสั้น ๆ เล่าให้ฟังหน่อย…"></textarea>
+          <div class="voice-input-row">
+            <textarea id="reflectionText" placeholder="เขียนสั้น ๆ เล่าให้ฟังหน่อย…"></textarea>
+            <button type="button" class="mic-btn" id="micBtn-reflectionText" onclick="toggleVoiceInput('reflectionText')">🎤</button>
+          </div>
         </div>
         <div class="field">
           <label>สิ่งที่ควรปรับปรุงในวันถัดไป</label>
-          <textarea id="improveText" placeholder="พรุ่งนี้อยากทำอะไรให้ดีขึ้น…" style="min-height:60px;"></textarea>
+          <div class="voice-input-row">
+            <textarea id="improveText" placeholder="พรุ่งนี้อยากทำอะไรให้ดีขึ้น…" style="min-height:60px;"></textarea>
+            <button type="button" class="mic-btn" id="micBtn-improveText" onclick="toggleVoiceInput('improveText')">🎤</button>
+          </div>
         </div>
         <button class="btn btn-primary btn-block" id="submitLogBtn" onclick="submitDailyLog()">บันทึก</button>
       </div>
@@ -762,6 +772,7 @@ async function init(){
   state.todaysDateStr = todayStr();
   state.recallDate = addDays(state.todaysDateStr, -1); // บันทึกของ "เมื่อวาน" ตามหลัก 24-Hour Recall
   state.targetDate = state.recallDate;
+  setupVoiceInput();
   try{
     const campSnap = await db.collection('settings').doc('campaign').get();
     if(campSnap.exists) state.campaign = campSnap.data();
@@ -1033,87 +1044,54 @@ function applyLogLockState(){
   }
 }
 
-/* ---- Sodium checker: OCR from photo ---- */
-function preprocessLabelImage(file){
+/* ---- Sodium checker: AI Vision (Claude Haiku ผ่าน Cloud Function) ---- */
+function resizeImageForUpload(file){
   return new Promise((resolve, reject)=>{
     const img = new Image();
     const url = URL.createObjectURL(file);
     img.onload = ()=>{
-      const scale = Math.min(2.2, 1700 / img.width);
+      const maxDim = 1024;
+      const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
       const w = Math.max(1, Math.round(img.width * scale));
       const h = Math.max(1, Math.round(img.height * scale));
       const canvas = document.createElement('canvas');
       canvas.width = w; canvas.height = h;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(img, 0, 0, w, h);
-      const imgData = ctx.getImageData(0, 0, w, h);
-      const d = imgData.data;
-      for(let i=0;i<d.length;i+=4){
-        const gray = 0.299*d[i] + 0.587*d[i+1] + 0.114*d[i+2];
-        const v = gray < 150 ? Math.max(0, gray-25) : Math.min(255, gray+35); // push toward black/white
-        d[i]=d[i+1]=d[i+2]=v;
-      }
-      ctx.putImageData(imgData, 0, 0);
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
       URL.revokeObjectURL(url);
-      resolve(canvas);
+      canvas.toBlob(blob=>{
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result.split(',')[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      }, 'image/jpeg', 0.82);
     };
     img.onerror = reject;
     img.src = url;
   });
 }
 
-// หาตัวเลขทุกตัวที่ตามด้วย "มก"/"mg" ในข้อความที่อ่านได้ แทนที่จะบังคับให้ต้องเจอคำว่า "โซเดียม" แบบเป๊ะ ๆ
-// (คำภาษาไทยมักถูกอ่านผิดเพี้ยน แต่ตัวเลข+หน่วยละติน "mg"/ตัวย่อ "มก" มักรอดมากกว่า)
-function extractSodiumCandidates(text){
-  const candidates = [];
-  const regex = /(\d{1,5}(?:[.,]\d{1,2})?)\s*(mg|มก)/gi;
-  let m;
-  while((m = regex.exec(text)) !== null){
-    const num = m[1].replace(',', '.');
-    const context = text.slice(Math.max(0, m.index-25), m.index).toLowerCase();
-    const looksLikeSodium = /โซ|sod/.test(context);
-    candidates.push({num, looksLikeSodium});
-  }
-  const byNum = new Map();
-  candidates.forEach(c=>{
-    if(!byNum.has(c.num) || c.looksLikeSodium) byNum.set(c.num, c);
-  });
-  return Array.from(byNum.values()).sort((a,b)=> (b.looksLikeSodium - a.looksLikeSodium));
-}
-
-function pickOcrCandidate(num){
-  document.getElementById('ciSodium').value = num;
-  document.getElementById('ocrStatus').innerHTML = `เลือกแล้ว: <b>${num} มก.</b> — เทียบกับฉลากจริงอีกทีก่อนกดคำนวณนะ`;
-}
-
 async function handleLabelPhoto(event){
   const file = event.target.files[0];
   if(!file) return;
   const statusEl = document.getElementById('ocrStatus');
-  const candEl = document.getElementById('ocrCandidates');
-  candEl.innerHTML = '';
-  statusEl.innerHTML = '🔎 กำลังอ่านฉลาก... รอสักครู่นะ (ครั้งแรกอาจช้าหน่อยเพราะกำลังโหลดตัวอ่านภาษาไทย)';
+  statusEl.innerHTML = '🔎 กำลังส่งรูปให้ AI ช่วยอ่าน... รอสักครู่นะ';
   try{
-    const canvas = await preprocessLabelImage(file);
-    const result = await Tesseract.recognize(canvas, 'eng+tha');
-    const text = result.data.text || '';
-    const candidates = extractSodiumCandidates(text);
+    const imageBase64 = await resizeImageForUpload(file);
+    const checkSodiumLabel = firebase.app().functions('asia-southeast1').httpsCallable('checkSodiumLabel');
+    const res = await checkSodiumLabel({ studentId: state.selectedStudent.id, imageBase64 });
+    const data = res.data;
 
-    if(candidates.length === 1){
-      pickOcrCandidate(candidates[0].num);
-    } else if(candidates.length > 1){
-      statusEl.innerHTML = `เจอตัวเลขหลายจุดบนฉลาก แตะเลือกตัวที่ตรงกับแถว "โซเดียม" บนฉลากจริง:`;
-      candEl.innerHTML = candidates.slice(0,6).map(c=>
-        `<div class="ocr-candidate" onclick="pickOcrCandidate('${c.num}')">${c.num} มก.${c.looksLikeSodium?' ⭐':''}</div>`
-      ).join('');
+    if(data.error === 'daily_limit_reached'){
+      statusEl.textContent = data.message;
+    } else if(data.found && data.sodium_mg){
+      document.getElementById('ciSodium').value = data.sodium_mg;
+      statusEl.innerHTML = `AI อ่านได้: <b>${data.sodium_mg} มก.</b> — เทียบกับฉลากจริงอีกทีก่อนกดคำนวณนะ <span style="color:#aab5b8;">(เหลือ ${data.remainingToday} ครั้งวันนี้)</span>`;
     } else {
-      const preview = text.trim().slice(0,180).replace(/\n/g,' ');
-      statusEl.innerHTML = `ระบบอ่านตัวหนังสือภาษาไทยได้ไม่แม่นเท่าภาษาอังกฤษ เลยหาตัวเลขโซเดียมไม่เจอในรูปนี้ ลองพิมพ์ตัวเลขเองจากฉลากได้เลย
-        ${preview ? `<div class="ocr-raw">ข้อความที่อ่านได้ (ดิบ): ${preview}</div>` : ''}`;
+      statusEl.innerHTML = 'AI อ่านฉลากนี้ไม่เจอค่าโซเดียม ลองถ่ายให้ใกล้/ชัดขึ้น หรือพิมพ์ตัวเลขเองจากฉลากได้เลย' + (data.note ? `<br><span style="color:#aab5b8;">${data.note}</span>` : '');
     }
   }catch(e){
     console.error(e);
-    statusEl.textContent = 'อ่านฉลากไม่สำเร็จ ลองใหม่อีกครั้ง หรือพิมพ์ตัวเลขเองได้เลย';
+    statusEl.textContent = 'เชื่อมต่อ AI ไม่สำเร็จ ลองใหม่อีกครั้ง หรือพิมพ์ตัวเลขเองจากฉลากได้เลย';
   }
   event.target.value = '';
 }
@@ -1272,6 +1250,59 @@ function renderQuizDone(){
 }
 
 /* ---- Behavior log: exercise chips ---- */
+/* =========================================================
+   VOICE INPUT (speech-to-text) — ใช้ Web Speech API ในตัวเบราว์เซอร์ ฟรี ไม่มี Cloud Function
+   รองรับ Chrome บน Android เป็นหลัก ถ้าเบราว์เซอร์ไม่รองรับ (เช่น iPad Safari) จะซ่อนปุ่มไมค์ให้อัตโนมัติ
+   ========================================================= */
+const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
+let voiceRecognition = null;
+let voiceActiveField = null;
+
+function setupVoiceInput(){
+  if(!SpeechRecognitionAPI){
+    document.querySelectorAll('.mic-btn').forEach(btn => btn.style.display = 'none');
+    return;
+  }
+  voiceRecognition = new SpeechRecognitionAPI();
+  voiceRecognition.lang = 'th-TH';
+  voiceRecognition.interimResults = false;
+  voiceRecognition.maxAlternatives = 1;
+
+  voiceRecognition.onresult = (event) => {
+    const transcript = event.results[0][0].transcript;
+    if(voiceActiveField){
+      const textarea = document.getElementById(voiceActiveField);
+      const sep = textarea.value.trim().length > 0 ? ' ' : '';
+      textarea.value = textarea.value.trim() + sep + transcript;
+    }
+  };
+  voiceRecognition.onerror = (event) => {
+    console.error('Speech recognition error:', event.error);
+    showToast('ฟังไม่สำเร็จ ลองพูดใหม่หรือพิมพ์เองได้เลย');
+    stopVoiceInput();
+  };
+  voiceRecognition.onend = () => stopVoiceInput();
+}
+
+function toggleVoiceInput(fieldId){
+  if(!SpeechRecognitionAPI || !voiceRecognition) return;
+  if(voiceActiveField === fieldId){
+    voiceRecognition.stop(); // onend จะเรียก stopVoiceInput() ให้เอง
+    return;
+  }
+  if(voiceActiveField) voiceRecognition.stop(); // เปลี่ยนช่อง ให้หยุดของเดิมก่อน
+  voiceActiveField = fieldId;
+  document.querySelectorAll('.mic-btn').forEach(btn => btn.classList.remove('recording'));
+  document.getElementById('micBtn-' + fieldId).classList.add('recording');
+  try{ voiceRecognition.start(); }
+  catch(e){ console.error(e); stopVoiceInput(); }
+}
+
+function stopVoiceInput(){
+  document.querySelectorAll('.mic-btn').forEach(btn => btn.classList.remove('recording'));
+  voiceActiveField = null;
+}
+
 function stickerButton(key, emoji, label, active, onClick){
   const el = document.createElement('div');
   el.className = 'sticker-btn' + (active?' active':'');
