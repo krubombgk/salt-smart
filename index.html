@@ -1046,27 +1046,26 @@ function applyLogLockState(){
 
 /* ---- Sodium checker: AI Vision (Claude Haiku ผ่าน Cloud Function) ---- */
 function resizeImageForUpload(file){
-  return new Promise((resolve, reject)=>{
-    const img = new Image();
-    const url = URL.createObjectURL(file);
-    img.onload = ()=>{
-      const maxDim = 1024;
-      const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
-      const w = Math.max(1, Math.round(img.width * scale));
-      const h = Math.max(1, Math.round(img.height * scale));
+  return new Promise(async (resolve, reject)=>{
+    try{
+      // ใช้ createImageBitmap แทน new Image() เพราะจะจัดการทิศทางภาพ (EXIF orientation) ให้ถูกต้องเสมอ
+      // ภาพถ่ายจากมือถือมักมีข้อมูลการหมุนภาพแนบมา ถ้าไม่จัดการตรงนี้ อาจส่งภาพที่หมุนผิดด้านไปให้ AI อ่านโดยไม่รู้ตัว
+      const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
+      const maxDim = 1568;
+      const scale = Math.min(1, maxDim / Math.max(bitmap.width, bitmap.height));
+      const w = Math.max(1, Math.round(bitmap.width * scale));
+      const h = Math.max(1, Math.round(bitmap.height * scale));
       const canvas = document.createElement('canvas');
       canvas.width = w; canvas.height = h;
-      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-      URL.revokeObjectURL(url);
+      canvas.getContext('2d').drawImage(bitmap, 0, 0, w, h);
+      bitmap.close();
       canvas.toBlob(blob=>{
         const reader = new FileReader();
         reader.onload = () => resolve(reader.result.split(',')[1]);
         reader.onerror = reject;
         reader.readAsDataURL(blob);
-      }, 'image/jpeg', 0.82);
-    };
-    img.onerror = reject;
-    img.src = url;
+      }, 'image/jpeg', 0.88);
+    }catch(e){ reject(e); }
   });
 }
 
