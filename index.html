@@ -161,6 +161,23 @@
     font-size:18px; cursor:pointer; width:32px; height:32px; border-radius:50%;
     display:flex; align-items:center; justify-content:center; background:var(--sand);
   }
+
+  /* ---- home screen dashboard ---- */
+  .home-card{
+    background:#fff; border-radius:14px; padding:16px; margin-bottom:12px; cursor:pointer;
+    display:flex; justify-content:space-between; align-items:center; box-shadow:var(--shadow); border:1px solid #EFE9D9;
+  }
+  .home-card-label{font-size:12.5px; color:#9aa8ab; margin-bottom:4px;}
+  .home-card-value{font-family:'Kanit'; font-weight:700; font-size:16px; color:var(--deep-sea);}
+  .home-card-arrow{font-size:20px; color:var(--lagoon); white-space:nowrap;}
+  .home-shortcut-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:10px;}
+  .home-shortcut{
+    background:#fff; border-radius:14px; padding:14px 4px; text-align:center; cursor:pointer;
+    box-shadow:var(--shadow); border:1px solid #EFE9D9;
+  }
+  .home-shortcut .hs-icon{font-size:22px;}
+  .home-shortcut .hs-label{font-size:11.5px; color:var(--deep-sea); margin-top:5px; font-weight:600;}
+
   .back-btn{
     width:34px; height:34px; border-radius:50%; background:rgba(255,255,255,0.2);
     display:flex; align-items:center; justify-content:center; font-size:22px; color:#fff;
@@ -501,6 +518,52 @@
   </div>
 </div>
 
+<!-- ================= SCREEN: HOME (แดชบอร์ดสรุป โชว์หลังล็อกอินทุกครั้ง) ================= -->
+<div class="screen" id="screen-home">
+  <div class="headerbar">
+    <div>
+      <div class="hb-name" id="homeGreeting">สวัสดี!</div>
+      <div class="hb-day" id="homeDayLabel">Day 1 / 21</div>
+    </div>
+    <div class="hb-stat">
+      <div class="backlink" style="margin:0;" onclick="logout()">ออก</div>
+    </div>
+  </div>
+  <div class="wrap" style="padding-top:18px;">
+    <div class="stat-grid">
+      <div class="mini-stat"><div class="num" id="homeStreak">0</div><div class="lbl">วันต่อเนื่อง 🔥</div></div>
+      <div class="mini-stat"><div class="num" id="homePoints">0</div><div class="lbl">คะแนนสะสม ⭐</div></div>
+      <div class="mini-stat"><div class="num" id="homeCards">0</div><div class="lbl">การ์ดสะสม 🎴</div></div>
+    </div>
+
+    <div class="home-card" onclick="goHomeShortcut('tab-check')">
+      <div>
+        <div class="home-card-label">โซเดียมวันนี้ (คร่าวๆ)</div>
+        <div class="home-card-value" id="homeSodiumToday">0 มก. · 0%</div>
+      </div>
+      <div class="home-card-arrow">🧂 ›</div>
+    </div>
+
+    <div class="home-card" onclick="goHomeShortcut('tab-mission')">
+      <div>
+        <div class="home-card-label">ภารกิจวันนี้</div>
+        <div class="home-card-value" id="homeMissionStatus">-</div>
+      </div>
+      <div class="home-card-arrow">🎯 ›</div>
+    </div>
+
+    <div class="section-title">ทางลัด</div>
+    <div class="home-shortcut-grid">
+      <div class="home-shortcut" onclick="goHomeShortcut('tab-check')"><div class="hs-icon">🔍</div><div class="hs-label">ตรวจฉลาก</div></div>
+      <div class="home-shortcut" onclick="goHomeShortcut('tab-quiz')"><div class="hs-icon">❓</div><div class="hs-label">Quiz</div></div>
+      <div class="home-shortcut" onclick="goHomeShortcut('tab-log')"><div class="hs-icon">📝</div><div class="hs-label">บันทึกวันนี้</div></div>
+      <div class="home-shortcut" onclick="goHomeShortcut('tab-album')"><div class="hs-icon">🎴</div><div class="hs-label">การ์ด</div></div>
+      <div class="home-shortcut" onclick="goHomeShortcut('tab-stats')"><div class="hs-icon">🏆</div><div class="hs-label">สถิติ</div></div>
+      <div class="home-shortcut" onclick="openHealthScreen()"><div class="hs-icon">🩺</div><div class="hs-label">สุขภาพ</div></div>
+    </div>
+  </div>
+</div>
+
 <!-- ================= SCREEN: MAIN APP ================= -->
 <div class="screen" id="screen-main">
   <div class="headerbar">
@@ -511,6 +574,7 @@
     <div class="hb-stat">
       <div class="stat-pill">🔥 <span id="hbStreak">0</span></div>
       <div class="stat-pill">⭐ <span id="hbPoints">0</span></div>
+      <div class="health-icon-btn" onclick="openHomeScreen()" title="หน้าหลัก">🏠</div>
       <div class="health-icon-btn" onclick="openHealthScreen()" title="สุขภาพของฉัน">🩺</div>
       <div class="backlink" style="margin:0;" onclick="logout()">ออก</div>
     </div>
@@ -549,12 +613,25 @@
             <div class="gauge-label">ของปริมาณโซเดียมที่แนะนำต่อวัน (2,000 มก.)</div>
             <div class="verdict" id="gaugeVerdict">-</div>
             <div class="gauge-tip" id="gaugeTip" style="display:none;"></div>
+            <div class="gauge-tip" id="gaugeServings" style="display:none;"></div>
           </div>
           <button class="btn btn-coral btn-block" style="margin-top:14px;" onclick="saveSodiumCheck()">บันทึกรายการนี้</button>
         </div>
       </div>
 
       <div class="check-history">
+        <div class="section-title">🧂 รวมโซเดียมวันนี้ (คร่าวๆ)</div>
+        <div class="card" id="sodiumTodayCard" style="background:var(--sand);">
+          <div id="sodiumTodayTotal" style="font-family:'Kanit'; font-weight:700; font-size:20px; color:var(--deep-sea);">0 มก. · 0%</div>
+          <p style="font-size:11.5px; color:#9aa8ab; margin:6px 0 0;">เป็นการประมาณคร่าวๆ จากรายการที่ตรวจ+เมนูที่เลือกไว้เท่านั้น ไม่ใช่ค่าที่วัดจริง</p>
+          <button class="btn btn-ghost btn-block" style="margin-top:10px;" onclick="toggleMealPicker()">🍽️ เพิ่มเมนูอาหารที่กินวันนี้</button>
+          <div id="mealPickerArea" style="display:none; margin-top:10px;">
+            <select id="mealDishSelect" style="width:100%; margin-bottom:8px;"></select>
+            <div class="sticker-row" id="mealLevelRow" style="margin-bottom:8px;"></div>
+            <button class="btn btn-primary btn-block" onclick="confirmMealEntry()">เพิ่มรายการนี้</button>
+          </div>
+        </div>
+
         <div class="section-title">รายการที่ตรวจวันนี้</div>
         <div id="checkHistoryList"><div class="empty-note">ยังไม่มีรายการที่ตรวจวันนี้</div></div>
       </div>
@@ -799,6 +876,33 @@ const storage = firebase.storage();
    CONSTANTS
    ========================================================= */
 const SODIUM_DAILY_MAX = 2000; // mg
+// เมนูอาหารไทยยอดฮิต + ค่ากลางโซเดียมโดยประมาณ (มก.)
+// หมายเหตุ: ค่าที่แม่นจริงมีแค่ ก๋วยเตี๋ยว/ส้มตำ (อ้างอิงกรมอนามัย/สื่อสุขภาพ) เมนูอื่นเป็นค่าประมาณเอง ไม่ใช่ตัวเลขวิจัยยืนยัน
+// ใช้คู่กับตัวเลือกความเค็ม (น้อย/ปานกลาง/มาก) ปรับ ±30% จากค่ากลาง
+const THAI_DISHES = [
+  {name:'ก๋วยเตี๋ยว', sodium:1800},
+  {name:'ส้มตำ', sodium:1350},
+  {name:'ผัดกะเพรา', sodium:1000},
+  {name:'ข้าวผัด', sodium:900},
+  {name:'ต้มยำ', sodium:1500},
+  {name:'แกงเขียวหวาน', sodium:1100},
+  {name:'ผัดไทย', sodium:1000},
+  {name:'ข้าวมันไก่', sodium:1200},
+  {name:'ข้าวหมูแดง/หมูกรอบ', sodium:1300},
+  {name:'สุกี้', sodium:1400},
+  {name:'ราดหน้า', sodium:1300},
+  {name:'ผัดซีอิ๊ว', sodium:1200},
+  {name:'แกงส้ม', sodium:1200},
+  {name:'ลาบ/น้ำตก', sodium:1100},
+  {name:'ก๋วยจั๊บ', sodium:1500},
+  {name:'มาม่า/บะหมี่กึ่งสำเร็จรูป (ทำกินเอง)', sodium:1500},
+  {name:'ข้าวแกงทั่วไป', sodium:900},
+  {name:'ไข่เจียว/ไข่ดาว', sodium:400},
+  {name:'ขนมปัง/แซนวิช', sodium:500},
+  {name:'อื่นๆ (ไม่แน่ใจ)', sodium:800}
+];
+const SALTY_LEVEL_MULT = {low:0.7, mid:1.0, high:1.3};
+const SALTY_LEVEL_LABEL = {low:'เค็มน้อย', mid:'ปานกลาง', high:'เค็มมาก'};
 // ออกกำลังกาย: มาจากหน้า "บันทึกรายวัน" ในสมุด (ข้อ 3)
 const EXERCISE_OPTIONS = [
   {key:'walk',   label:'เดินเร็ว',  emoji:'🚶'},
@@ -866,7 +970,7 @@ let state = {
   todaysDateStr:null, dayNumber:1, totalDays:21, targetDate:null, recallDate:null,
   condiments:{}, tastePref:null, pendingCard:null, albumCardsCache:[],
   todaysMission:null, missionPendingPhotoFile:null,
-  currentProductMatches:[], lastAiReadExtra:null,
+  currentProductMatches:[], lastAiReadExtra:null, mealSodiumEntries:[], mealPickerLevel:'mid',
   todayLog:null, // loaded/created dailyLog doc data
   todaysQuiz:[], quizIndex:0, quizAnswers:[], quizFinished:false,
   sodiumChecks:[], pendingCalc:null,
@@ -1071,7 +1175,6 @@ async function enterApp(){
   document.getElementById('mainDayLabel').textContent = 'วันที่ ' + state.dayNumber + ' / ' + state.totalDays;
   document.getElementById('hbStreak').textContent = state.selectedStudent.currentStreak || 0;
   document.getElementById('hbPoints').textContent = state.selectedStudent.totalPoints || 0;
-  goScreen('screen-main');
   switchTab('tab-check');
   await loadTodayLog();
   await loadQuiz();
@@ -1079,7 +1182,28 @@ async function enterApp(){
   await loadLeaderboards();
   renderStats();
   loadProgressTable();
-  loadAlbum();
+  await loadAlbum();
+  openHomeScreen();
+}
+
+function openHomeScreen(){
+  const s = state.selectedStudent;
+  document.getElementById('homeGreeting').textContent = 'สวัสดี ' + s.name + ' 👋';
+  document.getElementById('homeDayLabel').textContent = 'วันที่ ' + state.dayNumber + ' / ' + state.totalDays;
+  document.getElementById('homeStreak').textContent = s.currentStreak || 0;
+  document.getElementById('homePoints').textContent = s.totalPoints || 0;
+  document.getElementById('homeCards').textContent = state.albumCollectedCount || 0;
+  document.getElementById('homeSodiumToday').textContent = `${state.sodiumTodayTotal||0} มก. · ${state.sodiumTodayPct||0}%`;
+
+  const missionLabels = {pending:'⏳ รอตรวจ', approved:'✅ ผ่านแล้ว', rejected:'❌ ยังไม่ผ่าน ลองใหม่ได้', not_submitted:'ยังไม่ได้ส่ง'};
+  document.getElementById('homeMissionStatus').textContent = missionLabels[state.todaysMissionStatus] || 'ยังไม่ได้ส่ง';
+
+  goScreen('screen-home');
+}
+
+function goHomeShortcut(tabId){
+  goScreen('screen-main');
+  switchTab(tabId);
 }
 
 function logout(){
@@ -1110,6 +1234,7 @@ async function loadTodayLog(){
   const snap = await db.collection('dailyLogs').doc(logDocId()).get();
   state.todayLog = snap.exists ? snap.data() : {sodiumChecks:[]};
   state.sodiumChecks = state.todayLog.sodiumChecks || [];
+  state.mealSodiumEntries = state.todayLog.mealSodiumEntries || [];
   renderCheckHistory();
 
   // เปิดฟอร์มของ "เมื่อวาน" เป็นค่าเริ่มต้น (หลัก 24-Hour Recall) จะโหลดตัวเลือกวันหยุดที่ย้อนหลังได้ให้ในตัวด้วย
@@ -1249,6 +1374,10 @@ async function handleLabelPhoto(event){
       triggerProductMatch(); // มีชื่อแล้ว ลองหาของที่เคยตรวจไว้มาเทียบให้เลย
     }
 
+    if(data.category){
+      msgParts.push(`หมวดหมู่: <b>${data.category}</b>`);
+    }
+
     if(data.healthy_choice_logo){
       msgParts.push('💚 เห็นสัญลักษณ์ "ทางเลือกสุขภาพ" ด้วย! ระบบจะติ๊กให้อัตโนมัติตอนบันทึกพฤติกรรมของวันนี้นะ');
       // เก็บ flag ไว้ที่เอกสารของวันนี้ (docId เดียวกับที่ recall form จะมาโหลดใช้ทีหลัง)
@@ -1382,17 +1511,30 @@ function calcSodium(){
   const verdict = document.getElementById('gaugeVerdict');
   verdict.classList.remove('low','mid','high');
   const tipEl = document.getElementById('gaugeTip');
+  // เกณฑ์สีเขียว/เหลือง/แดง คงเดิมไม่แตะ (20%/40%)
   if(pct < 20){
     verdict.textContent='โซเดียมต่ำ 🟢 เลือกได้ดี!'; verdict.classList.add('low');
-    tipEl.style.display='none';
   } else if(pct < 40){
     verdict.textContent='โซเดียมปานกลาง 🟡 กินได้ แต่ระวังมื้ออื่น'; verdict.classList.add('mid');
-    tipEl.style.display='none';
   } else {
     verdict.textContent='โซเดียมสูง 🔴 ระวัง กินแต่น้อย'; verdict.classList.add('high');
-    // คำแนะนำเป็นหลักการทั่วไป ไม่เจาะจงยี่ห้อคู่แข่งเด็ดขาด
-    tipEl.textContent = '💡 ลองเทียบฉลากกับสินค้าประเภทเดียวกันยี่ห้ออื่นดูก่อนซื้อครั้งหน้านะ อาจมีตัวเลือกที่โซเดียมน้อยกว่านี้';
+  }
+  // คำแนะนำทางเลือก: ใช้เกณฑ์ FDA (≥20% DV ต่อหนึ่งหน่วยบริโภค = high sodium) แยกต่างหากจากสีเกจ
+  // คำแนะนำเป็นหลักการทั่วไป ไม่เจาะจงยี่ห้อคู่แข่งเด็ดขาด
+  if(pct >= 20){
+    tipEl.innerHTML = '💡 ลองเทียบฉลากกับสินค้าประเภทเดียวกันยี่ห้ออื่นดูก่อนซื้อครั้งหน้านะ อาจมีตัวเลือกที่โซเดียมน้อยกว่านี้';
     tipEl.style.display='block';
+  } else {
+    tipEl.style.display='none';
+  }
+  // ข้อความ "กินได้ไม่เกินวันละ X หน่วย" — โชว์เสมอทุกระดับสี พร้อม disclaimer ชัดเจน
+  const servingsEl = document.getElementById('gaugeServings');
+  if(sodium > 0){
+    const maxServings = Math.max(1, Math.floor(SODIUM_DAILY_MAX / sodium));
+    servingsEl.innerHTML = `กินได้ไม่เกินวันละ <b>${maxServings} หน่วย</b> ถึงจะไม่เกินปริมาณที่แนะนำทั้งวัน<br><span style="color:#aab5b8; font-size:11px;">(คำนวณสมมติว่าเป็นแหล่งโซเดียมเดียวทั้งวัน ยังไม่รวมมื้ออื่นที่กินไปแล้ว)</span>`;
+    servingsEl.style.display='block';
+  } else {
+    servingsEl.style.display='none';
   }
 }
 
@@ -1432,16 +1574,76 @@ async function incrementSodiumCheckCount(){
 
 function renderCheckHistory(){
   const list = document.getElementById('checkHistoryList');
-  if(state.sodiumChecks.length===0){
+  const checks = state.sodiumChecks || [];
+  const meals = state.mealSodiumEntries || [];
+
+  // ยอดรวมคร่าวๆ วันนี้ (จากรายการตรวจฉลาก + เมนูที่เลือกไว้)
+  const totalFromChecks = checks.reduce((sum,c)=> sum + (c.sodium||0), 0);
+  const totalFromMeals = meals.reduce((sum,m)=> sum + (m.estimatedSodium||0), 0);
+  const grandTotal = Math.round(totalFromChecks + totalFromMeals);
+  const grandPct = Math.round((grandTotal / SODIUM_DAILY_MAX) * 100);
+  state.sodiumTodayTotal = grandTotal;
+  state.sodiumTodayPct = grandPct;
+  document.getElementById('sodiumTodayTotal').textContent = `${grandTotal} มก. · ${grandPct}%`;
+
+  if(checks.length===0 && meals.length===0){
     list.innerHTML = '<div class="empty-note">ยังไม่มีรายการที่ตรวจวันนี้</div>';
     return;
   }
-  list.innerHTML = state.sodiumChecks.map(c=>`
+  const checkHtml = checks.map(c=>`
     <div class="check-item">
       <div class="ci-name">${c.name} <span style="color:#9aa8ab;font-weight:400;">· ${c.time||''}</span></div>
       <div class="ci-val">${c.sodium} มก. (${c.pct}%)</div>
     </div>
   `).join('');
+  const mealHtml = meals.map(m=>`
+    <div class="check-item">
+      <div class="ci-name">🍽️ ${m.dishName} (${SALTY_LEVEL_LABEL[m.level]||''}) <span style="color:#9aa8ab;font-weight:400;">· ${m.time||''}</span></div>
+      <div class="ci-val">~${m.estimatedSodium} มก.</div>
+    </div>
+  `).join('');
+  list.innerHTML = mealHtml + checkHtml;
+}
+
+/* ---- เมนูอาหารไทย: ประมาณโซเดียมคร่าวๆ จากมื้ออาหารที่กิน ---- */
+function toggleMealPicker(){
+  const area = document.getElementById('mealPickerArea');
+  const isOpen = area.style.display === 'block';
+  if(isOpen){ area.style.display = 'none'; return; }
+  area.style.display = 'block';
+  const select = document.getElementById('mealDishSelect');
+  select.innerHTML = THAI_DISHES.map(d => `<option value="${d.name}">${d.name}</option>`).join('');
+  renderMealLevelRow('mid');
+}
+function renderMealLevelRow(selectedLevel){
+  const row = document.getElementById('mealLevelRow');
+  row.innerHTML = '';
+  const levels = [{key:'low',emoji:'🙂'},{key:'mid',emoji:'😐'},{key:'high',emoji:'🥵'}];
+  levels.forEach(l=>{
+    row.appendChild(stickerButton(l.key, l.emoji, SALTY_LEVEL_LABEL[l.key], l.key===selectedLevel, ()=>{
+      state.mealPickerLevel = l.key;
+      renderMealLevelRow(l.key);
+    }));
+  });
+  state.mealPickerLevel = selectedLevel;
+}
+async function confirmMealEntry(){
+  const dishName = document.getElementById('mealDishSelect').value;
+  const level = state.mealPickerLevel || 'mid';
+  const dish = THAI_DISHES.find(d => d.name === dishName);
+  if(!dish) return;
+  const estimatedSodium = Math.round(dish.sodium * (SALTY_LEVEL_MULT[level] || 1));
+  const entry = { dishName, level, estimatedSodium, time: new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'}) };
+  state.mealSodiumEntries.push(entry);
+  await db.collection('dailyLogs').doc(logDocId()).set({
+    studentId: state.selectedStudent.id,
+    classId: state.selectedClassId,
+    date: state.todaysDateStr,
+    mealSodiumEntries: state.mealSodiumEntries
+  }, {merge:true});
+  document.getElementById('mealPickerArea').style.display = 'none';
+  renderCheckHistory();
+  showToast(`เพิ่ม ${dishName} แล้ว 🍽️`);
 }
 
 /* ---- Quiz ---- */
@@ -1479,6 +1681,7 @@ async function loadMission(){
 
     const subSnap = await db.collection('missionSubmissions').doc(state.selectedStudent.id + '_' + state.todaysDateStr).get();
     const sub = subSnap.exists ? subSnap.data() : null;
+    state.todaysMissionStatus = sub ? sub.status : 'not_submitted';
     renderMissionUI(mission, sub);
   }catch(e){
     console.error(e);
@@ -2214,6 +2417,7 @@ async function loadAlbum(){
     state.albumCardsCache = allCards;
 
     const collectedRegularCount = regularCards.filter(c=>collectedIds.includes(c.id)).length;
+    state.albumCollectedCount = collectedRegularCount + (specialCard && collectedIds.includes(specialCard.id) ? 1 : 0);
     progEl.textContent = `เก็บแล้ว ${collectedRegularCount}/${regularCards.length} ใบ` + (specialCard ? (collectedIds.includes(specialCard.id) ? ' 🌟 + การ์ดพิเศษ' : '') : '');
 
     // จัดกลุ่มเป็น "ชั้น" ตามหมวดหมู่ เรียงตามลำดับสีที่กำหนดไว้ + หมวดอื่น ๆ ที่ไม่อยู่ในลิสต์ต่อท้าย
