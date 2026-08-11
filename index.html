@@ -215,6 +215,7 @@
   .verdict.low{background:#E4F5EC; color:var(--green-ok);}
   .verdict.mid{background:#FBF0DC; color:var(--amber-warn);}
   .verdict.high{background:#FBE6E2; color:var(--red-high);}
+  .gauge-tip{font-size:12.5px; color:#6b7c80; line-height:1.5; margin-top:10px; text-align:center;}
 
   .field{margin-bottom:14px;}
   .field label{font-size:13.5px; font-weight:600; color:#4c5c60; display:block; margin-bottom:6px;}
@@ -547,6 +548,7 @@
             <div class="gauge-num" id="gaugePct">0%</div>
             <div class="gauge-label">ของปริมาณโซเดียมที่แนะนำต่อวัน (2,000 มก.)</div>
             <div class="verdict" id="gaugeVerdict">-</div>
+            <div class="gauge-tip" id="gaugeTip" style="display:none;"></div>
           </div>
           <button class="btn btn-coral btn-block" style="margin-top:14px;" onclick="saveSodiumCheck()">บันทึกรายการนี้</button>
         </div>
@@ -1253,11 +1255,12 @@ async function handleLabelPhoto(event){
       await db.collection('dailyLogs').doc(logDocId()).set({ aiDetectedHealthyChoice: true }, { merge:true });
     }
 
-    // เก็บค่าพลังงาน/น้ำตาล/ไขมันไว้ใช้ตอนบันทึกยืนยัน (ไม่ได้โชว์ในหน้าจอ แค่ช่วยแยกสินค้าชื่อคล้ายกันในฐานข้อมูลกลาง)
+    // เก็บค่าพลังงาน/น้ำตาล/ไขมัน/หมวดหมู่ไว้ใช้ตอนบันทึกยืนยัน (ไม่ได้โชว์ในหน้าจอ แค่ช่วยแยกสินค้าชื่อคล้ายกัน + ทำรายงานตามหมวดหมู่)
     state.lastAiReadExtra = {
       energyKcal: data.energy_kcal ?? null,
       sugarG: data.sugar_g ?? null,
-      fatG: data.fat_g ?? null
+      fatG: data.fat_g ?? null,
+      category: data.category || null
     };
 
     statusEl.innerHTML = msgParts.join(' · ') + (data.note ? `<br><span style="color:#aab5b8;">${data.note}</span>` : '') + `<br><span style="color:#aab5b8;">(เหลือ ${data.remainingToday} ครั้งวันนี้)</span>`;
@@ -1331,6 +1334,9 @@ function selectProductSuggestion(i){
   document.getElementById('ciName').value = m.name;
   document.getElementById('ciSodium').value = m.sodiumMg;
   document.getElementById('productSuggestions').innerHTML = '';
+  state.lastAiReadExtra = {
+    energyKcal: m.energyKcal ?? null, sugarG: m.sugarG ?? null, fatG: m.fatG ?? null, category: m.category ?? null
+  };
 }
 function dismissProductSuggestions(){
   document.getElementById('productSuggestions').innerHTML = '';
@@ -1344,6 +1350,7 @@ async function upsertVerifiedProduct(name, sodium, extra){
     if (extra.energyKcal != null) extraFields.energyKcal = extra.energyKcal;
     if (extra.sugarG != null) extraFields.sugarG = extra.sugarG;
     if (extra.fatG != null) extraFields.fatG = extra.fatG;
+    if (extra.category != null) extraFields.category = extra.category;
 
     if (exact) {
       const newCount = (exact.timesChecked || 1) + 1;
@@ -1354,7 +1361,8 @@ async function upsertVerifiedProduct(name, sodium, extra){
     } else {
       const ref = await db.collection('verifiedProducts').add({
         name, sodiumMg: sodium, timesChecked: 1, lastCheckedAt: new Date().toISOString(),
-        energyKcal: extra.energyKcal ?? null, sugarG: extra.sugarG ?? null, fatG: extra.fatG ?? null
+        energyKcal: extra.energyKcal ?? null, sugarG: extra.sugarG ?? null, fatG: extra.fatG ?? null,
+        category: extra.category ?? null
       });
       products.push({ id: ref.id, name, sodiumMg: sodium, timesChecked: 1 });
     }
@@ -1373,14 +1381,25 @@ function calcSodium(){
   document.getElementById('shakerFill').style.height = Math.min(pct,100) + '%';
   const verdict = document.getElementById('gaugeVerdict');
   verdict.classList.remove('low','mid','high');
-  if(pct < 20){ verdict.textContent='โซเดียมต่ำ 🟢 เลือกได้ดี!'; verdict.classList.add('low'); }
-  else if(pct < 40){ verdict.textContent='โซเดียมปานกลาง 🟡 กินได้ แต่ระวังมื้ออื่น'; verdict.classList.add('mid'); }
-  else { verdict.textContent='โซเดียมสูง 🔴 ระวัง กินแต่น้อย'; verdict.classList.add('high'); }
+  const tipEl = document.getElementById('gaugeTip');
+  if(pct < 20){
+    verdict.textContent='โซเดียมต่ำ 🟢 เลือกได้ดี!'; verdict.classList.add('low');
+    tipEl.style.display='none';
+  } else if(pct < 40){
+    verdict.textContent='โซเดียมปานกลาง 🟡 กินได้ แต่ระวังมื้ออื่น'; verdict.classList.add('mid');
+    tipEl.style.display='none';
+  } else {
+    verdict.textContent='โซเดียมสูง 🔴 ระวัง กินแต่น้อย'; verdict.classList.add('high');
+    // คำแนะนำเป็นหลักการทั่วไป ไม่เจาะจงยี่ห้อคู่แข่งเด็ดขาด
+    tipEl.textContent = '💡 ลองเทียบฉลากกับสินค้าประเภทเดียวกันยี่ห้ออื่นดูก่อนซื้อครั้งหน้านะ อาจมีตัวเลือกที่โซเดียมน้อยกว่านี้';
+    tipEl.style.display='block';
+  }
 }
 
 async function saveSodiumCheck(){
   if(!state.pendingCalc) return;
-  state.sodiumChecks.push({...state.pendingCalc, time: new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'})});
+  const category = (state.lastAiReadExtra && state.lastAiReadExtra.category) || null;
+  state.sodiumChecks.push({...state.pendingCalc, category, time: new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'})});
   await db.collection('dailyLogs').doc(logDocId()).set({
     studentId: state.selectedStudent.id,
     classId: state.selectedClassId,
