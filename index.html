@@ -73,11 +73,13 @@
   .brand-row{display:flex; align-items:center; gap:12px; max-width:900px; margin:0 auto; position:relative; z-index:1;}
   .brand-mark{
     width:44px;height:44px;border-radius:12px;
-    background:var(--coral);
+    background:var(--salt-white);
     display:flex;align-items:center;justify-content:center;
     font-size:22px; flex-shrink:0;
-    box-shadow:0 6px 14px rgba(244,162,97,0.4);
+    box-shadow:0 6px 14px rgba(0,0,0,0.2);
+    overflow:hidden;
   }
+  .brand-mark img{width:100%;height:100%;object-fit:cover;display:block;}
   .brand-title{font-family:'Kanit'; font-weight:700; font-size:19px; letter-spacing:.2px;}
   .brand-sub{font-size:12.5px; opacity:.85; margin-top:1px;}
 
@@ -460,7 +462,7 @@
 <div class="screen" id="screen-class">
   <div class="brandbar">
     <div class="brand-row">
-      <div class="brand-mark">🧂</div>
+      <div class="brand-mark"><img src="logo.png" alt="Salt Smart"></div>
       <div>
         <div class="brand-title">Salt Smart</div>
         <div class="brand-sub">รู้เท่าทันความเค็ม เติมเต็มสุขภาพ · 21 Day Challenge</div>
@@ -480,7 +482,7 @@
 <div class="screen" id="screen-student">
   <div class="brandbar">
     <div class="brand-row">
-      <div class="brand-mark">🧂</div>
+      <div class="brand-mark"><img src="logo.png" alt="Salt Smart"></div>
       <div>
         <div class="brand-title">Salt Smart</div>
         <div class="brand-sub" id="studentBrandSub">เลือกชื่อของเรา</div>
@@ -555,6 +557,7 @@
     <div class="section-title">ทางลัด</div>
     <div class="home-shortcut-grid">
       <div class="home-shortcut" onclick="goHomeShortcut('tab-check')"><div class="hs-icon">🔍</div><div class="hs-label">ตรวจฉลาก</div></div>
+      <div class="home-shortcut" onclick="goHomeShortcut('tab-today')"><div class="hs-icon">🧂</div><div class="hs-label">โซเดียมวันนี้</div></div>
       <div class="home-shortcut" onclick="goHomeShortcut('tab-quiz')"><div class="hs-icon">❓</div><div class="hs-label">Quiz</div></div>
       <div class="home-shortcut" onclick="goHomeShortcut('tab-log')"><div class="hs-icon">📝</div><div class="hs-label">บันทึกวันนี้</div></div>
       <div class="home-shortcut" onclick="goHomeShortcut('tab-album')"><div class="hs-icon">🎴</div><div class="hs-label">การ์ด</div></div>
@@ -618,7 +621,10 @@
           <button class="btn btn-coral btn-block" style="margin-top:14px;" onclick="saveSodiumCheck()">บันทึกรายการนี้</button>
         </div>
       </div>
+    </div>
 
+    <!-- TAB: TODAY'S SODIUM TRACKER -->
+    <div class="tabpanel" id="tab-today">
       <div class="check-history">
         <div class="section-title">🧂 รวมโซเดียมวันนี้ (คร่าวๆ)</div>
         <div class="card" id="sodiumTodayCard" style="background:var(--sand);">
@@ -634,6 +640,7 @@
 
         <div class="section-title">รายการที่ตรวจวันนี้</div>
         <div id="checkHistoryList"><div class="empty-note">ยังไม่มีรายการที่ตรวจวันนี้</div></div>
+        <button class="btn btn-ghost btn-block" style="margin-top:14px;" onclick="switchTab('tab-check')">📷 ไปตรวจฉลากเพิ่ม</button>
       </div>
     </div>
 
@@ -762,6 +769,7 @@
 
   <div class="tabbar">
     <div class="tabbtn active" data-tab="tab-check" onclick="switchTab('tab-check')"><span class="ic">🔍</span>ตรวจฉลาก</div>
+    <div class="tabbtn" data-tab="tab-today" onclick="switchTab('tab-today')"><span class="ic">🧂</span>วันนี้</div>
     <div class="tabbtn" data-tab="tab-quiz" onclick="switchTab('tab-quiz')"><span class="ic">❓</span>Quiz</div>
     <div class="tabbtn" data-tab="tab-mission" onclick="switchTab('tab-mission')"><span class="ic">🎯</span>ภารกิจ</div>
     <div class="tabbtn" data-tab="tab-log" onclick="switchTab('tab-log')"><span class="ic">📝</span>บันทึกวันนี้</div>
@@ -1008,10 +1016,26 @@ function showToast(msg){
   setTimeout(()=>t.classList.remove('show'), 2200);
 }
 
-function goScreen(id){
+/* ---- ระบบจดจำประวัติหน้าจอ ให้ปุ่ม back ของ browser เดินย้อนกลับในแอปแทนที่จะหลุดออกไปเลย ---- */
+function currentTabId(){
+  const el = document.querySelector('.tabpanel.active');
+  return el ? el.id : null;
+}
+function goScreen(id, skipHistory){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
+  if(!skipHistory){
+    history.pushState({screen:id, tab:(id==='screen-main' ? currentTabId() : null)}, '', '');
+  }
 }
+window.addEventListener('popstate', (e)=>{
+  const st = e.state;
+  if(!st || !st.screen) return; // ไม่มี state แปลว่าถอยสุดขอบแอปแล้ว ปล่อยให้ browser ออกจากหน้าตามปกติ
+  goScreen(st.screen, true);
+  if(st.screen === 'screen-main' && st.tab){
+    switchTab(st.tab, true);
+  }
+});
 
 /* =========================================================
    INIT
@@ -1202,7 +1226,7 @@ function openHomeScreen(){
 }
 
 function goHomeShortcut(tabId){
-  goScreen('screen-main');
+  goScreen('screen-main', true); // true = ไม่ต้อง push history ตรงนี้ ให้ switchTab ด้านล่าง push แทนทีเดียว (กันประวัติซ้ำ 2 ชั้นจากการกดครั้งเดียว)
   switchTab(tabId);
 }
 
@@ -1214,11 +1238,15 @@ function logout(){
   goScreen('screen-student');
 }
 
-function switchTab(tabId){
+function switchTab(tabId, skipHistory){
   document.querySelectorAll('.tabpanel').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.tabbtn').forEach(b=>b.classList.remove('active'));
   document.getElementById(tabId).classList.add('active');
-  document.querySelector(`.tabbtn[data-tab="${tabId}"]`).classList.add('active');
+  const btn = document.querySelector(`.tabbtn[data-tab="${tabId}"]`);
+  if(btn) btn.classList.add('active'); // tab-check ไม่มีปุ่มในแถบล่าง เข้าถึงผ่าน home shortcut เท่านั้น จึงต้องกันไว้เผื่อ null
+  if(!skipHistory){
+    history.pushState({screen:'screen-main', tab:tabId}, '', '');
+  }
 }
 
 /* ---- Log doc for a given date (today, or a backfilled past date) ---- */
