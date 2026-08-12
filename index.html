@@ -521,53 +521,6 @@
   </div>
 </div>
 
-<!-- ================= SCREEN: HOME (แดชบอร์ดสรุป โชว์หลังล็อกอินทุกครั้ง) ================= -->
-<div class="screen" id="screen-home">
-  <div class="headerbar">
-    <div>
-      <div class="hb-name" id="homeGreeting">สวัสดี!</div>
-      <div class="hb-day" id="homeDayLabel">Day 1 / 21</div>
-    </div>
-    <div class="hb-stat">
-      <div class="backlink" style="margin:0;" onclick="logout()">ออก</div>
-    </div>
-  </div>
-  <div class="wrap" style="padding-top:18px;">
-    <div class="stat-grid">
-      <div class="mini-stat"><div class="num" id="homeStreak">0</div><div class="lbl">วันต่อเนื่อง 🔥</div></div>
-      <div class="mini-stat"><div class="num" id="homePoints">0</div><div class="lbl">คะแนนสะสม ⭐</div></div>
-      <div class="mini-stat"><div class="num" id="homeCards">0</div><div class="lbl">การ์ดสะสม 🎴</div></div>
-    </div>
-
-    <div class="home-card" onclick="goHomeShortcut('tab-check')">
-      <div>
-        <div class="home-card-label">โซเดียมวันนี้ (คร่าวๆ)</div>
-        <div class="home-card-value" id="homeSodiumToday">0 มก. · 0%</div>
-      </div>
-      <div class="home-card-arrow">🧂 ›</div>
-    </div>
-
-    <div class="home-card" onclick="goHomeShortcut('tab-mission')">
-      <div>
-        <div class="home-card-label">ภารกิจวันนี้</div>
-        <div class="home-card-value" id="homeMissionStatus">-</div>
-      </div>
-      <div class="home-card-arrow">🎯 ›</div>
-    </div>
-
-    <div class="section-title">ทางลัด</div>
-    <div class="home-shortcut-grid">
-      <div class="home-shortcut" onclick="goHomeShortcut('tab-check')"><div class="hs-icon">🔍</div><div class="hs-label">ตรวจฉลาก</div></div>
-      <div class="home-shortcut" onclick="goHomeShortcut('tab-today')"><div class="hs-icon">🧂</div><div class="hs-label">โซเดียมวันนี้</div></div>
-      <div class="home-shortcut" onclick="goHomeShortcut('tab-quiz')"><div class="hs-icon">❓</div><div class="hs-label">Quiz</div></div>
-      <div class="home-shortcut" onclick="goHomeShortcut('tab-log')"><div class="hs-icon">📝</div><div class="hs-label">บันทึกวันนี้</div></div>
-      <div class="home-shortcut" onclick="goHomeShortcut('tab-album')"><div class="hs-icon">🎴</div><div class="hs-label">การ์ด</div></div>
-      <div class="home-shortcut" onclick="goHomeShortcut('tab-stats')"><div class="hs-icon">🏆</div><div class="hs-label">สถิติ</div></div>
-      <div class="home-shortcut" onclick="openHealthScreen()"><div class="hs-icon">🩺</div><div class="hs-label">สุขภาพ</div></div>
-    </div>
-  </div>
-</div>
-
 <!-- ================= SCREEN: MAIN APP ================= -->
 <div class="screen" id="screen-main">
   <div class="headerbar">
@@ -578,13 +531,64 @@
     <div class="hb-stat">
       <div class="stat-pill">🔥 <span id="hbStreak">0</span></div>
       <div class="stat-pill">⭐ <span id="hbPoints">0</span></div>
-      <div class="health-icon-btn" onclick="openHomeScreen()" title="หน้าหลัก">🏠</div>
       <div class="health-icon-btn" onclick="openHealthScreen()" title="สุขภาพของฉัน">🩺</div>
       <div class="backlink" style="margin:0;" onclick="logout()">ออก</div>
     </div>
   </div>
 
   <div class="wrap" style="padding-top:18px;">
+
+    <!-- TAB: HOME (ย้ายมาจาก screen-home เดิม เพื่อรวมเป็นแท็บเดียวในระบบเดียวกับแท็บอื่น) -->
+    <div class="tabpanel" id="tab-home">
+      <div class="section-title" id="homeGreeting" style="font-size:16px;">สวัสดี! 👋</div>
+      <div class="stat-grid">
+        <div class="mini-stat"><div class="num" id="homeStreak">0</div><div class="lbl">วันต่อเนื่อง 🔥</div></div>
+        <div class="mini-stat"><div class="num" id="homePoints">0</div><div class="lbl">คะแนนสะสม ⭐</div></div>
+        <div class="mini-stat"><div class="num" id="homeCards">0</div><div class="lbl">การ์ดสะสม 🎴</div></div>
+      </div>
+
+      <div class="home-card" onclick="switchTab('tab-sodium-hub')">
+        <div>
+          <div class="home-card-label">โซเดียมวันนี้ (คร่าวๆ)</div>
+          <div class="home-card-value" id="homeSodiumToday">0 มก. · 0%</div>
+        </div>
+        <div class="home-card-arrow">🧂 ›</div>
+      </div>
+
+      <div class="home-card" onclick="switchTab('tab-mission-hub')">
+        <div>
+          <div class="home-card-label">ภารกิจวันนี้</div>
+          <div class="home-card-value" id="homeMissionStatus">-</div>
+        </div>
+        <div class="home-card-arrow">🎯 ›</div>
+      </div>
+
+      <div class="section-title">ทางลัด</div>
+      <div class="home-shortcut-grid">
+        <div class="home-shortcut" onclick="goHomeShortcut('tab-check')"><div class="hs-icon">🔍</div><div class="hs-label">ตรวจฉลาก</div></div>
+        <div class="home-shortcut" onclick="goHomeShortcut('tab-today')"><div class="hs-icon">🧂</div><div class="hs-label">เพิ่มอาหารที่กิน</div></div>
+      </div>
+    </div>
+
+    <!-- TAB: SODIUM HUB (รวม ตรวจฉลาก + โซเดียมวันนี้ เข้าด้วยกันเป็นทางเข้าเดียว) -->
+    <div class="tabpanel" id="tab-sodium-hub">
+      <div class="section-title">🧂 โซเดียม</div>
+      <p style="color:#6b7c80; font-size:13px; margin-top:-8px;">ตรวจ เช็ก และติดตามโซเดียมในแต่ละวัน</p>
+      <div class="home-card" onclick="switchTab('tab-check')">
+        <div>
+          <div class="home-card-label">ตรวจฉลากอาหาร</div>
+          <div class="home-card-value">📷 สแกน/กรอกเพื่อดูโซเดียม</div>
+        </div>
+        <div class="home-card-arrow">🔍 ›</div>
+      </div>
+      <div class="home-card" onclick="switchTab('tab-today')">
+        <div>
+          <div class="home-card-label">โซเดียมวันนี้ (คร่าวๆ)</div>
+          <div class="home-card-value" id="hubSodiumToday">0 มก. · 0%</div>
+        </div>
+        <div class="home-card-arrow">🧂 ›</div>
+      </div>
+    </div>
 
     <!-- TAB: CHECK LABEL -->
     <div class="tabpanel" id="tab-check">
@@ -642,6 +646,33 @@
         <div class="section-title">รายการที่ตรวจวันนี้</div>
         <div id="checkHistoryList"><div class="empty-note">ยังไม่มีรายการที่ตรวจวันนี้</div></div>
         <button class="btn btn-ghost btn-block" style="margin-top:14px;" onclick="switchTab('tab-check')">📷 ไปตรวจฉลากเพิ่ม</button>
+      </div>
+    </div>
+
+    <!-- TAB: MISSION HUB (รวม ภารกิจ + Quiz + บันทึกวันนี้ เข้าด้วยกันเป็นทางเข้าเดียว) -->
+    <div class="tabpanel" id="tab-mission-hub">
+      <div class="section-title">🎯 ภารกิจ</div>
+      <p style="color:#6b7c80; font-size:13px; margin-top:-8px;">สิ่งที่นักเรียนควรทำเป็นประจำทุกวัน</p>
+      <div class="home-card" onclick="switchTab('tab-mission')">
+        <div>
+          <div class="home-card-label">ภารกิจประจำวัน</div>
+          <div class="home-card-value" id="hubMissionStatus">-</div>
+        </div>
+        <div class="home-card-arrow">🎯 ›</div>
+      </div>
+      <div class="home-card" onclick="switchTab('tab-quiz')">
+        <div>
+          <div class="home-card-label">Quiz ประจำวัน</div>
+          <div class="home-card-value" id="hubQuizStatus">-</div>
+        </div>
+        <div class="home-card-arrow">❓ ›</div>
+      </div>
+      <div class="home-card" onclick="switchTab('tab-log')">
+        <div>
+          <div class="home-card-label">บันทึกวันนี้</div>
+          <div class="home-card-value" id="hubLogStatus">-</div>
+        </div>
+        <div class="home-card-arrow">📝 ›</div>
       </div>
     </div>
 
@@ -729,17 +760,16 @@
     </div>
 
 
-    <!-- TAB: STATS -->
+    <!-- TAB: PROGRESS (เดิมชื่อ สถิติ) -->
     <div class="tabpanel" id="tab-stats">
       <div class="card">
-        <h3 style="margin-top:0;">🏆 สถิติของฉัน</h3>
+        <h3 style="margin-top:0;">📈 ความก้าวหน้าของฉัน</h3>
         <div class="stat-grid">
           <div class="mini-stat"><div class="num" id="stStreak">0</div><div class="lbl">วันต่อเนื่อง 🔥</div></div>
           <div class="mini-stat"><div class="num" id="stPoints">0</div><div class="lbl">คะแนนสะสม ⭐</div></div>
           <div class="mini-stat"><div class="num" id="stDays">0/21</div><div class="lbl">วันที่ทำสำเร็จ</div></div>
           <div class="mini-stat"><div class="num" id="stQuiz">0%</div><div class="lbl">ความแม่นยำ Quiz</div></div>
         </div>
-        <div id="badgeArea" style="margin-top:14px;"></div>
       </div>
 
       <div class="section-title">📅 ตารางความก้าวหน้า</div>
@@ -755,8 +785,12 @@
       <div class="card" id="schoolLeaderboard"><div class="empty-note">กำลังโหลด…</div></div>
     </div>
 
-    <!-- TAB: ALBUM -->
+    <!-- TAB: REWARDS (เดิมชื่อ การ์ด — ย้าย badgeArea มารวมไว้ที่นี่ด้วย ตามหมวดใหม่ "รางวัล") -->
     <div class="tabpanel" id="tab-album">
+      <div class="card">
+        <h3 style="margin-top:0;">🏅 เหรียญรางวัลของฉัน</h3>
+        <div id="badgeArea"></div>
+      </div>
       <div class="card" style="text-align:center;">
         <h3 style="margin-top:0;">🎴 ห้องเก็บการ์ด</h3>
         <div id="albumProgress" style="font-family:'Kanit'; font-weight:700; color:var(--lagoon);">กำลังโหลด…</div>
@@ -769,13 +803,11 @@
   </div>
 
   <div class="tabbar">
-    <div class="tabbtn active" data-tab="tab-check" onclick="switchTab('tab-check')"><span class="ic">🔍</span>ตรวจฉลาก</div>
-    <div class="tabbtn" data-tab="tab-today" onclick="switchTab('tab-today')"><span class="ic">🧂</span>วันนี้</div>
-    <div class="tabbtn" data-tab="tab-quiz" onclick="switchTab('tab-quiz')"><span class="ic">❓</span>Quiz</div>
-    <div class="tabbtn" data-tab="tab-mission" onclick="switchTab('tab-mission')"><span class="ic">🎯</span>ภารกิจ</div>
-    <div class="tabbtn" data-tab="tab-log" onclick="switchTab('tab-log')"><span class="ic">📝</span>บันทึกวันนี้</div>
-    <div class="tabbtn" data-tab="tab-album" onclick="switchTab('tab-album')"><span class="ic">🎴</span>การ์ด</div>
-    <div class="tabbtn" data-tab="tab-stats" onclick="switchTab('tab-stats')"><span class="ic">🏆</span>สถิติ</div>
+    <div class="tabbtn active" data-tab="tab-home" onclick="switchTab('tab-home')"><span class="ic">🏠</span>Home</div>
+    <div class="tabbtn" data-tab="tab-mission-hub" onclick="switchTab('tab-mission-hub')"><span class="ic">🎯</span>ภารกิจ</div>
+    <div class="tabbtn" data-tab="tab-sodium-hub" onclick="switchTab('tab-sodium-hub')"><span class="ic">🧂</span>โซเดียม</div>
+    <div class="tabbtn" data-tab="tab-album" onclick="switchTab('tab-album')"><span class="ic">🎁</span>รางวัล</div>
+    <div class="tabbtn" data-tab="tab-stats" onclick="switchTab('tab-stats')"><span class="ic">📈</span>ความก้าวหน้า</div>
   </div>
 </div>
 
@@ -1200,7 +1232,6 @@ async function enterApp(){
   document.getElementById('mainDayLabel').textContent = 'วันที่ ' + state.dayNumber + ' / ' + state.totalDays;
   document.getElementById('hbStreak').textContent = state.selectedStudent.currentStreak || 0;
   document.getElementById('hbPoints').textContent = state.selectedStudent.totalPoints || 0;
-  switchTab('tab-check');
   await loadTodayLog();
   await loadQuiz();
   await loadMission();
@@ -1208,13 +1239,17 @@ async function enterApp(){
   renderStats();
   loadProgressTable();
   await loadAlbum();
-  openHomeScreen();
+  refreshHomeTab();
+  refreshMissionHub();
+  refreshSodiumHub();
+  switchTab('tab-home', true); // ตั้งค่าแท็บเริ่มต้น ไม่ push history ตรงนี้ ให้ goScreen ด้านล่าง push รวมทีเดียว
+  goScreen('screen-main');
 }
 
-function openHomeScreen(){
+// อัปเดตข้อมูลสรุปในแท็บ Home (เดิมคือ openHomeScreen ของ screen-home ที่แยกไว้ต่างหาก)
+function refreshHomeTab(){
   const s = state.selectedStudent;
   document.getElementById('homeGreeting').textContent = 'สวัสดี ' + s.name + ' 👋';
-  document.getElementById('homeDayLabel').textContent = 'วันที่ ' + state.dayNumber + ' / ' + state.totalDays;
   document.getElementById('homeStreak').textContent = s.currentStreak || 0;
   document.getElementById('homePoints').textContent = s.totalPoints || 0;
   document.getElementById('homeCards').textContent = state.albumCollectedCount || 0;
@@ -1222,8 +1257,19 @@ function openHomeScreen(){
 
   const missionLabels = {pending:'⏳ รอตรวจ', approved:'✅ ผ่านแล้ว', rejected:'❌ ยังไม่ผ่าน ลองใหม่ได้', not_submitted:'ยังไม่ได้ส่ง'};
   document.getElementById('homeMissionStatus').textContent = missionLabels[state.todaysMissionStatus] || 'ยังไม่ได้ส่ง';
+}
 
-  goScreen('screen-home');
+// อัปเดตสถานะย่อในแท็บฮับ "ภารกิจ" (ภารกิจ/Quiz/บันทึกวันนี้ รวมเป็นทางเข้าเดียว)
+function refreshMissionHub(){
+  const missionLabels = {pending:'⏳ รอตรวจ', approved:'✅ ผ่านแล้ว', rejected:'❌ ยังไม่ผ่าน ลองใหม่ได้', not_submitted:'ยังไม่ได้ส่ง'};
+  document.getElementById('hubMissionStatus').textContent = missionLabels[state.todaysMissionStatus] || 'ยังไม่ได้ส่ง';
+  document.getElementById('hubQuizStatus').textContent = state.quizFinished ? '✅ ทำแล้ว' : 'ยังไม่ได้ทำ';
+  document.getElementById('hubLogStatus').textContent = (state.targetLog && state.targetLog.submitted) ? '✅ บันทึกแล้ว' : 'ยังไม่ได้บันทึก';
+}
+
+// อัปเดตยอดโซเดียมในแท็บฮับ "โซเดียม" (ตรวจฉลาก + โซเดียมวันนี้ รวมเป็นทางเข้าเดียว)
+function refreshSodiumHub(){
+  document.getElementById('hubSodiumToday').textContent = `${state.sodiumTodayTotal||0} มก. · ${state.sodiumTodayPct||0}%`;
 }
 
 function goHomeShortcut(tabId){
@@ -1244,7 +1290,11 @@ function switchTab(tabId, skipHistory){
   document.querySelectorAll('.tabbtn').forEach(b=>b.classList.remove('active'));
   document.getElementById(tabId).classList.add('active');
   const btn = document.querySelector(`.tabbtn[data-tab="${tabId}"]`);
-  if(btn) btn.classList.add('active'); // tab-check ไม่มีปุ่มในแถบล่าง เข้าถึงผ่าน home shortcut เท่านั้น จึงต้องกันไว้เผื่อ null
+  if(btn) btn.classList.add('active'); // tab-check/tab-today/tab-quiz/tab-mission/tab-log ไม่มีปุ่มในแถบล่างเอง เข้าถึงผ่านแท็บฮับหรือ home shortcut เท่านั้น จึงต้องกันไว้เผื่อ null
+  // รีเฟรชข้อมูลสรุปให้ทันใหม่ทุกครั้งที่กลับเข้าแท็บ Home / แท็บฮับ (เผื่อเพิ่งทำกิจกรรมอื่นมาแล้วค่ายังไม่อัปเดต)
+  if(tabId==='tab-home') refreshHomeTab();
+  if(tabId==='tab-mission-hub') refreshMissionHub();
+  if(tabId==='tab-sodium-hub') refreshSodiumHub();
   if(!skipHistory){
     history.pushState({screen:'screen-main', tab:tabId}, '', '');
   }
@@ -1586,6 +1636,7 @@ async function saveSodiumCheck(){
   state.pendingCalc=null;
   state.lastAiReadExtra=null;
   renderCheckHistory();
+  refreshSodiumHub(); refreshHomeTab(); // อัปเดตยอดโซเดียมในแท็บฮับ+Home ทันทีหลังบันทึกรายการที่ตรวจ
   await addPoints(3);
   await incrementSodiumCheckCount();
   showToast('บันทึกแล้ว! +3 คะแนน');
@@ -1672,6 +1723,7 @@ async function confirmMealEntry(){
   }, {merge:true});
   document.getElementById('mealPickerArea').style.display = 'none';
   renderCheckHistory();
+  refreshSodiumHub(); refreshHomeTab(); // อัปเดตยอดโซเดียมในแท็บฮับ+Home ทันทีหลังเพิ่มเมนูอาหาร
   showToast(`เพิ่ม ${dishName} แล้ว 🍽️`);
 }
 
@@ -1712,6 +1764,7 @@ async function loadMission(){
     const sub = subSnap.exists ? subSnap.data() : null;
     state.todaysMissionStatus = sub ? sub.status : 'not_submitted';
     renderMissionUI(mission, sub);
+    refreshMissionHub(); refreshHomeTab(); // อัปเดตสถานะย่อในแท็บฮับภารกิจ+Home ให้ตรงกันทุกครั้งที่โหลด/ส่งภารกิจใหม่
   }catch(e){
     console.error(e);
     bodyEl.innerHTML = '<div class="empty-note">โหลดภารกิจไม่สำเร็จ</div>';
@@ -1878,6 +1931,7 @@ async function finishQuiz(){
   }, {merge:true});
   await addPoints(points);
   renderQuizDone();
+  refreshMissionHub(); refreshHomeTab(); // อัปเดตสถานะ Quiz ในแท็บฮับภารกิจ+Home ทันทีหลังทำเสร็จ
 }
 
 function renderQuizDone(){
@@ -2077,6 +2131,7 @@ async function submitDailyLog(){
   showToast(targetDate===state.recallDate ? `เยี่ยม! ได้ ${points} คะแนน 🎉` : `บันทึกย้อนหลังสำเร็จ! ได้ ${points} คะแนน 🎉`);
   renderStats();
   await renderBackfillChips();
+  refreshMissionHub(); refreshHomeTab(); // อัปเดตสถานะบันทึกวันนี้ในแท็บฮับภารกิจ+Home ทันทีหลังบันทึกสำเร็จ
   showKnowledgeCard();
 }
 
