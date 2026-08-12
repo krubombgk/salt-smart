@@ -310,8 +310,9 @@
   }
   .sticker-circle{
     width:56px; height:56px; border-radius:50%; display:flex; align-items:center; justify-content:center;
-    font-size:26px; border:2.5px solid #E4DFCF; background:#fff; transition:all .12s ease;
+    font-size:26px; border:2.5px solid #E4DFCF; background:#fff; transition:all .12s ease; overflow:hidden;
   }
+  .sticker-circle img{width:100%; height:100%; object-fit:cover; display:block;}
   .sticker-btn .sticker-label{font-size:11.5px; font-weight:600; color:var(--deep-sea); text-align:center; line-height:1.25;}
   .sticker-btn.active .sticker-circle{border-color:var(--lagoon); background:var(--lagoon-light); box-shadow:0 4px 10px rgba(42,157,143,0.35); transform:scale(1.06);}
   .sticker-btn.active .sticker-label{color:var(--lagoon);}
@@ -913,22 +914,22 @@ const SALTY_LEVEL_MULT = {low:0.7, mid:1.0, high:1.3};
 const SALTY_LEVEL_LABEL = {low:'เค็มน้อย', mid:'ปานกลาง', high:'เค็มมาก'};
 // ออกกำลังกาย: มาจากหน้า "บันทึกรายวัน" ในสมุด (ข้อ 3)
 const EXERCISE_OPTIONS = [
-  {key:'walk',   label:'เดินเร็ว',  emoji:'🚶'},
-  {key:'jog',    label:'วิ่งเบา ๆ', emoji:'🏃'},
-  {key:'bike',   label:'ปั่นจักรยาน', emoji:'🚴'},
-  {key:'sport',  label:'เล่นกีฬา', emoji:'⚽'},
-  {key:'stretch',label:'ยืดเหยียด', emoji:'🤸'},
-  {key:'chore',  label:'งานบ้าน/กิจกรรมโรงเรียน', emoji:'🧹'},
-  {key:'other',  label:'อื่น ๆ',   emoji:'✨'}
+  {key:'walk',   label:'เดินเร็ว',  emoji:'ex-walk.png'},
+  {key:'jog',    label:'วิ่งเบา ๆ', emoji:'ex-jog.png'},
+  {key:'bike',   label:'ปั่นจักรยาน', emoji:'ex-bike.png'},
+  {key:'sport',  label:'เล่นกีฬา', emoji:'ex-sport.png'},
+  {key:'stretch',label:'ยืดเหยียด', emoji:'ex-stretch.png'},
+  {key:'chore',  label:'งานบ้าน/กิจกรรมโรงเรียน', emoji:'ex-chore.png'},
+  {key:'other',  label:'อื่น ๆ',   emoji:'ex-other.png'}
 ];
 // เครื่องปรุงที่เติมเพิ่ม: วัดพฤติกรรม (เติมหรือไม่) ไม่ใช่ปริมาณ mg ที่ประเมินยาก
 // คะแนนเท่ากันทุกตัวเลือกรวม "ไม่เติมเลย" กันไม่ให้เด็กเลี่ยงตอบเพื่อเอาคะแนน
 const CONDIMENT_OPTIONS = [
-  {key:'fishSauce', label:'น้ำปลา',     emoji:'🐟'},
-  {key:'soySauce',  label:'ซีอิ๊ว',      emoji:'🍶'},
-  {key:'sauce',     label:'ซอสปรุงรส',  emoji:'🥫'},
-  {key:'msg',       label:'ผงชูรส',     emoji:'🧂'},
-  {key:'none',      label:'ไม่เติมเลย', emoji:'🚫'}
+  {key:'fishSauce', label:'น้ำปลา',     emoji:'cond-fishSauce.png'},
+  {key:'soySauce',  label:'ซีอิ๊ว',      emoji:'cond-soySauce.png'},
+  {key:'sauce',     label:'ซอสปรุงรส',  emoji:'cond-sauce.png'},
+  {key:'msg',       label:'ผงชูรส',     emoji:'cond-msg.png'},
+  {key:'none',      label:'ไม่เติมเลย', emoji:'cond-none.png'}
 ];
 // ระดับหวาน/มัน/เค็ม: มาจากหน้า "ปรับพฤติกรรมของตนเอง" ในสมุด (ข้อ 4)
 // ==== ตอนนี้โครงงานโฟกัสแค่ "เค็ม/โซเดียม" เรื่องเดียวก่อน ====
@@ -951,10 +952,10 @@ const TASTE_CHOICES = [
 ];
 // พฤติกรรมสุขภาพอื่น ๆ: มาจากหน้า "เป้าหมายวันนี้ของฉัน" ในสมุด (ปรับคำให้เน้นโซเดียมสำหรับเฟสนี้)
 const OTHER_BEHAVIORS = [
-  {key:'readLabel',    label:'อ่านฉลากโภชนาการก่อนกิน (ดูค่าโซเดียม)', emoji:'📋'},
-  {key:'readGDA',      label:'อ่านฉลาก GDA เพื่อเช็กปริมาณโซเดียม',    emoji:'🏷️'},
-  {key:'healthyChoice',label:'เลือกผลิตภัณฑ์สัญลักษณ์ทางเลือกสุขภาพ',  emoji:'💚'},
-  {key:'drinkWater',   label:'ดื่มน้ำเปล่าให้เพียงพอ (ช่วยสมดุลโซเดียมในร่างกาย)', emoji:'💧'}
+  {key:'readLabel',    label:'อ่านฉลากโภชนาการก่อนกิน (ดูค่าโซเดียม)', emoji:'beh-readLabel.png'},
+  {key:'readGDA',      label:'อ่านฉลาก GDA เพื่อเช็กปริมาณโซเดียม',    emoji:'beh-readGDA.png'},
+  {key:'healthyChoice',label:'เลือกผลิตภัณฑ์สัญลักษณ์ทางเลือกสุขภาพ',  emoji:'beh-healthyChoice.png'},
+  {key:'drinkWater',   label:'ดื่มน้ำเปล่าให้เพียงพอ (ช่วยสมดุลโซเดียมในร่างกาย)', emoji:'beh-drinkWater.png'}
 ];
 const AVATAR_COLORS = ['#2A9D8F','#F4A261','#E76F51','#0B3D4C','#7FD8CC','#E8A33D'];
 const STICKER_BG = ['#EAF7F4','#FDEEE1','#FBE9E5','#F3ECDD'];
@@ -1942,10 +1943,11 @@ function stopVoiceInput(){
   voiceActiveField = null;
 }
 
-function stickerButton(key, emoji, label, active, onClick){
+function stickerButton(key, icon, label, active, onClick){
   const el = document.createElement('div');
   el.className = 'sticker-btn' + (active?' active':'');
-  el.innerHTML = `<div class="sticker-circle">${emoji}</div><div class="sticker-label">${label}</div>`;
+  const iconHtml = icon.endsWith('.png') ? `<img src="${icon}" alt="">` : icon; // รองรับทั้งไอคอนรูป (.png) และอิโมจิเดิม (เช่น TASTE_CHOICES ที่ยังใช้อิโมจิหน้าคน)
+  el.innerHTML = `<div class="sticker-circle">${iconHtml}</div><div class="sticker-label">${label}</div>`;
   el.onclick = onClick;
   return el;
 }
