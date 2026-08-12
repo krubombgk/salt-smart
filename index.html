@@ -790,6 +790,11 @@
         </div>
       </div>
 
+      <div class="section-title">📉 แนวโน้มโซเดียมรายวัน</div>
+      <div class="card">
+        <div id="sodiumTrendChart"><div class="empty-note">กำลังโหลด…</div></div>
+      </div>
+
       <div class="section-title">📅 ตารางความก้าวหน้า</div>
       <div class="card">
         <p style="color:#6b7c80; font-size:12.5px; margin-top:-4px;">คำนวณอัตโนมัติจากสิ่งที่บันทึกไว้แล้ว — ยิ่งมีจุดสีฟ้าเยอะ ยิ่งเก่ง! ไม่ต้องกังวลถ้ามีวันที่เป็นสีอื่นบ้าง</p>
@@ -2431,6 +2436,72 @@ function renderStats(){
   document.getElementById('badgeArea').innerHTML = badges.map(b=>`<span class="badge-chip">${b}</span>`).join('') || '<div class="empty-note">ทำภารกิจต่อเนื่องเพื่อปลดล็อกรางวัล</div>';
 }
 
+/* ---- กราฟแนวโน้มโซเดียมรายวัน (SVG ธรรมดา ไม่ใช้ library ภายนอก) ---- */
+function computeDailySodiumTotal(log){
+  const checks = log.sodiumChecks || [];
+  const meals = log.mealSodiumEntries || [];
+  const totalFromChecks = checks.reduce((s,c)=> s+(c.sodium||0), 0);
+  const totalFromMeals = meals.reduce((s,m)=> s+(m.estimatedSodium||0), 0);
+  return Math.round(totalFromChecks + totalFromMeals);
+}
+
+function renderSodiumTrendChart(days, logByDate){
+  const goal = getSodiumGoal();
+  // ค่าต่อวัน: null = ยังไม่มีข้อมูลวันนั้น (ไม่ใช่ 0 มก. จริงๆ) จะไม่วาดจุด/เส้นผ่านช่วงนั้น
+  const points = days.map(d=>{
+    const log = logByDate[d];
+    return log ? computeDailySodiumTotal(log) : null;
+  });
+  const knownValues = points.filter(v=>v!==null);
+  if(knownValues.length===0){
+    return '<div class="empty-note">ยังไม่มีข้อมูลโซเดียมให้แสดงกราฟ ลองตรวจฉลากหรือเพิ่มเมนูที่กินก่อนนะ</div>';
+  }
+
+  const maxVal = Math.max(goal * 1.3, ...knownValues);
+  const W=340, H=150, padL=38, padR=10, padT=14, padB=22;
+  const plotW = W-padL-padR, plotH = H-padT-padB;
+  const n = days.length;
+  const xForIdx = i => padL + (n<=1 ? 0 : (i/(n-1))*plotW);
+  const yForVal = v => padT + plotH - (v/maxVal)*plotH;
+  const goalY = yForVal(goal);
+
+  // ต่อเส้นเฉพาะช่วงที่มีข้อมูลติดกัน เว้นช่วงตรงวันที่ไม่มีข้อมูล
+  let segments = [], current = [];
+  points.forEach((v,i)=>{
+    if(v===null){ if(current.length) segments.push(current); current=[]; }
+    else current.push([xForIdx(i), yForVal(v)]);
+  });
+  if(current.length) segments.push(current);
+  const pathsHtml = segments.map(seg=>{
+    const d = seg.map((p,i)=>(i===0?'M':'L')+p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ');
+    return `<path d="${d}" fill="none" stroke="#2A9D8F" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>`;
+  }).join('');
+  const dotsHtml = points.map((v,i)=> v===null ? '' :
+    `<circle cx="${xForIdx(i).toFixed(1)}" cy="${yForVal(v).toFixed(1)}" r="3" fill="#2A9D8F"/>`
+  ).join('');
+
+  const step = Math.max(1, Math.ceil(n/6)); // โชว์เลขวันบนแกน X แค่บางวัน กันแน่นเกินไปเมื่อมี 21 วัน
+  let xLabels = '';
+  for(let i=0;i<n;i+=step){
+    xLabels += `<text x="${xForIdx(i).toFixed(1)}" y="${H-6}" font-size="9" fill="#9aa8ab" text-anchor="middle">${i+1}</text>`;
+  }
+
+  return `
+    <svg viewBox="0 0 ${W} ${H}" style="width:100%; height:auto; display:block;">
+      <line x1="${padL}" y1="${goalY.toFixed(1)}" x2="${(padL+plotW).toFixed(1)}" y2="${goalY.toFixed(1)}" stroke="#E76F51" stroke-width="1.2" stroke-dasharray="4,3"/>
+      <text x="${(padL+plotW).toFixed(1)}" y="${(goalY-4).toFixed(1)}" font-size="9" fill="#E76F51" text-anchor="end">เป้าหมาย</text>
+      ${pathsHtml}
+      ${dotsHtml}
+      ${xLabels}
+      <text x="${padL-6}" y="${(padT+plotH).toFixed(1)}" font-size="9" fill="#9aa8ab" text-anchor="end">0</text>
+      <text x="${padL-6}" y="${(goalY+3).toFixed(1)}" font-size="9" fill="#9aa8ab" text-anchor="end">${goal.toLocaleString('th-TH')}</text>
+      <line x1="${padL}" y1="${padT}" x2="${padL}" y2="${(padT+plotH).toFixed(1)}" stroke="#EFE9D9" stroke-width="1"/>
+      <line x1="${padL}" y1="${(padT+plotH).toFixed(1)}" x2="${(padL+plotW).toFixed(1)}" y2="${(padT+plotH).toFixed(1)}" stroke="#EFE9D9" stroke-width="1"/>
+    </svg>
+    <p style="font-size:11px; color:#9aa8ab; margin:6px 0 0;">เส้นประสีส้ม = เป้าหมายโซเดียมต่อวัน (${goal.toLocaleString('th-TH')} มก.) · วันที่ไม่มีข้อมูลจะเว้นช่วงไว้ ไม่นับเป็น 0</p>
+  `;
+}
+
 /* ---- ตารางความก้าวหน้า 21 วัน (คำนวณอัตโนมัติ ไม่ถามเพิ่ม) ---- */
 async function loadProgressTable(){
   const wrap = document.getElementById('progressTableWrap');
@@ -2455,6 +2526,13 @@ async function loadProgressTable(){
     }catch(e){ console.error(e); state.approvedMissionCount = state.approvedMissionCount || 0; }
 
     renderStats(); // เรียกซ้ำอีกครั้งตอนนี้ เพื่อให้ badge/Quiz accuracy สะสม อัปเดตด้วยข้อมูลที่เพิ่งโหลดครบ
+
+    try{
+      document.getElementById('sodiumTrendChart').innerHTML = renderSodiumTrendChart(days, logByDate);
+    }catch(e){
+      console.error(e);
+      document.getElementById('sodiumTrendChart').innerHTML = '<div class="empty-note">โหลดกราฟไม่สำเร็จ</div>';
+    }
 
     const categories = [
       {label:'ลดเค็ม', fn:(log)=>{
