@@ -166,7 +166,14 @@
       <div class="panel" id="p-quiz">
         <h2>คลังคำถาม Quiz</h2>
         <div class="card">
-          <h3 style="margin-top:0;">เพิ่มคำถามใหม่</h3>
+          <h3 style="margin-top:0;">นำเข้าคำถามเป็นชุด (นำเข้าทีเดียว)</h3>
+          <p style="font-size:12.5px; color:#9aa8ab; margin-top:-6px;">รูปแบบ: <code>หมวด | คำถาม | ตัวเลือกA | ตัวเลือกB | ตัวเลือกC | ตัวเลือกD | เฉลย(A/B/C/D) | คำอธิบาย | แหล่งอ้างอิง | ระดับความยาก</code> บรรทัดละ 1 ข้อ (คำอธิบาย/แหล่งอ้างอิง/ระดับความยาก ใส่หรือเว้นว่างก็ได้ ยังไม่ได้ใช้แสดงผลกับนักเรียนตอนนี้ แต่เก็บไว้เผื่ออนาคต)</p>
+          <textarea id="bulkQuizText" style="min-height:200px; font-family:monospace; font-size:12px;" placeholder="1. NCDs และโซเดียม | NCDs หมายถึงโรคประเภทใด | โรคติดต่อจากเชื้อไวรัส | โรคไม่ติดต่อเรื้อรัง | โรคจากอุบัติเหตุ | โรคติดเชื้อเฉียบพลัน | B | NCDs ย่อมาจาก Noncommunicable Diseases | https://... | ง่าย"></textarea>
+          <button class="btn btn-primary" onclick="bulkAddQuizQuestions()">นำเข้าคำถามชุดนี้</button>
+          <div class="msg" id="bulkQuizMsg"></div>
+        </div>
+        <div class="card">
+          <h3 style="margin-top:0;">เพิ่มคำถามใหม่ทีละข้อ</h3>
           <div class="field"><label>คำถาม</label><input type="text" id="qText"></div>
           <div class="field"><label>หมวดหมู่</label>
             <select id="qCategory">
@@ -565,6 +572,15 @@ async function loadStudentsCache(){
   studentsCache = snap.docs.map(d=>({id:d.id, ...d.data()}));
 }
 
+// เดาเพศจากคำนำหน้าชื่อภาษาไทยที่กรอกอยู่แล้ว (ไม่ต้องเปลี่ยนฟอร์แมตที่ครูใช้ปกติ)
+// คืนค่า 'male' / 'female' / null (ไม่รู้ ถ้าไม่มีคำนำหน้าที่คุ้นเคย)
+function detectSexFromName(name){
+  const n = (name||'').trim();
+  if(n.startsWith('เด็กชาย') || n.startsWith('ด.ช.') || n.startsWith('นาย')) return 'male';
+  if(n.startsWith('เด็กหญิง') || n.startsWith('ด.ญ.') || n.startsWith('นางสาว') || n.startsWith('น.ส.') || n.startsWith('นาง')) return 'female';
+  return null;
+}
+
 async function bulkAddStudents(){
   const classId = document.getElementById('bulkClassSelect').value;
   const text = document.getElementById('bulkStudentText').value.trim();
@@ -577,7 +593,7 @@ async function bulkAddStudents(){
     if(!name) return;
     const ref = db.collection('students').doc();
     batch.set(ref, {
-      studentNo: parseInt(no)||0, name, classId, pin:'',
+      studentNo: parseInt(no)||0, name, classId, pin:'', sex: detectSexFromName(name),
       totalPoints:0, currentStreak:0, longestStreak:0, daysCompleted:0, lastCheckinDate:''
     });
   });
@@ -618,6 +634,36 @@ async function resetTodayLog(id){
 }
 
 /* ---- QUIZ BANK ---- */
+// นำเข้าคำถามเป็นชุดจากข้อความคั่นด้วย | (คัดลอกมาจากตารางเตรียมคำถามได้เลย)
+async function bulkAddQuizQuestions(){
+  const raw = document.getElementById('bulkQuizText').value.trim();
+  if(!raw){ setMsg('bulkQuizMsg','ไม่มีเนื้อหาให้นำเข้า',true); return; }
+  const letterToIndex = {A:0,B:1,C:2,D:3};
+  const lines = raw.split('\n').map(l=>l.trim()).filter(Boolean);
+  const batch = db.batch();
+  let count = 0, skipped = 0;
+  lines.forEach(line=>{
+    const parts = line.split('|').map(p=>p.trim());
+    // ต้องมีอย่างน้อย 7 ช่อง: หมวด | คำถาม | A | B | C | D | เฉลย  (คำอธิบาย/แหล่งอ้างอิง/ระดับความยาก ใส่เพิ่มได้แต่ไม่บังคับ)
+    if(parts.length < 7){ skipped++; return; }
+    const [category, question, a, b, c, d, answerLetterRaw, explanation, source, difficulty] = parts;
+    const answerLetter = (answerLetterRaw||'').toUpperCase().replace(/[^A-D]/g,'');
+    const correctIndex = letterToIndex[answerLetter];
+    if(!question || !a || !b || !c || !d || correctIndex===undefined){ skipped++; return; }
+    const ref = db.collection('quizBank').doc();
+    batch.set(ref, {
+      question, category, choices:[a,b,c,d], correctIndex, active:true,
+      explanation: explanation || '', source: source || '', difficulty: difficulty || ''
+    });
+    count++;
+  });
+  if(count===0){ setMsg('bulkQuizMsg','ไม่พบบรรทัดที่ถูกต้อง (ตรวจรูปแบบให้มีอย่างน้อย 7 ช่องคั่นด้วย |)',true); return; }
+  await batch.commit();
+  setMsg('bulkQuizMsg', `นำเข้าคำถามสำเร็จ ${count} ข้อ` + (skipped>0 ? ` (ข้าม ${skipped} บรรทัดที่รูปแบบไม่ถูกต้อง)` : ''));
+  document.getElementById('bulkQuizText').value = '';
+  await loadQuizBank();
+}
+
 function renderChoiceBoxes(){
   const wrap = document.getElementById('choiceBoxes');
   wrap.innerHTML = [0,1,2,3].map(i=>`
