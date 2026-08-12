@@ -861,6 +861,7 @@ async function loadKnowledgeCards(){
       <td>${c.isSpecial?'🌟 ':''}${c.text}${c.imageUrl?' <span class="pill" style="background:var(--sand);">🖼️ มีรูป</span>':''}</td><td><span class="pill">${c.isSpecial?'การ์ดพิเศษ':(c.category||'-')}</span></td>
       <td>${c.active?'✅ ใช้งาน':'⛔ ปิด'}</td>
       <td>
+        <button class="btn btn-ghost" style="padding:6px 10px;font-size:12px;" onclick="editCardImage('${c.id}')">${c.imageUrl?'แก้รูป':'ใส่รูป'}</button>
         <button class="btn btn-ghost" style="padding:6px 10px;font-size:12px;" onclick="toggleCard('${c.id}',${!c.active})">${c.active?'ปิด':'เปิด'}</button>
         <button class="btn btn-danger" style="padding:6px 10px;font-size:12px;" onclick="deleteCard('${c.id}')">ลบ</button>
       </td>
@@ -868,6 +869,15 @@ async function loadKnowledgeCards(){
 }
 async function toggleCard(id, active){ await db.collection('knowledgeCards').doc(id).update({active}); await loadKnowledgeCards(); }
 async function deleteCard(id){ if(confirm('ลบการ์ดนี้?')){ await db.collection('knowledgeCards').doc(id).delete(); await loadKnowledgeCards(); } }
+
+async function editCardImage(id){
+  const card = cardsCache.find(c=>c.id===id);
+  if(!card) return;
+  const input = prompt('วางลิงก์รูปภาพประกอบการ์ดนี้ (เว้นว่างแล้วกด OK = ลบรูปออก ใช้ไอคอนสำรองแทน)', card.imageUrl || '');
+  if(input===null) return; // กดยกเลิก
+  await db.collection('knowledgeCards').doc(id).update({ imageUrl: input.trim() });
+  await loadKnowledgeCards();
+}
 
 /* ---- LEADERBOARD ---- */
 let currentLbCat = 'points';
