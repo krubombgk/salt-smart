@@ -251,6 +251,10 @@
   }
   .check-item .ci-name{font-weight:600; font-size:14px;}
   .check-item .ci-val{font-family:'Kanit'; font-weight:700; font-size:14px;}
+  .check-item .ci-right{display:flex; align-items:center; gap:10px;}
+  .check-item .ci-actions{display:flex; gap:8px;}
+  .check-item .ci-actions span{cursor:pointer; font-size:15px; opacity:0.7;}
+  .check-item .ci-actions span:active{opacity:1;}
 
   /* ---- Quiz ---- */
   .quiz-progress{display:flex; gap:6px; margin-bottom:16px;}
@@ -627,10 +631,14 @@
               <div class="shaker-cap"></div>
             </div>
             <div class="gauge-num" id="gaugePct">0%</div>
-            <div class="gauge-label">ของปริมาณโซเดียมที่แนะนำต่อวัน (2,000 มก.)</div>
+            <div class="gauge-label">ของปริมาณโซเดียมที่แนะนำต่อวัน (<span id="gaugeGoalLabel">2,000</span> มก.)</div>
             <div class="verdict" id="gaugeVerdict">-</div>
             <div class="gauge-tip" id="gaugeTip" style="display:none;"></div>
             <div class="gauge-tip" id="gaugeServings" style="display:none;"></div>
+          </div>
+          <div class="field" style="margin-top:10px;">
+            <label>กินกี่หน่วย? (ถ้ากินมากกว่า 1 หน่วยบริโภคตามฉลาก)</label>
+            <input type="number" id="ciServings" value="1" min="1" step="1" inputmode="numeric">
           </div>
           <button class="btn btn-coral btn-block" style="margin-top:14px;" onclick="saveSodiumCheck()">บันทึกรายการนี้</button>
         </div>
@@ -648,6 +656,7 @@
           <div id="mealPickerArea" style="display:none; margin-top:10px;">
             <select id="mealDishSelect" style="width:100%; margin-bottom:8px;"></select>
             <div class="sticker-row" id="mealLevelRow" style="margin-bottom:8px;"></div>
+            <input type="text" id="mealUnitLabel" placeholder="ปริมาณที่กิน เช่น 1 ชาม, 1 จาน (ไม่บังคับ)" style="margin-bottom:8px;">
             <button class="btn btn-primary btn-block" onclick="confirmMealEntry()">เพิ่มรายการนี้</button>
           </div>
         </div>
@@ -1625,6 +1634,7 @@ function calcSodium(){
   if(!name || isNaN(sodium) || sodium<0){ showToast('กรอกชื่อและค่าโซเดียมให้ครบ'); return; }
   const pct = Math.min(Math.round((sodium/getSodiumGoal())*100),200);
   state.pendingCalc = {name, sodium, pct};
+  document.getElementById('gaugeGoalLabel').textContent = getSodiumGoal().toLocaleString('th-TH');
   document.getElementById('gaugeArea').style.display='block';
   document.getElementById('gaugePct').textContent = pct + '%';
   document.getElementById('shakerFill').style.height = Math.min(pct,100) + '%';
@@ -1661,7 +1671,16 @@ function calcSodium(){
 async function saveSodiumCheck(){
   if(!state.pendingCalc) return;
   const category = (state.lastAiReadExtra && state.lastAiReadExtra.category) || null;
-  state.sodiumChecks.push({...state.pendingCalc, category, time: new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'})});
+  const servingsInput = parseInt(document.getElementById('ciServings').value);
+  const servings = (!isNaN(servingsInput) && servingsInput > 0) ? servingsInput : 1;
+  const perUnitSodium = state.pendingCalc.sodium; // ค่าต่อหนึ่งหน่วยบริโภคตามฉลาก (เก็บไว้เผื่อดูย้อนหลัง)
+  const totalSodium = Math.round(perUnitSodium * servings);
+  const totalPct = Math.min(Math.round((totalSodium/getSodiumGoal())*100),200);
+  state.sodiumChecks.push({
+    ...state.pendingCalc,
+    sodium: totalSodium, pct: totalPct, perUnitSodium, servings,
+    category, time: new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'})
+  });
   await db.collection('dailyLogs').doc(logDocId()).set({
     studentId: state.selectedStudent.id,
     classId: state.selectedClassId,
@@ -1669,9 +1688,10 @@ async function saveSodiumCheck(){
     dayNumber: state.dayNumber,
     sodiumChecks: state.sodiumChecks
   }, {merge:true});
-  await upsertVerifiedProduct(state.pendingCalc.name, state.pendingCalc.sodium, state.lastAiReadExtra || {});
+  await upsertVerifiedProduct(state.pendingCalc.name, perUnitSodium, state.lastAiReadExtra || {});
   document.getElementById('ciName').value='';
   document.getElementById('ciSodium').value='';
+  document.getElementById('ciServings').value='1';
   document.getElementById('productSuggestions').innerHTML = '';
   document.getElementById('gaugeArea').style.display='none';
   state.pendingCalc=null;
@@ -1711,19 +1731,88 @@ function renderCheckHistory(){
     list.innerHTML = '<div class="empty-note">ยังไม่มีรายการที่ตรวจวันนี้</div>';
     return;
   }
-  const checkHtml = checks.map(c=>`
+  const checkHtml = checks.map((c,i)=>`
     <div class="check-item">
-      <div class="ci-name">${c.name} <span style="color:#9aa8ab;font-weight:400;">· ${c.time||''}</span></div>
-      <div class="ci-val">${c.sodium} มก. (${c.pct}%)</div>
+      <div class="ci-name">${c.name}${c.servings>1 ? ` <span style="color:#9aa8ab;font-weight:400;">(${c.servings} หน่วย)</span>` : ''} <span style="color:#9aa8ab;font-weight:400;">· ${c.time||''}</span></div>
+      <div class="ci-right">
+        <div class="ci-val">${c.sodium} มก. (${c.pct}%)</div>
+        <div class="ci-actions"><span onclick="editSodiumCheck(${i})">✏️</span><span onclick="deleteSodiumCheck(${i})">🗑️</span></div>
+      </div>
     </div>
   `).join('');
-  const mealHtml = meals.map(m=>`
+  const mealHtml = meals.map((m,i)=>`
     <div class="check-item">
-      <div class="ci-name">🍽️ ${m.dishName} (${SALTY_LEVEL_LABEL[m.level]||''}) <span style="color:#9aa8ab;font-weight:400;">· ${m.time||''}</span></div>
-      <div class="ci-val">~${m.estimatedSodium} มก.</div>
+      <div class="ci-name">🍽️ ${m.dishName} (${SALTY_LEVEL_LABEL[m.level]||''})${m.unitLabel ? ` <span style="color:#9aa8ab;font-weight:400;">· ${m.unitLabel}</span>` : ''} <span style="color:#9aa8ab;font-weight:400;">· ${m.time||''}</span></div>
+      <div class="ci-right">
+        <div class="ci-val">~${m.estimatedSodium} มก.</div>
+        <div class="ci-actions"><span onclick="editMealEntry(${i})">✏️</span><span onclick="deleteMealEntry(${i})">🗑️</span></div>
+      </div>
     </div>
   `).join('');
   list.innerHTML = mealHtml + checkHtml;
+}
+
+// เขียน sodiumChecks + mealSodiumEntries ของวันนี้กลับลง Firestore (ใช้ร่วมกันตอนแก้ไข/ลบ)
+async function persistTodaySodiumArrays(){
+  await db.collection('dailyLogs').doc(logDocId()).set({
+    studentId: state.selectedStudent.id,
+    classId: state.selectedClassId,
+    date: state.todaysDateStr,
+    dayNumber: state.dayNumber,
+    sodiumChecks: state.sodiumChecks,
+    mealSodiumEntries: state.mealSodiumEntries
+  }, {merge:true});
+}
+
+async function editSodiumCheck(i){
+  const item = state.sodiumChecks[i];
+  if(!item) return;
+  const input = prompt(`แก้ไขค่าโซเดียมรวมของ "${item.name}" (มก.)`, item.sodium);
+  if(input===null) return; // กดยกเลิก
+  const val = parseFloat(input);
+  if(isNaN(val) || val<0){ showToast('กรอกตัวเลขให้ถูกต้อง'); return; }
+  item.sodium = Math.round(val);
+  item.pct = Math.min(Math.round((item.sodium/getSodiumGoal())*100),200);
+  await persistTodaySodiumArrays();
+  renderCheckHistory();
+  refreshSodiumHub(); refreshHomeTab();
+  showToast('แก้ไขแล้ว');
+}
+
+async function deleteSodiumCheck(i){
+  const item = state.sodiumChecks[i];
+  if(!item) return;
+  if(!confirm(`ลบรายการ "${item.name}" ออกจากรายการวันนี้?`)) return;
+  state.sodiumChecks.splice(i,1);
+  await persistTodaySodiumArrays();
+  renderCheckHistory();
+  refreshSodiumHub(); refreshHomeTab();
+  showToast('ลบแล้ว');
+}
+
+async function editMealEntry(i){
+  const item = state.mealSodiumEntries[i];
+  if(!item) return;
+  const input = prompt(`แก้ไขค่าโซเดียมโดยประมาณของ "${item.dishName}" (มก.)`, item.estimatedSodium);
+  if(input===null) return;
+  const val = parseFloat(input);
+  if(isNaN(val) || val<0){ showToast('กรอกตัวเลขให้ถูกต้อง'); return; }
+  item.estimatedSodium = Math.round(val);
+  await persistTodaySodiumArrays();
+  renderCheckHistory();
+  refreshSodiumHub(); refreshHomeTab();
+  showToast('แก้ไขแล้ว');
+}
+
+async function deleteMealEntry(i){
+  const item = state.mealSodiumEntries[i];
+  if(!item) return;
+  if(!confirm(`ลบรายการ "${item.dishName}" ออกจากรายการวันนี้?`)) return;
+  state.mealSodiumEntries.splice(i,1);
+  await persistTodaySodiumArrays();
+  renderCheckHistory();
+  refreshSodiumHub(); refreshHomeTab();
+  showToast('ลบแล้ว');
 }
 
 /* ---- เมนูอาหารไทย: ประมาณโซเดียมคร่าวๆ จากมื้ออาหารที่กิน ---- */
@@ -1751,10 +1840,11 @@ function renderMealLevelRow(selectedLevel){
 async function confirmMealEntry(){
   const dishName = document.getElementById('mealDishSelect').value;
   const level = state.mealPickerLevel || 'mid';
+  const unitLabel = document.getElementById('mealUnitLabel').value.trim();
   const dish = THAI_DISHES.find(d => d.name === dishName);
   if(!dish) return;
   const estimatedSodium = Math.round(dish.sodium * (SALTY_LEVEL_MULT[level] || 1));
-  const entry = { dishName, level, estimatedSodium, time: new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'}) };
+  const entry = { dishName, level, estimatedSodium, unitLabel, time: new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'}) };
   state.mealSodiumEntries.push(entry);
   await db.collection('dailyLogs').doc(logDocId()).set({
     studentId: state.selectedStudent.id,
@@ -1763,6 +1853,7 @@ async function confirmMealEntry(){
     mealSodiumEntries: state.mealSodiumEntries
   }, {merge:true});
   document.getElementById('mealPickerArea').style.display = 'none';
+  document.getElementById('mealUnitLabel').value = '';
   renderCheckHistory();
   refreshSodiumHub(); refreshHomeTab(); // อัปเดตยอดโซเดียมในแท็บฮับ+Home ทันทีหลังเพิ่มเมนูอาหาร
   showToast(`เพิ่ม ${dishName} แล้ว 🍽️`);
