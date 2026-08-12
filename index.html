@@ -562,12 +562,6 @@
         </div>
         <div class="home-card-arrow">🎯 ›</div>
       </div>
-
-      <div class="section-title">ทางลัด</div>
-      <div class="home-shortcut-grid">
-        <div class="home-shortcut" onclick="goHomeShortcut('tab-check')"><div class="hs-icon">🔍</div><div class="hs-label">ตรวจฉลาก</div></div>
-        <div class="home-shortcut" onclick="goHomeShortcut('tab-today')"><div class="hs-icon">🧂</div><div class="hs-label">เพิ่มอาหารที่กิน</div></div>
-      </div>
     </div>
 
     <!-- TAB: SODIUM HUB (รวม ตรวจฉลาก + โซเดียมวันนี้ เข้าด้วยกันเป็นทางเข้าเดียว) -->
@@ -587,6 +581,21 @@
           <div class="home-card-value" id="hubSodiumToday">0 มก. · 0%</div>
         </div>
         <div class="home-card-arrow">🧂 ›</div>
+      </div>
+
+      <div class="card">
+        <div style="display:flex; align-items:center; justify-content:space-between;">
+          <div>
+            <div style="font-size:12.5px; color:#6b7c80;">เป้าหมายโซเดียมต่อวันของฉัน</div>
+            <div style="font-family:'Kanit'; font-weight:700; font-size:17px;" id="sodiumGoalDisplay">2,000 มก.</div>
+          </div>
+          <button class="btn btn-ghost" onclick="toggleSodiumGoalEdit()" id="sodiumGoalEditBtn">แก้ไข</button>
+        </div>
+        <div id="sodiumGoalEditArea" style="display:none; margin-top:10px;">
+          <p style="color:#9aa8ab; font-size:11.5px; margin:0 0 8px;">ปรับได้ตามคำแนะนำที่ครู/นักโภชนาการให้ไว้ (ค่าแนะนำทั่วไปคือ 2,000 มก./วัน)</p>
+          <input type="number" id="sodiumGoalInput" min="500" max="5000" step="100" style="margin-bottom:8px;">
+          <button class="btn btn-primary btn-block" onclick="saveSodiumGoal()">บันทึกเป้าหมาย</button>
+        </div>
       </div>
     </div>
 
@@ -916,7 +925,11 @@ const storage = firebase.storage();
 /* =========================================================
    CONSTANTS
    ========================================================= */
-const SODIUM_DAILY_MAX = 2000; // mg
+const SODIUM_DAILY_MAX = 2000; // mg — ค่า default ถ้านักเรียนยังไม่ได้ปรับเป้าหมายเอง
+// เป้าหมายโซเดียมต่อวันของนักเรียนคนนี้ (ปรับเองได้ในแท็บโซเดียม) — ถ้ายังไม่เคยตั้งจะ fallback เป็นค่า default ด้านบน
+function getSodiumGoal(){
+  return (state.selectedStudent && state.selectedStudent.sodiumGoal) || SODIUM_DAILY_MAX;
+}
 // เมนูอาหารไทยยอดฮิต + ค่ากลางโซเดียมโดยประมาณ (มก.)
 // หมายเหตุ: ค่าที่แม่นจริงมีแค่ ก๋วยเตี๋ยว/ส้มตำ (อ้างอิงกรมอนามัย/สื่อสุขภาพ) เมนูอื่นเป็นค่าประมาณเอง ไม่ใช่ตัวเลขวิจัยยืนยัน
 // ใช้คู่กับตัวเลือกความเค็ม (น้อย/ปานกลาง/มาก) ปรับ ±30% จากค่ากลาง
@@ -1139,8 +1152,17 @@ function renderStudentGrid(){
     const color = AVATAR_COLORS[i % AVATAR_COLORS.length];
     const el = document.createElement('div');
     el.className='pick-tile';
-    const initial = s.name.trim().charAt(0);
-    el.innerHTML = `<div class="pick-avatar" style="background:${color}">${initial}</div>${s.studentNo}. ${s.name}`;
+    // ถ้ารู้เพศ (ครูอัปโหลดมาพร้อมชื่อ) โชว์เป็นไอคอน ♂/♀ แทนวงกลมสี+อักษรย่อ ถ้าไม่รู้ ใช้แบบเดิม
+    let avatarHtml;
+    if(s.sex === 'male'){
+      avatarHtml = `<div class="pick-avatar" style="background:#7FC7EA;">♂</div>`;
+    }else if(s.sex === 'female'){
+      avatarHtml = `<div class="pick-avatar" style="background:#F4A6C6;">♀</div>`;
+    }else{
+      const initial = s.name.trim().charAt(0);
+      avatarHtml = `<div class="pick-avatar" style="background:${color}">${initial}</div>`;
+    }
+    el.innerHTML = `${avatarHtml}${s.studentNo}. ${s.name}`;
     el.onclick = ()=>selectStudent(s);
     grid.appendChild(el);
   });
@@ -1270,6 +1292,25 @@ function refreshMissionHub(){
 // อัปเดตยอดโซเดียมในแท็บฮับ "โซเดียม" (ตรวจฉลาก + โซเดียมวันนี้ รวมเป็นทางเข้าเดียว)
 function refreshSodiumHub(){
   document.getElementById('hubSodiumToday').textContent = `${state.sodiumTodayTotal||0} มก. · ${state.sodiumTodayPct||0}%`;
+  document.getElementById('sodiumGoalDisplay').textContent = getSodiumGoal().toLocaleString('th-TH') + ' มก.';
+}
+
+function toggleSodiumGoalEdit(){
+  const area = document.getElementById('sodiumGoalEditArea');
+  const showing = area.style.display !== 'none';
+  area.style.display = showing ? 'none' : 'block';
+  if(!showing) document.getElementById('sodiumGoalInput').value = getSodiumGoal();
+}
+
+async function saveSodiumGoal(){
+  const val = parseInt(document.getElementById('sodiumGoalInput').value);
+  if(isNaN(val) || val < 500 || val > 5000){ showToast('กรอกตัวเลขระหว่าง 500-5000 มก.'); return; }
+  await db.collection('students').doc(state.selectedStudent.id).update({ sodiumGoal: val });
+  state.selectedStudent.sodiumGoal = val;
+  document.getElementById('sodiumGoalEditArea').style.display = 'none';
+  refreshSodiumHub();
+  renderCheckHistory(); // คำนวณ % ใหม่ตามเป้าหมายที่เพิ่งเปลี่ยน
+  showToast('ปรับเป้าหมายโซเดียมแล้ว 🎯');
 }
 
 function goHomeShortcut(tabId){
@@ -1582,7 +1623,7 @@ function calcSodium(){
   const name = document.getElementById('ciName').value.trim();
   const sodium = parseFloat(document.getElementById('ciSodium').value);
   if(!name || isNaN(sodium) || sodium<0){ showToast('กรอกชื่อและค่าโซเดียมให้ครบ'); return; }
-  const pct = Math.min(Math.round((sodium/SODIUM_DAILY_MAX)*100),200);
+  const pct = Math.min(Math.round((sodium/getSodiumGoal())*100),200);
   state.pendingCalc = {name, sodium, pct};
   document.getElementById('gaugeArea').style.display='block';
   document.getElementById('gaugePct').textContent = pct + '%';
@@ -1609,7 +1650,7 @@ function calcSodium(){
   // ข้อความ "กินได้ไม่เกินวันละ X หน่วย" — โชว์เสมอทุกระดับสี พร้อม disclaimer ชัดเจน
   const servingsEl = document.getElementById('gaugeServings');
   if(sodium > 0){
-    const maxServings = Math.max(1, Math.floor(SODIUM_DAILY_MAX / sodium));
+    const maxServings = Math.max(1, Math.floor(getSodiumGoal() / sodium));
     servingsEl.innerHTML = `กินได้ไม่เกินวันละ <b>${maxServings} หน่วย</b> ถึงจะไม่เกินปริมาณที่แนะนำทั้งวัน<br><span style="color:#aab5b8; font-size:11px;">(คำนวณสมมติว่าเป็นแหล่งโซเดียมเดียวทั้งวัน ยังไม่รวมมื้ออื่นที่กินไปแล้ว)</span>`;
     servingsEl.style.display='block';
   } else {
@@ -1661,7 +1702,7 @@ function renderCheckHistory(){
   const totalFromChecks = checks.reduce((sum,c)=> sum + (c.sodium||0), 0);
   const totalFromMeals = meals.reduce((sum,m)=> sum + (m.estimatedSodium||0), 0);
   const grandTotal = Math.round(totalFromChecks + totalFromMeals);
-  const grandPct = Math.round((grandTotal / SODIUM_DAILY_MAX) * 100);
+  const grandPct = Math.round((grandTotal / getSodiumGoal()) * 100);
   state.sodiumTodayTotal = grandTotal;
   state.sodiumTodayPct = grandPct;
   document.getElementById('sodiumTodayTotal').textContent = `${grandTotal} มก. · ${grandPct}%`;
@@ -2267,15 +2308,35 @@ function renderStats(){
   document.getElementById('stStreak').textContent = state.selectedStudent.currentStreak || 0;
   document.getElementById('stPoints').textContent = state.selectedStudent.totalPoints || 0;
   document.getElementById('stDays').textContent = (state.selectedStudent.daysCompleted||0) + '/' + state.totalDays;
-  const qa = state.quizAnswers.length;
-  const qc = state.quizAnswers.filter(a=>a.correct).length;
-  document.getElementById('stQuiz').textContent = qa>0 ? Math.round((qc/qa)*100)+'%' : '-';
+
+  // Quiz accuracy สะสมทั้งแคมเปญ (ไม่ใช่แค่วันนี้) — คำนวณจาก dailyLogs ทุกวันที่โหลดไว้ใน loadProgressTable()
+  // ถ้ายังไม่เคยโหลด (เช่นเรียกก่อน loadProgressTable ครั้งแรก) ให้ใช้ข้อมูล Quiz วันนี้ไปพลางก่อน กันหน้าจอว่างเปล่า
+  const logs = state.allDailyLogs || [];
+  let quizCorrectSum = 0, quizTotalSum = 0;
+  logs.forEach(log=>{
+    if(log.quizAnswers && log.quizAnswers.length){
+      quizTotalSum += log.quizAnswers.length;
+      quizCorrectSum += log.quizAnswers.filter(a=>a.correct).length;
+    }
+  });
+  if(quizTotalSum===0){ // ยังไม่มีข้อมูลสะสม (หรือยังไม่ได้โหลด) ใช้ของวันนี้แทนชั่วคราว
+    quizTotalSum = state.quizAnswers.length;
+    quizCorrectSum = state.quizAnswers.filter(a=>a.correct).length;
+  }
+  const quizAccuracy = quizTotalSum>0 ? quizCorrectSum/quizTotalSum : 0;
+  document.getElementById('stQuiz').textContent = quizTotalSum>0 ? Math.round(quizAccuracy*100)+'%' : '-';
+
+  const healthyChoiceCount = logs.filter(log=> log.otherBehaviors && log.otherBehaviors.healthyChoice).length;
+  const approvedMissionCount = state.approvedMissionCount || 0;
 
   const badges = [];
   const halfway = Math.ceil(state.totalDays/2);
   if((state.selectedStudent.longestStreak||0) >= halfway) badges.push('⭐ Consistency Star');
   if((state.selectedStudent.sodiumCheckCount||0) >= 10) badges.push('🔍 Label Detective');
-  if(qa>0 && (qc/qa) >= 0.8) badges.push('🧠 Knowledge Improver');
+  if(quizTotalSum>0 && quizAccuracy >= 0.8) badges.push('🧠 Quiz Master');
+  if(approvedMissionCount >= 15) badges.push('🎯 Mission Explorer');
+  if(healthyChoiceCount >= 10) badges.push('💚 Healthy Choice');
+  if((state.selectedStudent.daysCompleted||0) >= state.totalDays) badges.push('🏆 21-Day Finisher');
   document.getElementById('badgeArea').innerHTML = badges.map(b=>`<span class="badge-chip">${b}</span>`).join('') || '<div class="empty-note">ทำภารกิจต่อเนื่องเพื่อปลดล็อกรางวัล</div>';
 }
 
@@ -2292,6 +2353,17 @@ async function loadProgressTable(){
     const snap = await db.collection('dailyLogs').where('studentId','==',state.selectedStudent.id).get();
     const logByDate = {};
     snap.docs.forEach(doc=>{ const data = doc.data(); if(data.date) logByDate[data.date] = data; });
+    state.allDailyLogs = Object.values(logByDate); // เก็บไว้ให้ renderStats() ใช้คำนวณ Quiz accuracy สะสม + จำนวนวันที่เลือกทางเลือกสุขภาพ
+
+    // นับจำนวนภารกิจที่ผ่านแล้วสะสมทั้งแคมเปญ (สำหรับ badge Mission Explorer)
+    try{
+      const missionSnap = await db.collection('missionSubmissions')
+        .where('studentId','==',state.selectedStudent.id)
+        .where('status','==','approved').get();
+      state.approvedMissionCount = missionSnap.size;
+    }catch(e){ console.error(e); state.approvedMissionCount = state.approvedMissionCount || 0; }
+
+    renderStats(); // เรียกซ้ำอีกครั้งตอนนี้ เพื่อให้ badge/Quiz accuracy สะสม อัปเดตด้วยข้อมูลที่เพิ่งโหลดครบ
 
     const categories = [
       {label:'ลดเค็ม', fn:(log)=>{
