@@ -701,7 +701,7 @@
             <div id="mealDishGrid" class="dish-grid" style="margin-bottom:8px;"></div>
             <div class="sticker-row" id="mealLevelRow" style="margin-bottom:8px;"></div>
             <div class="field" style="margin-bottom:8px;">
-              <label>กินกี่หน่วย? (1 หน่วย = 1 จาน/ชาม/ที่ ตามค่าเฉลี่ยของเมนูนี้)</label>
+              <label id="mealServingsLabel">กินกี่หน่วย? (1 หน่วย = 1 จาน/ชาม/ที่ ตามค่าเฉลี่ยของเมนูนี้)</label>
               <input type="number" id="mealServings" value="1" min="1" step="1" inputmode="numeric">
             </div>
             <button class="btn btn-primary btn-block" onclick="confirmMealEntry()">เพิ่มรายการนี้</button>
@@ -751,8 +751,13 @@
 
     <!-- TAB: MISSION -->
     <div class="tabpanel" id="tab-mission">
+      <div class="card" id="missionBackfillPicker" style="display:none; background:var(--sand);">
+        <div style="font-family:'Kanit'; font-weight:700; font-size:14.5px; margin-bottom:8px;">📅 จะทำภารกิจของวันไหน?</div>
+        <p style="color:#6b7c80; font-size:13px; margin-top:-4px;">ปกติทำภารกิจของวันนี้ ถ้าพลาดวันหยุดที่ครูเปิดให้ย้อนหลังได้ เลือกวันนั้นได้เลย</p>
+        <div class="chip-row" id="missionBackfillChips"></div>
+      </div>
       <div class="card">
-        <h3 style="margin-top:0;">🎯 ภารกิจวันนี้</h3>
+        <h3 style="margin-top:0;" id="missionCardTitle">🎯 ภารกิจวันนี้</h3>
         <div id="missionBody"><div class="empty-note">กำลังโหลด…</div></div>
       </div>
     </div>
@@ -834,6 +839,16 @@
           <div class="mini-stat"><div class="num" id="stPoints">0</div><div class="lbl">คะแนนสะสม <img class="icon-inline" src="icon-score.png" alt=""></div></div>
           <div class="mini-stat"><div class="num" id="stDays">0/21</div><div class="lbl">วันที่ทำสำเร็จ</div></div>
           <div class="mini-stat"><div class="num" id="stQuiz">0%</div><div class="lbl">ความแม่นยำ Quiz</div></div>
+        </div>
+      </div>
+
+      <div class="section-title">🧩 คะแนนแยกตามหมวด</div>
+      <div class="card">
+        <div class="stat-grid">
+          <div class="mini-stat"><div class="num" id="catLabelCheck">0</div><div class="lbl">🔍 ตรวจฉลาก</div></div>
+          <div class="mini-stat"><div class="num" id="catQuiz">0</div><div class="lbl">❓ Quiz</div></div>
+          <div class="mini-stat"><div class="num" id="catDailyLog">0</div><div class="lbl">📝 นักบันทึกพฤติกรรม</div></div>
+          <div class="mini-stat"><div class="num" id="catMission">0</div><div class="lbl">🎯 นักทำภารกิจ</div></div>
         </div>
       </div>
 
@@ -1054,6 +1069,11 @@ const THAI_DISHES = [
   {name:'ข้าวแกงทั่วไป', sodium:900, icon:'🍱'},
   {name:'ไข่เจียว/ไข่ดาว', sodium:400, icon:'🍳'},
   {name:'ขนมปัง/แซนวิช', sodium:500, icon:'🥪'},
+  {name:'ซุปหน่อไม้', sodium:700, icon:'🍲'},
+  {name:'ขนมจีนน้ำยา', sodium:1300, icon:'🍜'},
+  {name:'ไข่ต้ม', sodium:70, icon:'🥚'},
+  {name:'ไก่ทอด', sodium:750, icon:'🍖'},
+  {name:'ชาบู', unit:'gram', sodiumPer100g:350, icon:'🍲'},
   {name:'อื่นๆ (ไม่แน่ใจ)', sodium:800, icon:'❓'}
 ];
 const SALTY_LEVEL_MULT = {low:0.7, mid:1.0, high:1.3};
@@ -1806,7 +1826,7 @@ async function saveSodiumCheck(consumed){
 
   let toastMsg;
   if(eligibleForPoints){
-    await addPoints(3); // ให้คะแนนเพราะ "ตรวจฉลาก" เป็นพฤติกรรมที่อยากส่งเสริม ไม่เกี่ยวว่ากินจริงไหม (ให้เท่ากันทั้ง 2 ปุ่ม กันเด็กเลี่ยงตอบเพื่อเอาคะแนน)
+    await addPoints(3, 'labelCheck'); // ให้คะแนนเพราะ "ตรวจฉลาก" เป็นพฤติกรรมที่อยากส่งเสริม ไม่เกี่ยวว่ากินจริงไหม (ให้เท่ากันทั้ง 2 ปุ่ม กันเด็กเลี่ยงตอบเพื่อเอาคะแนน)
     await incrementSodiumCheckCount(); // นับสะสมเฉพาะครั้งที่ได้คะแนนจริง กันนับซ้ำเข้า badge Label Detective ด้วย
     toastMsg = consumed ? 'บันทึกแล้ว! เพิ่มเข้าโซเดียมวันนี้ +3 คะแนน' : 'บันทึกการตรวจแล้ว +3 คะแนน';
   } else if(alreadyCheckedTodaySameName){
@@ -1861,7 +1881,7 @@ function renderCheckHistory(){
   }).join('');
   const mealHtml = meals.map((m,i)=>`
     <div class="check-item">
-      <div class="ci-name">🍽️ ${m.dishName} (${SALTY_LEVEL_LABEL[m.level]||''})${m.servings>1 ? ` <span style="color:#9aa8ab;font-weight:400;">(${m.servings} หน่วย)</span>` : ''} <span style="color:#9aa8ab;font-weight:400;">· ${m.time||''}</span></div>
+      <div class="ci-name">🍽️ ${m.dishName} (${SALTY_LEVEL_LABEL[m.level]||''})${m.gramsEaten ? ` <span style="color:#9aa8ab;font-weight:400;">(${m.gramsEaten} กรัม)</span>` : (m.servings>1 ? ` <span style="color:#9aa8ab;font-weight:400;">(${m.servings} หน่วย)</span>` : '')} <span style="color:#9aa8ab;font-weight:400;">· ${m.time||''}</span></div>
       <div class="ci-right">
         <div class="ci-val">~${m.estimatedSodium} มก.</div>
         <div class="ci-actions"><span onclick="editMealEntry(${i})">✏️</span><span onclick="deleteMealEntry(${i})">🗑️</span></div>
@@ -1965,6 +1985,7 @@ function toggleMealPicker(){
   state.selectedMealDish = state.selectedMealDish || THAI_DISHES[0].name;
   renderMealDishGrid();
   renderMealLevelRow('mid');
+  updateMealServingsLabel();
 }
 function renderMealDishGrid(){
   const grid = document.getElementById('mealDishGrid');
@@ -1977,6 +1998,21 @@ function renderMealDishGrid(){
 function selectMealDish(name){
   state.selectedMealDish = name;
   renderMealDishGrid();
+  updateMealServingsLabel();
+}
+function updateMealServingsLabel(){
+  const dish = THAI_DISHES.find(d => d.name === state.selectedMealDish);
+  const labelEl = document.getElementById('mealServingsLabel');
+  const inputEl = document.getElementById('mealServings');
+  if(dish && dish.unit==='gram'){
+    labelEl.textContent = 'กินกี่กรัม? (กรอกน้ำหนักโดยประมาณที่ทานไป)';
+    inputEl.min = 10; inputEl.step = 10;
+    if(inputEl.value === '1') inputEl.value = 300; // ค่าเริ่มต้นที่สมเหตุสมผลกว่าสำหรับกรัม
+  } else {
+    labelEl.textContent = 'กินกี่หน่วย? (1 หน่วย = 1 จาน/ชาม/ที่ ตามค่าเฉลี่ยของเมนูนี้)';
+    inputEl.min = 1; inputEl.step = 1;
+    if(inputEl.value == 300) inputEl.value = 1; // สลับกลับตอนเปลี่ยนจากชาบูไปเมนูปกติ
+  }
 }
 function renderMealLevelRow(selectedLevel){
   const row = document.getElementById('mealLevelRow');
@@ -1994,12 +2030,21 @@ async function confirmMealEntry(){
   const dishName = state.selectedMealDish || THAI_DISHES[0].name;
   const level = state.mealPickerLevel || 'mid';
   const servingsInput = parseInt(document.getElementById('mealServings').value);
-  const servings = (!isNaN(servingsInput) && servingsInput > 0) ? servingsInput : 1;
   const dish = THAI_DISHES.find(d => d.name === dishName);
   if(!dish) return;
-  const perUnitSodium = Math.round(dish.sodium * (SALTY_LEVEL_MULT[level] || 1));
-  const estimatedSodium = perUnitSodium * servings;
-  const entry = { dishName, level, estimatedSodium, perUnitSodium, servings, time: new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'}) };
+
+  let servings, perUnitSodium, estimatedSodium, gramsEaten;
+  if(dish.unit==='gram'){
+    gramsEaten = (!isNaN(servingsInput) && servingsInput > 0) ? servingsInput : 300;
+    estimatedSodium = Math.round(dish.sodiumPer100g * (gramsEaten/100) * (SALTY_LEVEL_MULT[level] || 1));
+    servings = 1; perUnitSodium = estimatedSodium; // เก็บไว้ให้ field เดิมมีค่า ไม่พังกับส่วนอื่นที่อ้างอิง field เหล่านี้
+  } else {
+    servings = (!isNaN(servingsInput) && servingsInput > 0) ? servingsInput : 1;
+    perUnitSodium = Math.round(dish.sodium * (SALTY_LEVEL_MULT[level] || 1));
+    estimatedSodium = perUnitSodium * servings;
+  }
+
+  const entry = { dishName, level, estimatedSodium, perUnitSodium, servings, gramsEaten, time: new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'}) };
   state.mealSodiumEntries.push(entry);
   await db.collection('dailyLogs').doc(logDocId()).set({
     studentId: state.selectedStudent.id,
@@ -2034,8 +2079,44 @@ function seedFromString(str){
    ภารกิจประจำวัน — ทั้งโรงเรียนได้ภารกิจเดียวกันตามลำดับวันแคมเปญ
    ต้องส่งหลักฐานให้ครู/ยุวทูตตรวจ ไม่ใช่เช็คอัตโนมัติ ได้คะแนนก็ต่อเมื่อผ่านการอนุมัติ
    ========================================================= */
+function dayNumberForDate(dateStr){
+  if(!state.campaign.startDate) return state.dayNumber;
+  const diff = Math.round((dateFromStr(dateStr) - dateFromStr(state.campaign.startDate))/(1000*60*60*24)) + 1;
+  return Math.min(Math.max(diff,1), state.totalDays);
+}
+
+// วันหยุดที่ครูเปิดให้ทำภารกิจย้อนหลังได้ (ใช้รายการวันหยุดชุดเดียวกับที่ตั้งไว้สำหรับบันทึกวันนี้)
+// ต่างจาก getBackfillableDates() ตรงเช็คว่า "ยังไม่เคยส่งภารกิจ" ของวันนั้น ไม่ใช่เช็คบันทึกพฤติกรรม
+async function getMissionBackfillableDates(){
+  const holidays = state.campaign.holidays || [];
+  const cutoff = addDays(state.todaysDateStr, -3);
+  const candidates = holidays.filter(d => d >= cutoff && d < state.todaysDateStr);
+  if(candidates.length===0) return [];
+  const sorted = candidates.sort();
+  const snaps = await Promise.all(sorted.map(d => db.collection('missionSubmissions').doc(state.selectedStudent.id + '_' + d).get()));
+  return sorted.filter((d,i) => !snaps[i].exists);
+}
+
+async function renderMissionBackfillChips(){
+  const picker = document.getElementById('missionBackfillPicker');
+  const chipsEl = document.getElementById('missionBackfillChips');
+  const missed = await getMissionBackfillableDates();
+  picker.style.display = missed.length>0 ? 'block' : 'none'; // ต่างจากบันทึกวันนี้: โชว์เฉพาะตอนมีวันหยุดให้ทำย้อนหลังจริง กันรกจอตอนไม่มีอะไรให้เลือก
+  const todayChip = `<div class="chip ${state.missionTargetDate===state.todaysDateStr?'active':''}" onclick="loadMissionForDate('${state.todaysDateStr}')">วันนี้ (${dayLabelThai(state.todaysDateStr)})</div>`;
+  const missedChips = missed.map(d => `<div class="chip ${state.missionTargetDate===d?'active':''}" onclick="loadMissionForDate('${d}')">วันหยุด: ${dayLabelThai(d)}</div>`).join('');
+  chipsEl.innerHTML = todayChip + missedChips;
+}
+
+function loadMissionForDate(dateStr){
+  state.missionTargetDate = dateStr;
+  loadMission();
+}
+
 async function loadMission(){
   const bodyEl = document.getElementById('missionBody');
+  if(!state.missionTargetDate) state.missionTargetDate = state.todaysDateStr;
+  document.getElementById('missionCardTitle').textContent =
+    state.missionTargetDate===state.todaysDateStr ? '🎯 ภารกิจวันนี้' : '🎯 ภารกิจย้อนหลัง: ' + dayLabelThai(state.missionTargetDate);
   try{
     const snap = await db.collection('missions').where('active', '==', true).get();
     const missions = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (a.order || 0) - (b.order || 0));
@@ -2043,15 +2124,17 @@ async function loadMission(){
       bodyEl.innerHTML = '<div class="empty-note">ยังไม่มีภารกิจในระบบ รอครูเพิ่มก่อนนะ</div>';
       return;
     }
-    const idx = (state.dayNumber - 1) % missions.length;
+    const dayNum = dayNumberForDate(state.missionTargetDate);
+    const idx = (dayNum - 1) % missions.length;
     const mission = missions[idx];
     state.todaysMission = mission;
 
-    const subSnap = await db.collection('missionSubmissions').doc(state.selectedStudent.id + '_' + state.todaysDateStr).get();
+    const subSnap = await db.collection('missionSubmissions').doc(state.selectedStudent.id + '_' + state.missionTargetDate).get();
     const sub = subSnap.exists ? subSnap.data() : null;
     state.todaysMissionStatus = sub ? sub.status : 'not_submitted';
     renderMissionUI(mission, sub);
-    refreshMissionHub(); refreshHomeTab(); // อัปเดตสถานะย่อในแท็บฮับภารกิจ+Home ให้ตรงกันทุกครั้งที่โหลด/ส่งภารกิจใหม่
+    if(state.missionTargetDate === state.todaysDateStr){ refreshMissionHub(); refreshHomeTab(); } // อัปเดตสถานะย่อในแท็บฮับภารกิจ+Home เฉพาะตอนดูของวันนี้ (ย้อนหลังไม่กระทบสถานะวันนี้)
+    await renderMissionBackfillChips();
   }catch(e){
     console.error(e);
     bodyEl.innerHTML = '<div class="empty-note">โหลดภารกิจไม่สำเร็จ</div>';
@@ -2127,17 +2210,17 @@ async function submitMission(){
   try{
     let photoUrl = '';
     if (photoFile) {
-      const path = `missionEvidence/${state.selectedStudent.id}/${state.todaysDateStr}_${Date.now()}.jpg`;
+      const path = `missionEvidence/${state.selectedStudent.id}/${state.missionTargetDate}_${Date.now()}.jpg`;
       const ref = storage.ref().child(path);
       await ref.put(photoFile);
       photoUrl = await ref.getDownloadURL();
     }
-    await db.collection('missionSubmissions').doc(state.selectedStudent.id + '_' + state.todaysDateStr).set({
+    await db.collection('missionSubmissions').doc(state.selectedStudent.id + '_' + state.missionTargetDate).set({
       studentId: state.selectedStudent.id,
       classId: state.selectedClassId,
       missionId: mission.id,
       missionText: mission.text,
-      date: state.todaysDateStr,
+      date: state.missionTargetDate,
       evidenceText: textVal,
       evidencePhotoUrl: photoUrl,
       status: 'pending',
@@ -2233,7 +2316,7 @@ async function finishQuiz(){
     quizQuestions: state.todaysQuiz,
     quizScore: correctCount
   }, {merge:true});
-  await addPoints(points);
+  await addPoints(points, 'quiz');
   renderQuizDone();
   refreshMissionHub(); refreshHomeTab(); // อัปเดตสถานะ Quiz ในแท็บฮับภารกิจ+Home ทันทีหลังทำเสร็จ
 }
@@ -2331,7 +2414,17 @@ function renderCondimentChips(){
     const active = !!state.condiments[o.key];
     wrap.appendChild(stickerButton(o.key, o.emoji, o.label, active, ()=>{
       if(state.targetLog && state.targetLog.submitted) return;
-      state.condiments[o.key] = !state.condiments[o.key];
+      const turningOn = !state.condiments[o.key];
+      if(o.key==='none' && turningOn){
+        // เลือก "ไม่เติมเลย" แล้ว ต้องล้างตัวเลือกเครื่องปรุงอื่นทั้งหมด เพราะขัดแย้งกันในความเป็นจริง
+        state.condiments = { none: true };
+      } else if(o.key!=='none' && turningOn){
+        // เลือกเครื่องปรุงจริงอันใดอันหนึ่ง ต้องยกเลิก "ไม่เติมเลย" ทิ้งไปด้วย เพราะขัดแย้งกัน
+        state.condiments[o.key] = true;
+        state.condiments.none = false;
+      } else {
+        state.condiments[o.key] = false;
+      }
       renderCondimentChips();
     }));
   });
@@ -2509,13 +2602,21 @@ async function collectKnowledgeCard(event){
 }
 
 /* ---- Points / streak ---- */
-async function addPoints(points){
+// category: 'labelCheck' | 'quiz' | 'dailyLog' | 'mission' — เก็บแยกหมวดไว้ด้วย เผื่ออยากให้รางวัล/ดูจุดแข็งแต่ละคนภายหลัง
+async function addPoints(points, category){
   const ref = db.collection('students').doc(state.selectedStudent.id);
   await db.runTransaction(async (tx)=>{
     const doc = await tx.get(ref);
     const cur = doc.data();
     const newPoints = (cur.totalPoints||0) + points;
-    tx.update(ref, {totalPoints:newPoints});
+    const update = {totalPoints:newPoints};
+    if(category){
+      const catField = 'pointsByCategory.' + category;
+      update[catField] = (cur.pointsByCategory && cur.pointsByCategory[category] || 0) + points;
+      state.selectedStudent.pointsByCategory = state.selectedStudent.pointsByCategory || {};
+      state.selectedStudent.pointsByCategory[category] = update[catField];
+    }
+    tx.update(ref, update);
     state.selectedStudent.totalPoints = newPoints;
   });
   document.getElementById('hbPoints').textContent = state.selectedStudent.totalPoints;
@@ -2552,15 +2653,19 @@ async function updateStreakAndPoints(points, targetDate){
     const totalPts = (cur.totalPoints||0) + points + bonus;
     const daysCompleted = (cur.daysCompleted||0) + 1;
     const longest = Math.max(cur.longestStreak||0, streak);
+    const catTotal = (cur.pointsByCategory && cur.pointsByCategory.dailyLog || 0) + points + bonus;
 
     tx.update(ref, {
       currentStreak: streak, longestStreak: longest, totalPoints: totalPts,
-      lastCheckinDate: newLast, daysCompleted: daysCompleted
+      lastCheckinDate: newLast, daysCompleted: daysCompleted,
+      'pointsByCategory.dailyLog': catTotal
     });
     state.selectedStudent.currentStreak = streak;
     state.selectedStudent.totalPoints = totalPts;
     state.selectedStudent.daysCompleted = daysCompleted;
     state.selectedStudent.longestStreak = longest;
+    state.selectedStudent.pointsByCategory = state.selectedStudent.pointsByCategory || {};
+    state.selectedStudent.pointsByCategory.dailyLog = catTotal;
   });
   document.getElementById('hbStreak').textContent = state.selectedStudent.currentStreak;
   document.getElementById('hbPoints').textContent = state.selectedStudent.totalPoints;
@@ -2571,6 +2676,12 @@ function renderStats(){
   document.getElementById('stStreak').textContent = state.selectedStudent.currentStreak || 0;
   document.getElementById('stPoints').textContent = state.selectedStudent.totalPoints || 0;
   document.getElementById('stDays').textContent = (state.selectedStudent.daysCompleted||0) + '/' + state.totalDays;
+
+  const cats = state.selectedStudent.pointsByCategory || {};
+  document.getElementById('catLabelCheck').textContent = cats.labelCheck || 0;
+  document.getElementById('catQuiz').textContent = cats.quiz || 0;
+  document.getElementById('catDailyLog').textContent = cats.dailyLog || 0;
+  document.getElementById('catMission').textContent = cats.mission || 0;
 
   // Quiz accuracy สะสมทั้งแคมเปญ (ไม่ใช่แค่วันนี้) — คำนวณจาก dailyLogs ทุกวันที่โหลดไว้ใน loadProgressTable()
   // ถ้ายังไม่เคยโหลด (เช่นเรียกก่อน loadProgressTable ครั้งแรก) ให้ใช้ข้อมูล Quiz วันนี้ไปพลางก่อน กันหน้าจอว่างเปล่า

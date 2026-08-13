@@ -322,7 +322,11 @@
         </div>
 
         <div class="card" id="missionBankTableSection">
-          <h3 style="margin-top:0;">ภารกิจทั้งหมด (<span id="missionCount">0</span> ข้อ) — ควรมีให้ครบ 21 ข้อก่อนเปิดแคมเปญ</h3>
+          <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+            <h3 style="margin:0;">ภารกิจทั้งหมด (<span id="missionCount">0</span> ข้อ) — ควรมีให้ครบ 21 ข้อก่อนเปิดแคมเปญ</h3>
+            <button class="btn btn-danger" style="padding:8px 14px; font-size:12.5px;" onclick="deleteAllMissions()">🗑️ ลบภารกิจทั้งหมด</button>
+          </div>
+          <div class="msg" id="deleteAllMissionMsg"></div>
           <table><thead><tr><th>วัน</th><th>เนื้อหา</th><th>หลักฐาน</th><th>คะแนน</th><th>สถานะ</th><th></th></tr></thead><tbody id="missionTable"></tbody></table>
         </div>
 
@@ -371,6 +375,14 @@
           </div>
           <div class="msg" id="holidayMsg"></div>
           <div id="holidayList" style="margin-top:12px;"></div>
+        </div>
+
+        <div class="card" style="max-width:420px; border-color:var(--red-high); background:#FBE6E2;">
+          <h3 style="margin-top:0; color:var(--red-high);">⚠️ รีเซ็ตข้อมูลกิจกรรมทั้งหมด</h3>
+          <p style="font-size:12.5px; color:#8a4a42;">ลบข้อมูลบันทึกพฤติกรรม/ภารกิจ/การ์ดสะสม ของนักเรียนทุกคนทุกห้อง แล้วรีเซ็ตคะแนน/Streak กลับเป็น 0 — ใช้ตอนอยาก "เริ่มนับหนึ่งใหม่" เช่น ล้างข้อมูลทดสอบก่อนเปิดแคมเปญจริง</p>
+          <p style="font-size:12px; color:#8a4a42;"><b>จะไม่กระทบ:</b> รายชื่อ/ห้องเรียน, PIN, ข้อมูลสุขภาพส่วนตัว, เป้าหมายโซเดียมที่ตั้งเอง, คลังภารกิจ/Quiz/การ์ด, ผล Baseline/Pre-Post Test</p>
+          <button class="btn btn-danger" onclick="resetAllActivityData()">🗑️ รีเซ็ตข้อมูลกิจกรรมทั้งหมด</button>
+          <div class="msg" id="resetMsg"></div>
         </div>
       </div>
 
@@ -921,6 +933,20 @@ async function loadMissionBank(){
 async function toggleMission(id, active){ await db.collection('missions').doc(id).update({active}); await loadMissionBank(); }
 async function deleteMission(id){ if(confirm('ลบภารกิจนี้?')){ await db.collection('missions').doc(id).delete(); await loadMissionBank(); } }
 
+async function deleteAllMissions(){
+  if(missionsCache.length===0){ setMsg('deleteAllMissionMsg','ไม่มีภารกิจให้ลบอยู่แล้ว'); return; }
+  if(!confirm(`ลบภารกิจทั้งหมด ${missionsCache.length} ข้อ? กู้คืนไม่ได้ ถ้าจะแทนที่ด้วยชุดใหม่ แนะนำเตรียมไฟล์นำเข้าให้พร้อมก่อนกดยืนยัน`)) return;
+  const chunks = [];
+  for(let i=0;i<missionsCache.length;i+=450) chunks.push(missionsCache.slice(i,i+450));
+  for(const chunk of chunks){
+    const batch = db.batch();
+    chunk.forEach(m=> batch.delete(db.collection('missions').doc(m.id)));
+    await batch.commit();
+  }
+  setMsg('deleteAllMissionMsg', `ลบภารกิจทั้งหมดแล้ว (${missionsCache.length} ข้อ) — นำเข้าชุดใหม่ได้เลย`);
+  await loadMissionBank();
+}
+
 /* ---- REVIEW QUEUE ---- */
 async function loadReviewQueue(){
   const wrap = document.getElementById('reviewQueue');
@@ -967,8 +993,10 @@ async function reviewMission(subId, decision){
     const studentRef = db.collection('students').doc(sub.studentId);
     await db.runTransaction(async (tx)=>{
       const doc = await tx.get(studentRef);
-      const cur = (doc.data().totalPoints||0) + (sub.pointsValue||15);
-      tx.update(studentRef, {totalPoints: cur});
+      const data = doc.data();
+      const cur = (data.totalPoints||0) + (sub.pointsValue||15);
+      const catTotal = (data.pointsByCategory && data.pointsByCategory.mission || 0) + (sub.pointsValue||15);
+      tx.update(studentRef, {totalPoints: cur, 'pointsByCategory.mission': catTotal});
     });
   }
   await loadReviewQueue();
@@ -1255,6 +1283,55 @@ async function exportAssessmentCsv(collectionName){
   a.href = url; a.download = collectionName + '_' + new Date().toISOString().slice(0,10) + '.csv';
   a.click();
   URL.revokeObjectURL(url);
+}
+
+async function resetAllActivityData(){
+  const totalStudents = studentsCache.length;
+  const warning = `⚠️ การกระทำนี้จะลบข้อมูลกิจกรรมทั้งหมดของนักเรียนทุกคนในทุกห้อง (${totalStudents} คน) ได้แก่:
+
+- บันทึกพฤติกรรมประจำวันทั้งหมด (รวมรายการตรวจฉลาก/เมนูอาหารที่บันทึกไว้)
+- การส่งภารกิจทั้งหมด
+- การ์ดที่สะสมไว้ทั้งหมด
+- คะแนนสะสม, Streak, จำนวนวันที่ทำสำเร็จ ของนักเรียนทุกคน (กลับเป็น 0)
+
+จะไม่กระทบ: รายชื่อ/ห้องเรียน, PIN, ข้อมูลสุขภาพส่วนตัว, เป้าหมายโซเดียมที่ตั้งเอง, คลังภารกิจ/Quiz/การ์ด, ผล Baseline/Pre-Post Test
+
+การกระทำนี้กู้คืนไม่ได้ ต้องการดำเนินการต่อหรือไม่?`;
+  if(!confirm(warning)) return;
+  const typed = prompt('พิมพ์คำว่า RESET (ตัวพิมพ์ใหญ่ทั้งหมด) เพื่อยืนยันอีกครั้งว่าต้องการลบจริงๆ');
+  if(typed !== 'RESET'){ setMsg('resetMsg','ยกเลิกการรีเซ็ต (พิมพ์ไม่ตรง หรือกดยกเลิก)',true); return; }
+
+  setMsg('resetMsg', 'กำลังลบข้อมูล... กรุณารอสักครู่ ห้ามปิดหน้านี้');
+
+  async function wipeCollection(name){
+    const snap = await db.collection(name).get();
+    const docs = snap.docs;
+    for(let i=0;i<docs.length;i+=450){
+      const batch = db.batch();
+      docs.slice(i,i+450).forEach(d=>batch.delete(d.ref));
+      await batch.commit();
+    }
+    return docs.length;
+  }
+
+  const n1 = await wipeCollection('dailyLogs');
+  const n2 = await wipeCollection('missionSubmissions');
+  const n3 = await wipeCollection('cardCollections');
+
+  for(let i=0;i<studentsCache.length;i+=450){
+    const batch = db.batch();
+    studentsCache.slice(i,i+450).forEach(s=>{
+      batch.update(db.collection('students').doc(s.id), {
+        totalPoints:0, currentStreak:0, longestStreak:0, daysCompleted:0,
+        lastCheckinDate:'', sodiumCheckCount:0, pointsByCategory:{}
+      });
+    });
+    await batch.commit();
+  }
+
+  setMsg('resetMsg', `✅ รีเซ็ตเสร็จแล้ว — ลบบันทึก ${n1} วัน, ภารกิจ ${n2} รายการ, การ์ด ${n3} ใบ และรีเซ็ตคะแนนนักเรียน ${studentsCache.length} คนกลับเป็น 0`);
+  await loadStudentsCache();
+  loadStudentTable();
 }
 
 loadCampaignForm();
