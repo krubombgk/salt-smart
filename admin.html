@@ -193,7 +193,7 @@
         <h2>คลังคำถาม Quiz</h2>
         <div class="card">
           <h3 style="margin-top:0;">นำเข้าคำถามเป็นชุด (นำเข้าทีเดียว)</h3>
-          <p style="font-size:12.5px; color:#9aa8ab; margin-top:-6px;">รูปแบบ: <code>หมวด | คำถาม | ตัวเลือกA | ตัวเลือกB | ตัวเลือกC | ตัวเลือกD | เฉลย(A/B/C/D) | คำอธิบาย | แหล่งอ้างอิง | ระดับความยาก</code> บรรทัดละ 1 ข้อ (คำอธิบาย/แหล่งอ้างอิง/ระดับความยาก ใส่หรือเว้นว่างก็ได้ ยังไม่ได้ใช้แสดงผลกับนักเรียนตอนนี้ แต่เก็บไว้เผื่ออนาคต)</p>
+          <p style="font-size:12.5px; color:#9aa8ab; margin-top:-6px;">รูปแบบ: <code>หมวด | คำถาม | ตัวเลือกA | ตัวเลือกB | ตัวเลือกC | ตัวเลือกD | เฉลย(A/B/C/D) | คำอธิบาย | แหล่งอ้างอิง | ระดับความยาก | รูปคำถาม | รูปA | รูปB | รูปC | รูปD</code> บรรทัดละ 1 ข้อ — ทุกช่องตั้งแต่ "คำอธิบาย" เป็นต้นไปใส่หรือเว้นว่างก็ได้ (คำอธิบายจะโชว์ให้นักเรียนอ่านหลังตอบจริง ส่วนแหล่งอ้างอิง/ระดับความยาก ยังเก็บไว้เฉยๆ)</p>
           <textarea id="bulkQuizText" style="min-height:200px; font-family:monospace; font-size:12px;" placeholder="1. NCDs และโซเดียม | NCDs หมายถึงโรคประเภทใด | โรคติดต่อจากเชื้อไวรัส | โรคไม่ติดต่อเรื้อรัง | โรคจากอุบัติเหตุ | โรคติดเชื้อเฉียบพลัน | B | NCDs ย่อมาจาก Noncommunicable Diseases | https://... | ง่าย"></textarea>
           <button class="btn btn-primary" onclick="bulkAddQuizQuestions()">นำเข้าคำถามชุดนี้</button>
           <div class="msg" id="bulkQuizMsg"></div>
@@ -690,14 +690,16 @@ async function bulkAddQuizQuestions(){
     const parts = line.split('|').map(p=>p.trim());
     // ต้องมีอย่างน้อย 7 ช่อง: หมวด | คำถาม | A | B | C | D | เฉลย  (คำอธิบาย/แหล่งอ้างอิง/ระดับความยาก ใส่เพิ่มได้แต่ไม่บังคับ)
     if(parts.length < 7){ skipped++; return; }
-    const [category, question, a, b, c, d, answerLetterRaw, explanation, source, difficulty] = parts;
+    const [category, question, a, b, c, d, answerLetterRaw, explanation, source, difficulty, questionImageUrl, imgA, imgB, imgC, imgD] = parts;
     const answerLetter = (answerLetterRaw||'').toUpperCase().replace(/[^A-D]/g,'');
     const correctIndex = letterToIndex[answerLetter];
     if(!question || !a || !b || !c || !d || correctIndex===undefined){ skipped++; return; }
     const ref = db.collection('quizBank').doc();
     batch.set(ref, {
       question, category, choices:[a,b,c,d], correctIndex, active:true,
-      explanation: explanation || '', source: source || '', difficulty: difficulty || ''
+      explanation: explanation || '', source: source || '', difficulty: difficulty || '',
+      questionImageUrl: questionImageUrl || '',
+      choiceImageUrls: [imgA||'', imgB||'', imgC||'', imgD||'']
     });
     count++;
   });
@@ -734,10 +736,11 @@ async function loadQuizBank(){
   document.getElementById('quizCount').textContent = quizCache.length;
   document.getElementById('quizTable').innerHTML = quizCache.map(q=>`
     <tr>
-      <td>${q.question}</td><td><span class="pill">${q.category||'-'}</span></td>
+      <td>${q.question}${q.questionImageUrl||( q.choiceImageUrls&&q.choiceImageUrls.some(x=>x))?' <span class="pill" style="background:var(--sand);">🖼️ มีรูป</span>':''}</td><td><span class="pill">${q.category||'-'}</span></td>
       <td>${q.choices[q.correctIndex]}</td>
       <td>${q.active?'✅ ใช้งาน':'⛔ ปิด'}</td>
       <td>
+        <button class="btn btn-ghost" style="padding:6px 10px;font-size:12px;" onclick="editQuizImages('${q.id}')">🖼️ ใส่รูป</button>
         <button class="btn btn-ghost" style="padding:6px 10px;font-size:12px;" onclick="toggleQuiz('${q.id}',${!q.active})">${q.active?'ปิด':'เปิด'}</button>
         <button class="btn btn-danger" style="padding:6px 10px;font-size:12px;" onclick="deleteQuiz('${q.id}')">ลบ</button>
       </td>
@@ -745,6 +748,27 @@ async function loadQuizBank(){
 }
 async function toggleQuiz(id, active){ await db.collection('quizBank').doc(id).update({active}); await loadQuizBank(); }
 async function deleteQuiz(id){ if(confirm('ลบคำถามนี้?')){ await db.collection('quizBank').doc(id).delete(); await loadQuizBank(); } }
+
+// ใส่รูปประกอบคำถาม + รูปประกอบตัวเลือกแต่ละข้อ (ถามทีละช่องด้วย prompt เว้นว่างได้ถ้าไม่มีรูป)
+async function editQuizImages(id){
+  const q = quizCache.find(x=>x.id===id);
+  if(!q) return;
+  const qImg = prompt('ลิงก์รูปประกอบคำถาม (เว้นว่าง = ไม่มีรูป)', q.questionImageUrl || '');
+  if(qImg===null) return; // กดยกเลิก ไม่บันทึกอะไรเลย
+  const existing = q.choiceImageUrls || ['','','',''];
+  const letters = ['A','B','C','D'];
+  const newChoiceImgs = [];
+  for(let i=0;i<4;i++){
+    const val = prompt(`ลิงก์รูปประกอบตัวเลือก ${letters[i]}: "${q.choices[i]}" (เว้นว่าง = ไม่มีรูป)`, existing[i] || '');
+    if(val===null) return; // กดยกเลิกกลางทาง ไม่บันทึกอะไรเลย กันข้อมูลครึ่งๆ กลางๆ
+    newChoiceImgs.push(val.trim());
+  }
+  await db.collection('quizBank').doc(id).update({
+    questionImageUrl: qImg.trim(),
+    choiceImageUrls: newChoiceImgs
+  });
+  await loadQuizBank();
+}
 
 async function deleteAllQuizQuestions(){
   if(quizCache.length===0){ setMsg('deleteAllQuizMsg','ไม่มีคำถามให้ลบอยู่แล้ว'); return; }

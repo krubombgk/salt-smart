@@ -130,6 +130,7 @@
   .key{
     background:#fff; border:2px solid #EFE9D9; border-radius:16px; padding:18px 0;
     font-family:'Kanit'; font-size:22px; font-weight:600; color:var(--deep-sea); cursor:pointer;
+    text-align:center;
   }
   .key:active{background:var(--sand); transform:scale(0.95);}
   .key.action{color:var(--clay); font-size:15px;}
@@ -272,6 +273,13 @@
   .choice:active{background:var(--sand);}
   .choice.correct{border-color:var(--green-ok); background:#E4F5EC;}
   .choice.wrong{border-color:var(--red-high); background:#FBE6E2;}
+  .choice-img{width:100%; max-height:140px; object-fit:cover; border-radius:8px; display:block; margin-bottom:8px;}
+  .quiz-img-wrap{margin-bottom:14px; border-radius:12px; overflow:hidden; background:var(--sand);}
+  .quiz-img-wrap img{width:100%; max-height:200px; object-fit:cover; display:block;}
+  .quiz-explain{
+    margin-top:6px; padding:12px 14px; border-radius:12px; background:var(--sand);
+    font-size:13.5px; color:#4c5c60; line-height:1.6;
+  }
   .quiz-done{text-align:center; padding:30px 10px;}
   .quiz-done .score{font-family:'Kanit'; font-weight:800; font-size:44px; color:var(--lagoon);}
 
@@ -382,6 +390,10 @@
   .badge-chip{
     display:inline-flex; align-items:center; gap:6px; background:linear-gradient(135deg,var(--coral),var(--clay));
     color:#fff; padding:8px 14px; border-radius:20px; font-family:'Kanit'; font-weight:600; font-size:13px; margin:4px 4px 0 0;
+    cursor:pointer;
+  }
+  .badge-chip.locked{
+    background:#EFE9D9; color:#9aa8ab; filter:grayscale(1);
   }
   .empty-note{color:#8b979a; font-size:13.5px; text-align:center; padding:20px 0;}
 
@@ -570,12 +582,28 @@
         </div>
         <div class="home-card-arrow">🎯 ›</div>
       </div>
+
+      <div class="home-card" onclick="switchTab('tab-quiz')">
+        <div>
+          <div class="home-card-label">Quiz ประจำวัน</div>
+          <div class="home-card-value" id="homeQuizStatus">-</div>
+        </div>
+        <div class="home-card-arrow">❓ ›</div>
+      </div>
+
+      <div class="home-card" onclick="switchTab('tab-log')">
+        <div>
+          <div class="home-card-label">บันทึกวันนี้</div>
+          <div class="home-card-value" id="homeLogStatus">-</div>
+        </div>
+        <div class="home-card-arrow">📝 ›</div>
+      </div>
     </div>
 
     <!-- TAB: SODIUM HUB (รวม ตรวจฉลาก + โซเดียมวันนี้ เข้าด้วยกันเป็นทางเข้าเดียว) -->
     <div class="tabpanel" id="tab-sodium-hub">
-      <div class="section-title">🧂 โซเดียม</div>
-      <p style="color:#6b7c80; font-size:13px; margin-top:-8px;">ตรวจ เช็ก และติดตามโซเดียมในแต่ละวัน</p>
+      <div class="section-title">🧂 วัดปริมาณโซเดียม</div>
+      <p style="color:#6b7c80; font-size:13px; margin-top:-8px;">มาดูกันว่าวันนี้กินเค็มไปแค่ไหนแล้ว</p>
       <div class="home-card" onclick="switchTab('tab-check')">
         <div>
           <div class="home-card-label">ตรวจฉลากอาหาร</div>
@@ -594,7 +622,7 @@
       <div class="card">
         <div style="display:flex; align-items:center; justify-content:space-between;">
           <div>
-            <div style="font-size:12.5px; color:#6b7c80;">เป้าหมายโซเดียมต่อวันของฉัน</div>
+            <div style="font-size:12.5px; color:#6b7c80;">ขีดจำกัดโซเดียมต่อวัน (ไม่ควรเกิน)</div>
             <div style="font-family:'Kanit'; font-weight:700; font-size:17px;" id="sodiumGoalDisplay">2,000 มก.</div>
           </div>
           <button class="btn btn-ghost" onclick="toggleSodiumGoalEdit()" id="sodiumGoalEditBtn">แก้ไข</button>
@@ -602,7 +630,7 @@
         <div id="sodiumGoalEditArea" style="display:none; margin-top:10px;">
           <p style="color:#9aa8ab; font-size:11.5px; margin:0 0 8px;">ปรับได้ตามคำแนะนำที่ครู/นักโภชนาการให้ไว้ (ค่าแนะนำทั่วไปคือ 2,000 มก./วัน)</p>
           <input type="number" id="sodiumGoalInput" min="500" max="5000" step="100" style="margin-bottom:8px;">
-          <button class="btn btn-primary btn-block" onclick="saveSodiumGoal()">บันทึกเป้าหมาย</button>
+          <button class="btn btn-primary btn-block" onclick="saveSodiumGoal()">บันทึกขีดจำกัด</button>
         </div>
       </div>
     </div>
@@ -635,7 +663,7 @@
               <div class="shaker-cap"></div>
             </div>
             <div class="gauge-num" id="gaugePct">0%</div>
-            <div class="gauge-label">ของปริมาณโซเดียมที่แนะนำต่อวัน (<span id="gaugeGoalLabel">2,000</span> มก.)</div>
+            <div class="gauge-label">ของขีดจำกัดโซเดียมที่แนะนำต่อวัน (ไม่ควรเกิน) (<span id="gaugeGoalLabel">2,000</span> มก.)</div>
             <div class="verdict" id="gaugeVerdict">-</div>
             <div class="gauge-tip" id="gaugeTip" style="display:none;"></div>
             <div class="gauge-tip" id="gaugeServings" style="display:none;"></div>
@@ -654,13 +682,16 @@
       <div class="check-history">
         <div class="section-title">🧂 รวมโซเดียมวันนี้ (คร่าวๆ)</div>
         <div class="card" id="sodiumTodayCard" style="background:var(--sand);">
-          <div id="sodiumTodayTotal" style="font-family:'Kanit'; font-weight:700; font-size:20px; color:var(--deep-sea);">0 มก. · 0%</div>
-          <p style="font-size:11.5px; color:#9aa8ab; margin:6px 0 0;">เป็นการประมาณคร่าวๆ จากรายการที่ตรวจ+เมนูที่เลือกไว้เท่านั้น ไม่ใช่ค่าที่วัดจริง</p>
+          <div id="sodiumGaugeArea"></div>
+          <p style="font-size:11.5px; color:#9aa8ab; margin:6px 0 0; text-align:center;">เป็นการประมาณคร่าวๆ จากรายการที่ตรวจ+เมนูที่เลือกไว้เท่านั้น ไม่ใช่ค่าที่วัดจริง</p>
           <button class="btn btn-ghost btn-block" style="margin-top:10px;" onclick="toggleMealPicker()">🍽️ เพิ่มเมนูอาหารที่กินวันนี้</button>
           <div id="mealPickerArea" style="display:none; margin-top:10px;">
             <select id="mealDishSelect" style="width:100%; margin-bottom:8px;"></select>
             <div class="sticker-row" id="mealLevelRow" style="margin-bottom:8px;"></div>
-            <input type="text" id="mealUnitLabel" placeholder="ปริมาณที่กิน เช่น 1 ชาม, 1 จาน (ไม่บังคับ)" style="margin-bottom:8px;">
+            <div class="field" style="margin-bottom:8px;">
+              <label>กินกี่หน่วย? (1 หน่วย = 1 จาน/ชาม/ที่ ตามค่าเฉลี่ยของเมนูนี้)</label>
+              <input type="number" id="mealServings" value="1" min="1" step="1" inputmode="numeric">
+            </div>
             <button class="btn btn-primary btn-block" onclick="confirmMealEntry()">เพิ่มรายการนี้</button>
           </div>
         </div>
@@ -832,7 +863,7 @@
   <div class="tabbar">
     <div class="tabbtn active" data-tab="tab-home" onclick="switchTab('tab-home')"><span class="ic"><img src="nav-home.png" alt=""></span>Home</div>
     <div class="tabbtn" data-tab="tab-mission-hub" onclick="switchTab('tab-mission-hub')"><span class="ic"><img src="nav-mission.png" alt=""></span>ภารกิจ</div>
-    <div class="tabbtn" data-tab="tab-sodium-hub" onclick="switchTab('tab-sodium-hub')"><span class="ic"><img src="nav-sodium.png" alt=""></span>โซเดียม</div>
+    <div class="tabbtn" data-tab="tab-sodium-hub" onclick="switchTab('tab-sodium-hub')"><span class="ic"><img src="nav-sodium.png" alt=""></span>วัดโซเดียม</div>
     <div class="tabbtn" data-tab="tab-album" onclick="switchTab('tab-album')"><span class="ic"><img src="nav-rewards.png" alt=""></span>รางวัล</div>
     <div class="tabbtn" data-tab="tab-stats" onclick="switchTab('tab-stats')"><span class="ic"><img src="nav-progress.png" alt=""></span>ความก้าวหน้า</div>
   </div>
@@ -947,6 +978,44 @@ const SODIUM_DAILY_MAX = 2000; // mg — ค่า default ถ้านักเ
 // เป้าหมายโซเดียมต่อวันของนักเรียนคนนี้ (ปรับเองได้ในแท็บโซเดียม) — ถ้ายังไม่เคยตั้งจะ fallback เป็นค่า default ด้านบน
 function getSodiumGoal(){
   return (state.selectedStudent && state.selectedStudent.sodiumGoal) || SODIUM_DAILY_MAX;
+}
+
+// หน้าปัดโซเดียมวันนี้ แบบครึ่งวงกลมคล้ายมาตรวัดความเร็วรถ — เขียว(ปลอดภัย)/เหลือง(ใกล้ขีดจำกัด)/แดง(เกินขีดจำกัด)
+function renderSodiumGauge(total, goal){
+  const gaugeMax = goal * 1.5; // ปลายสุดของหน้าปัด กันเข็มตกขอบเวลาโซเดียมเกินไปมาก
+  const cx=100, cy=95, r=78, strokeW=16;
+  const greenEnd = goal*0.7, yellowEnd = goal;
+
+  function angleForValue(v){ return 180 - Math.min(Math.max(v,0),gaugeMax)/gaugeMax*180; }
+  function pt(angleDeg){
+    const rad = angleDeg*Math.PI/180;
+    return [cx + r*Math.cos(rad), cy - r*Math.sin(rad)];
+  }
+  function arc(v1,v2){
+    const [x1,y1] = pt(angleForValue(v1)), [x2,y2] = pt(angleForValue(v2));
+    return `M ${x1.toFixed(1)} ${y1.toFixed(1)} A ${r} ${r} 0 0 1 ${x2.toFixed(1)} ${y2.toFixed(1)}`;
+  }
+
+  const needleAngle = angleForValue(total);
+  const needleLen = r - strokeW/2 - 4;
+  const rad = needleAngle*Math.PI/180;
+  const needleX = cx + needleLen*Math.cos(rad);
+  const needleY = cy - needleLen*Math.sin(rad);
+  const overLimit = total > goal;
+
+  return `
+    <svg viewBox="0 0 200 112" style="width:100%; max-width:280px; display:block; margin:0 auto;">
+      <path d="${arc(0,greenEnd)}" fill="none" stroke="#3FA66B" stroke-width="${strokeW}" stroke-linecap="round"/>
+      <path d="${arc(greenEnd,yellowEnd)}" fill="none" stroke="#E8A33D" stroke-width="${strokeW}" stroke-linecap="round"/>
+      <path d="${arc(yellowEnd,gaugeMax)}" fill="none" stroke="#D9503F" stroke-width="${strokeW}" stroke-linecap="round"/>
+      <line x1="${cx}" y1="${cy}" x2="${needleX.toFixed(1)}" y2="${needleY.toFixed(1)}" stroke="#0B3D4C" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="${cx}" cy="${cy}" r="7" fill="#0B3D4C"/>
+    </svg>
+    <div style="text-align:center; margin-top:-8px;">
+      <div style="font-family:'Kanit'; font-weight:800; font-size:26px; color:${overLimit?'#D9503F':'#0B3D4C'};">${Math.round(total).toLocaleString('th-TH')} <span style="font-size:14px; font-weight:600; color:#9aa8ab;">มก.</span></div>
+      <div style="font-size:13px; color:#6b7c80;">${Math.round(total/goal*100)}% ของขีดจำกัดต่อวัน (${goal.toLocaleString('th-TH')} มก.)</div>
+    </div>
+  `;
 }
 // เมนูอาหารไทยยอดฮิต + ค่ากลางโซเดียมโดยประมาณ (มก.)
 // หมายเหตุ: ค่าที่แม่นจริงมีแค่ ก๋วยเตี๋ยว/ส้มตำ (อ้างอิงกรมอนามัย/สื่อสุขภาพ) เมนูอื่นเป็นค่าประมาณเอง ไม่ใช่ตัวเลขวิจัยยืนยัน
@@ -1297,6 +1366,8 @@ function refreshHomeTab(){
 
   const missionLabels = {pending:'⏳ รอตรวจ', approved:'✅ ผ่านแล้ว', rejected:'❌ ยังไม่ผ่าน ลองใหม่ได้', not_submitted:'ยังไม่ได้ส่ง'};
   document.getElementById('homeMissionStatus').textContent = missionLabels[state.todaysMissionStatus] || 'ยังไม่ได้ส่ง';
+  document.getElementById('homeQuizStatus').textContent = state.quizFinished ? '✅ ทำแล้ว' : 'ยังไม่ได้ทำ';
+  document.getElementById('homeLogStatus').textContent = (state.targetLog && state.targetLog.submitted) ? '✅ บันทึกแล้ว' : 'ยังไม่ได้บันทึก';
 }
 
 // อัปเดตสถานะย่อในแท็บฮับ "ภารกิจ" (ภารกิจ/Quiz/บันทึกวันนี้ รวมเป็นทางเข้าเดียว)
@@ -1328,7 +1399,7 @@ async function saveSodiumGoal(){
   document.getElementById('sodiumGoalEditArea').style.display = 'none';
   refreshSodiumHub();
   renderCheckHistory(); // คำนวณ % ใหม่ตามเป้าหมายที่เพิ่งเปลี่ยน
-  showToast('ปรับเป้าหมายโซเดียมแล้ว 🎯');
+  showToast('ปรับขีดจำกัดโซเดียมแล้ว 🎯');
 }
 
 function goHomeShortcut(tabId){
@@ -1734,7 +1805,7 @@ function renderCheckHistory(){
   const grandPct = Math.round((grandTotal / getSodiumGoal()) * 100);
   state.sodiumTodayTotal = grandTotal;
   state.sodiumTodayPct = grandPct;
-  document.getElementById('sodiumTodayTotal').textContent = `${grandTotal} มก. · ${grandPct}%`;
+  document.getElementById('sodiumGaugeArea').innerHTML = renderSodiumGauge(grandTotal, getSodiumGoal());
 
   if(checks.length===0 && meals.length===0){
     list.innerHTML = '<div class="empty-note">ยังไม่มีรายการที่ตรวจวันนี้</div>';
@@ -1751,7 +1822,7 @@ function renderCheckHistory(){
   `).join('');
   const mealHtml = meals.map((m,i)=>`
     <div class="check-item">
-      <div class="ci-name">🍽️ ${m.dishName} (${SALTY_LEVEL_LABEL[m.level]||''})${m.unitLabel ? ` <span style="color:#9aa8ab;font-weight:400;">· ${m.unitLabel}</span>` : ''} <span style="color:#9aa8ab;font-weight:400;">· ${m.time||''}</span></div>
+      <div class="ci-name">🍽️ ${m.dishName} (${SALTY_LEVEL_LABEL[m.level]||''})${m.servings>1 ? ` <span style="color:#9aa8ab;font-weight:400;">(${m.servings} หน่วย)</span>` : ''} <span style="color:#9aa8ab;font-weight:400;">· ${m.time||''}</span></div>
       <div class="ci-right">
         <div class="ci-val">~${m.estimatedSodium} มก.</div>
         <div class="ci-actions"><span onclick="editMealEntry(${i})">✏️</span><span onclick="deleteMealEntry(${i})">🗑️</span></div>
@@ -1849,11 +1920,13 @@ function renderMealLevelRow(selectedLevel){
 async function confirmMealEntry(){
   const dishName = document.getElementById('mealDishSelect').value;
   const level = state.mealPickerLevel || 'mid';
-  const unitLabel = document.getElementById('mealUnitLabel').value.trim();
+  const servingsInput = parseInt(document.getElementById('mealServings').value);
+  const servings = (!isNaN(servingsInput) && servingsInput > 0) ? servingsInput : 1;
   const dish = THAI_DISHES.find(d => d.name === dishName);
   if(!dish) return;
-  const estimatedSodium = Math.round(dish.sodium * (SALTY_LEVEL_MULT[level] || 1));
-  const entry = { dishName, level, estimatedSodium, unitLabel, time: new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'}) };
+  const perUnitSodium = Math.round(dish.sodium * (SALTY_LEVEL_MULT[level] || 1));
+  const estimatedSodium = perUnitSodium * servings;
+  const entry = { dishName, level, estimatedSodium, perUnitSodium, servings, time: new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'}) };
   state.mealSodiumEntries.push(entry);
   await db.collection('dailyLogs').doc(logDocId()).set({
     studentId: state.selectedStudent.id,
@@ -1862,7 +1935,7 @@ async function confirmMealEntry(){
     mealSodiumEntries: state.mealSodiumEntries
   }, {merge:true});
   document.getElementById('mealPickerArea').style.display = 'none';
-  document.getElementById('mealUnitLabel').value = '';
+  document.getElementById('mealServings').value = '1';
   renderCheckHistory();
   refreshSodiumHub(); refreshHomeTab(); // อัปเดตยอดโซเดียมในแท็บฮับ+Home ทันทีหลังเพิ่มเมนูอาหาร
   showToast(`เพิ่ม ${dishName} แล้ว 🍽️`);
@@ -2035,10 +2108,17 @@ function renderQuizQuestion(){
   for(let i=0;i<state.todaysQuiz.length;i++){
     html += `<span class="${i<state.quizIndex?'done':''}"></span>`;
   }
-  html += `</div><div class="quiz-q">${state.quizIndex+1}. ${q.question}</div>`;
+  html += `</div>`;
+  if(q.questionImageUrl){
+    html += `<div class="quiz-img-wrap"><img src="${q.questionImageUrl}" alt="" onerror="this.parentElement.style.display='none'"></div>`;
+  }
+  html += `<div class="quiz-q">${state.quizIndex+1}. ${q.question}</div>`;
   q.choices.forEach((c,i)=>{
-    html += `<button class="choice" onclick="answerQuiz(${i})">${c}</button>`;
+    const imgUrl = (q.choiceImageUrls && q.choiceImageUrls[i]) || '';
+    const imgHtml = imgUrl ? `<img class="choice-img" src="${imgUrl}" alt="" onerror="this.style.display='none'">` : '';
+    html += `<button class="choice" onclick="answerQuiz(${i})">${imgHtml}<span>${c}</span></button>`;
   });
+  html += `<div id="quizExplainArea"></div>`;
   document.getElementById('quizBody').innerHTML = html;
 }
 
@@ -2051,10 +2131,20 @@ function answerQuiz(idx){
     else if(i===idx) b.classList.add('wrong');
   });
   state.quizAnswers.push({questionId:q.id, selectedIndex:idx, correct});
-  setTimeout(()=>{
-    state.quizIndex++;
-    renderQuizQuestion();
-  }, 900);
+
+  // โชว์คำอธิบายค้างไว้ ให้เวลานักเรียนอ่านก่อน ไม่เลื่อนข้อถัดไปอัตโนมัติ ต้องกดปุ่ม "ถัดไป" เอง
+  const resultLine = correct ? '✅ ถูกต้อง!' : `❌ ยังไม่ถูก คำตอบที่ถูกคือ "${q.choices[q.correctIndex]}"`;
+  const explainLine = q.explanation ? `<br>${q.explanation}` : '';
+  const isLast = state.quizIndex >= state.todaysQuiz.length - 1;
+  document.getElementById('quizExplainArea').innerHTML = `
+    <div class="quiz-explain">${resultLine}${explainLine}</div>
+    <button class="btn btn-primary btn-block" style="margin-top:12px;" onclick="goNextQuizQuestion()">${isLast ? 'ดูผลคะแนน ›' : 'ข้อถัดไป ›'}</button>
+  `;
+}
+
+function goNextQuizQuestion(){
+  state.quizIndex++;
+  renderQuizQuestion();
 }
 
 async function finishQuiz(){
@@ -2428,16 +2518,34 @@ function renderStats(){
 
   const healthyChoiceCount = logs.filter(log=> log.otherBehaviors && log.otherBehaviors.healthyChoice).length;
   const approvedMissionCount = state.approvedMissionCount || 0;
-
-  const badges = [];
   const halfway = Math.ceil(state.totalDays/2);
-  if((state.selectedStudent.longestStreak||0) >= halfway) badges.push('⭐ Consistency Star');
-  if((state.selectedStudent.sodiumCheckCount||0) >= 10) badges.push('🔍 Label Detective');
-  if(quizTotalSum>0 && quizAccuracy >= 0.8) badges.push('🧠 Quiz Master');
-  if(approvedMissionCount >= 15) badges.push('🎯 Mission Explorer');
-  if(healthyChoiceCount >= 10) badges.push('💚 Healthy Choice');
-  if((state.selectedStudent.daysCompleted||0) >= state.totalDays) badges.push('🏆 21-Day Finisher');
-  document.getElementById('badgeArea').innerHTML = badges.map(b=>`<span class="badge-chip">${b}</span>`).join('') || '<div class="empty-note">ทำภารกิจต่อเนื่องเพื่อปลดล็อกรางวัล</div>';
+
+  // รายชื่อ badge ทั้งหมด (ยังเป็นชุดชั่วคราว รอคุยกันว่าจะปรับรายการ/เงื่อนไขจริงหรือไม่)
+  // แสดงครบทุกใบเสมอ ใบที่ยังไม่ปลดล็อกจะเป็นสีเทา กดดูได้ว่าต้องทำอะไรถึงจะได้
+  const BADGE_DEFS = [
+    { icon:'⭐', name:'Consistency Star', earned:(state.selectedStudent.longestStreak||0) >= halfway,
+      desc:`ทำต่อเนื่องติดกัน ${halfway} วัน (ตอนนี้ทำได้สูงสุด ${state.selectedStudent.longestStreak||0} วัน)` },
+    { icon:'🔍', name:'Label Detective', earned:(state.selectedStudent.sodiumCheckCount||0) >= 10,
+      desc:`ตรวจฉลากอาหารสะสม 10 ครั้ง (ตอนนี้ตรวจไปแล้ว ${state.selectedStudent.sodiumCheckCount||0} ครั้ง)` },
+    { icon:'🧠', name:'Quiz Master', earned: quizTotalSum>0 && quizAccuracy >= 0.8,
+      desc:`ตอบ Quiz ถูกสะสม 80% ขึ้นไป (ตอนนี้ ${quizTotalSum>0 ? Math.round(quizAccuracy*100) : 0}%)` },
+    { icon:'🎯', name:'Mission Explorer', earned: approvedMissionCount >= 15,
+      desc:`ผ่านภารกิจสะสม 15 ครั้ง (ตอนนี้ผ่านแล้ว ${approvedMissionCount} ครั้ง)` },
+    { icon:'💚', name:'Healthy Choice', earned: healthyChoiceCount >= 10,
+      desc:`เลือกทางเลือกสุขภาพสะสม 10 วัน (ตอนนี้ ${healthyChoiceCount} วัน)` },
+    { icon:'🏆', name:'21-Day Finisher', earned:(state.selectedStudent.daysCompleted||0) >= state.totalDays,
+      desc:`ทำกิจกรรมครบทุกวันตลอด ${state.totalDays} วัน (ตอนนี้ทำสำเร็จ ${state.selectedStudent.daysCompleted||0} วัน)` },
+  ];
+  state.badgeDefsCache = BADGE_DEFS; // เก็บไว้ให้ showBadgeDetail() อ่านตอนกดดูรายละเอียด
+  document.getElementById('badgeArea').innerHTML = BADGE_DEFS.map((b,i)=>
+    `<span class="badge-chip${b.earned?'':' locked'}" onclick="showBadgeDetail(${i})">${b.earned?'':'🔒 '}${b.icon} ${b.name}</span>`
+  ).join('');
+}
+
+function showBadgeDetail(i){
+  const b = (state.badgeDefsCache||[])[i];
+  if(!b) return;
+  alert(`${b.icon} ${b.name}\n\n${b.earned ? '✅ ปลดล็อกแล้ว!' : '🔒 ยังไม่ปลดล็อก'}\n\nวิธีได้รับ: ${b.desc}`);
 }
 
 /* ---- กราฟแนวโน้มโซเดียมรายวัน (SVG ธรรมดา ไม่ใช้ library ภายนอก) ---- */
@@ -2493,7 +2601,7 @@ function renderSodiumTrendChart(days, logByDate){
   return `
     <svg viewBox="0 0 ${W} ${H}" style="width:100%; height:auto; display:block;">
       <line x1="${padL}" y1="${goalY.toFixed(1)}" x2="${(padL+plotW).toFixed(1)}" y2="${goalY.toFixed(1)}" stroke="#E76F51" stroke-width="1.2" stroke-dasharray="4,3"/>
-      <text x="${(padL+plotW).toFixed(1)}" y="${(goalY-4).toFixed(1)}" font-size="9" fill="#E76F51" text-anchor="end">เป้าหมาย</text>
+      <text x="${(padL+plotW).toFixed(1)}" y="${(goalY-4).toFixed(1)}" font-size="9" fill="#E76F51" text-anchor="end">ไม่ควรเกิน</text>
       ${pathsHtml}
       ${dotsHtml}
       ${xLabels}
@@ -2502,7 +2610,7 @@ function renderSodiumTrendChart(days, logByDate){
       <line x1="${padL}" y1="${padT}" x2="${padL}" y2="${(padT+plotH).toFixed(1)}" stroke="#EFE9D9" stroke-width="1"/>
       <line x1="${padL}" y1="${(padT+plotH).toFixed(1)}" x2="${(padL+plotW).toFixed(1)}" y2="${(padT+plotH).toFixed(1)}" stroke="#EFE9D9" stroke-width="1"/>
     </svg>
-    <p style="font-size:11px; color:#9aa8ab; margin:6px 0 0;">เส้นประสีส้ม = เป้าหมายโซเดียมต่อวัน (${goal.toLocaleString('th-TH')} มก.) · วันที่ไม่มีข้อมูลจะเว้นช่วงไว้ ไม่นับเป็น 0</p>
+    <p style="font-size:11px; color:#9aa8ab; margin:6px 0 0;">เส้นประสีส้ม = ขีดจำกัดโซเดียมต่อวันที่ไม่ควรเกิน (${goal.toLocaleString('th-TH')} มก.) · วันที่ไม่มีข้อมูลจะเว้นช่วงไว้ ไม่นับเป็น 0</p>
   `;
 }
 
