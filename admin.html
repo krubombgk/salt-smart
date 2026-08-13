@@ -9,6 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;600;700;800&family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-functions-compat.js"></script>
 <style>
   :root{
     --deep-sea:#0B3D4C; --deep-sea-2:#124A5C; --lagoon:#2A9D8F; --lagoon-light:#7FD8CC;
@@ -360,8 +361,9 @@
           <div class="field"><label>วันเริ่มต้น</label><input type="date" id="campStart" onchange="updateSchoolDaySummary()"></div>
           <div class="field"><label>วันสิ้นสุด</label><input type="date" id="campEnd" onchange="updateSchoolDaySummary()"></div>
           <div class="msg" id="schoolDaySummary" style="color:var(--lagoon);"></div>
-          <div class="field" style="margin-top:10px;"><label>รหัสผ่านผู้ดูแล (แก้ไขได้)</label><input type="text" id="campAdminPw"></div>
-          <div class="field"><label>รหัสผ่านยุวทูต อย.น้อย (เข้าได้แค่หน้าตรวจภารกิจ)</label><input type="text" id="campYouthPw"></div>
+          <div class="field" style="margin-top:10px;"><label>รหัสผ่านผู้ดูแล (แก้ไขได้)</label><input type="text" id="campAdminPw" oninput="toggleOldPwField()"></div>
+          <div class="field"><label>รหัสผ่านยุวทูต อย.น้อย (เข้าได้แค่หน้าตรวจภารกิจ)</label><input type="text" id="campYouthPw" oninput="toggleOldPwField()"></div>
+          <div class="field" id="campOldPwField" style="display:none;"><label>ใส่รหัสผ่านผู้ดูแล<u>เดิม</u>เพื่อยืนยันตัวตนก่อนเปลี่ยน</label><input type="text" id="campOldPw"></div>
           <button class="btn btn-primary" onclick="saveCampaign()">บันทึกการตั้งค่า</button>
           <div class="msg" id="campMsg"></div>
         </div>
@@ -436,26 +438,27 @@ const firebaseConfig = {
 };
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
+const functions = firebase.app().functions('asia-southeast1');
 
 let classesCache = [], studentsCache = [], quizCache = [];
 
 let currentRole = 'admin'; // 'admin' | 'youth'
 async function checkAdminPw(){
   const pw = document.getElementById('adminPw').value;
-  const snap = await db.collection('settings').doc('admin').get();
-  const data = snap.exists ? snap.data() : {};
-  const adminPw = data.password || 'admin1234';
-  const youthPw = data.youthAmbassadorPassword || '';
-
-  if(pw === adminPw){
-    currentRole = 'admin';
+  const btn = document.querySelector('#gateScreen .btn-primary');
+  const msgEl = document.getElementById('gateMsg');
+  msgEl.classList.remove('err'); msgEl.textContent = 'กำลังตรวจสอบ...';
+  if(btn) btn.disabled = true;
+  try{
+    const checkAdminAccess = functions.httpsCallable('checkAdminAccess');
+    const result = await checkAdminAccess({ password: pw });
+    currentRole = result.data.role; // 'admin' หรือ 'youth'
     enterAdminApp();
-  } else if(youthPw && pw === youthPw){
-    currentRole = 'youth';
-    enterAdminApp();
-  } else {
-    document.getElementById('gateMsg').textContent = 'รหัสผ่านไม่ถูกต้อง';
-    document.getElementById('gateMsg').classList.add('err');
+  }catch(e){
+    msgEl.textContent = 'รหัสผ่านไม่ถูกต้อง';
+    msgEl.classList.add('err');
+  }finally{
+    if(btn) btn.disabled = false;
   }
 }
 
@@ -1127,6 +1130,12 @@ function updateSchoolDaySummary(){
   el.textContent = `รวม ${totalCalendarDays} วันตามปฏิทิน มีวันเรียน (จ-ศ) ${days.length} วัน`;
 }
 
+function toggleOldPwField(){
+  const pw = document.getElementById('campAdminPw').value;
+  const youthPw = document.getElementById('campYouthPw').value;
+  document.getElementById('campOldPwField').style.display = (pw || youthPw) ? 'block' : 'none';
+}
+
 async function saveCampaign(){
   const start = document.getElementById('campStart').value;
   const end = document.getElementById('campEnd').value;
@@ -1135,10 +1144,19 @@ async function saveCampaign(){
   if(!start || !end || end < start){ setMsg('campMsg','กรุณาใส่วันเริ่มต้น-สิ้นสุดให้ถูกต้อง',true); return; }
   await db.collection('settings').doc('campaign').set({startDate:start, endDate:end, active:true}, {merge:true});
   if(pw || youthPw){
-    const adminUpdate = {};
-    if(pw) adminUpdate.password = pw;
-    if(youthPw) adminUpdate.youthAmbassadorPassword = youthPw;
-    await db.collection('settings').doc('admin').set(adminUpdate, {merge:true});
+    if(currentRole !== 'admin'){ setMsg('campMsg','เปลี่ยนรหัสผ่านได้เฉพาะผู้ดูแล (ยุวทูตเปลี่ยนไม่ได้)',true); return; }
+    const oldPw = document.getElementById('campOldPw').value;
+    try{
+      const changeAdminPassword = functions.httpsCallable('changeAdminPassword');
+      await changeAdminPassword({ oldPassword: oldPw, newAdminPassword: pw || null, newYouthPassword: youthPw || null });
+      document.getElementById('campAdminPw').value='';
+      document.getElementById('campYouthPw').value='';
+      document.getElementById('campOldPw').value='';
+      document.getElementById('campOldPwField').style.display='none';
+    }catch(e){
+      setMsg('campMsg','บันทึกวันที่แคมเปญแล้ว แต่เปลี่ยนรหัสผ่านไม่สำเร็จ: รหัสผ่านเดิมไม่ถูกต้อง',true);
+      return;
+    }
   }
   setMsg('campMsg','บันทึกการตั้งค่าแล้ว');
 }
