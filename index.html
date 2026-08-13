@@ -614,6 +614,7 @@
     <div class="tabpanel" id="tab-sodium-hub">
       <div class="section-title">🧂 วัดปริมาณโซเดียม</div>
       <p style="color:#6b7c80; font-size:13px; margin-top:-8px;">มาดูกันว่าวันนี้กินเค็มไปแค่ไหนแล้ว</p>
+      <div class="stat-pill" style="margin-bottom:10px; display:inline-flex;">🔥 เก็บข้อมูลต่อเนื่อง <span id="sodiumTrackStreakVal" style="margin-left:4px;">0</span> วัน</div>
       <div class="home-card" onclick="switchTab('tab-check')">
         <div>
           <div class="home-card-label">ตรวจฉลากอาหาร</div>
@@ -1416,6 +1417,7 @@ function refreshMissionHub(){
 function refreshSodiumHub(){
   document.getElementById('hubSodiumGaugeArea').innerHTML = renderSodiumGauge(state.sodiumTodayTotal||0, getSodiumGoal());
   document.getElementById('sodiumGoalDisplay').textContent = getSodiumGoal().toLocaleString('th-TH') + ' มก.';
+  document.getElementById('sodiumTrackStreakVal').textContent = state.selectedStudent.sodiumTrackStreak || 0;
 }
 
 function toggleSodiumGoalEdit(){
@@ -1783,6 +1785,24 @@ function calcSodium(){
   }
 }
 
+/* ---- Streak การเก็บข้อมูลโซเดียม (ตรวจฉลาก หรือเพิ่มเมนูอาหาร นับเป็น "เก็บข้อมูล" ของวันนั้นเหมือนกัน) ---- */
+async function updateSodiumTrackStreak(){
+  const ref = db.collection('students').doc(state.selectedStudent.id);
+  const today = state.todaysDateStr;
+  const expectedPrev = addDays(today, -1);
+  await db.runTransaction(async (tx)=>{
+    const doc = await tx.get(ref);
+    const cur = doc.data();
+    const last = cur.lastSodiumTrackDate || '';
+    if(last === today) return; // เก็บข้อมูลไปแล้ววันนี้ ไม่นับซ้ำ (กันตรวจหลายรอบแล้ว streak วิ่งเกินจริง)
+    const streak = (last === expectedPrev) ? (cur.sodiumTrackStreak||0) + 1 : 1;
+    const longest = Math.max(cur.sodiumTrackLongestStreak||0, streak);
+    tx.update(ref, { sodiumTrackStreak: streak, sodiumTrackLongestStreak: longest, lastSodiumTrackDate: today });
+    state.selectedStudent.sodiumTrackStreak = streak;
+    state.selectedStudent.sodiumTrackLongestStreak = longest;
+  });
+}
+
 async function saveSodiumCheck(consumed){
   if(!state.pendingCalc) return;
   const category = (state.lastAiReadExtra && state.lastAiReadExtra.category) || null;
@@ -1823,6 +1843,7 @@ async function saveSodiumCheck(consumed){
   renderCheckHistory();
   renderAllTimeCheckHistory();
   refreshSodiumHub(); refreshHomeTab(); // อัปเดตยอดโซเดียมในแท็บฮับ+Home ทันทีหลังบันทึกรายการที่ตรวจ
+  await updateSodiumTrackStreak(); // นับว่า "เก็บข้อมูลโซเดียมวันนี้แล้ว" ไม่ว่าจะได้คะแนนหรือไม่ (คนละเรื่องกับโควตาคะแนน)
 
   let toastMsg;
   if(eligibleForPoints){
@@ -2056,6 +2077,7 @@ async function confirmMealEntry(){
   document.getElementById('mealServings').value = '1';
   renderCheckHistory();
   refreshSodiumHub(); refreshHomeTab(); // อัปเดตยอดโซเดียมในแท็บฮับ+Home ทันทีหลังเพิ่มเมนูอาหาร
+  await updateSodiumTrackStreak(); // นับว่า "เก็บข้อมูลโซเดียมวันนี้แล้ว" เหมือนกับตรวจฉลาก
   showToast(`เพิ่ม ${dishName} แล้ว 🍽️`);
 }
 
@@ -2496,13 +2518,21 @@ async function submitDailyLog(){
   const condimentAnswered = Object.values(state.condiments).some(Boolean); // รวม "ไม่เติมเลย" ด้วย ตอบอะไรก็ได้คะแนนเท่ากัน
   const saltyAnswered = !!state.levels.salty; // ให้คะแนนเพราะ "ตอบ" ไม่ใช่เพราะ "ตอบว่าน้อย/พอดี" กันไม่ให้เด็กเลี่ยงตอบเพื่อเอาแต้ม
   const tasteAnswered = !!state.tastePref;
+  // ช่องเขียนเอง 3 ช่อง (มื้ออาหาร/สะท้อนตัวเอง/สิ่งที่จะปรับปรุง) ใช้ความพยายามมากกว่าติ๊กเฉยๆ จึงควรได้คะแนนด้วย
+  // กำหนดขั้นต่ำ 5 ตัวอักษรกันพิมพ์มั่วเอาคะแนน (เนื้อหาจะเป็นอะไรก็ได้ ไม่ตัดสิน เหมือนช่องอื่น)
+  const mealNoteAnswered = mealNote.length >= 5;
+  const reflectionAnswered = reflection.length >= 5;
+  const improveAnswered = improveNote.length >= 5;
 
   const points = 10
     + Math.min(exerciseCount,4)*2
     + (saltyAnswered ? 5 : 0)
     + (tasteAnswered ? 2 : 0)
     + (condimentAnswered ? 5 : 0)
-    + otherCount*2;
+    + otherCount*2
+    + (mealNoteAnswered ? 3 : 0)
+    + (reflectionAnswered ? 3 : 0)
+    + (improveAnswered ? 3 : 0);
   const targetDate = state.targetDate;
 
   await db.collection('dailyLogs').doc(docIdFor(targetDate)).set({
@@ -2709,6 +2739,8 @@ function renderStats(){
   const BADGE_DEFS = [
     { icon:'⭐', name:'Consistency Star', earned:(state.selectedStudent.longestStreak||0) >= halfway,
       desc:`ทำต่อเนื่องติดกัน ${halfway} วัน (ตอนนี้ทำได้สูงสุด ${state.selectedStudent.longestStreak||0} วัน)` },
+    { icon:'🧂', name:'Sodium Tracker', earned:(state.selectedStudent.sodiumTrackLongestStreak||0) >= halfway,
+      desc:`เก็บข้อมูลโซเดียม (ตรวจฉลากหรือเพิ่มเมนูอาหาร) ต่อเนื่อง ${halfway} วัน (ตอนนี้ทำได้สูงสุด ${state.selectedStudent.sodiumTrackLongestStreak||0} วัน)` },
     { icon:'🔍', name:'Label Detective', earned:(state.selectedStudent.sodiumCheckCount||0) >= 10,
       desc:`ตรวจฉลากอาหารสะสม 10 ครั้ง (ตอนนี้ตรวจไปแล้ว ${state.selectedStudent.sodiumCheckCount||0} ครั้ง)` },
     { icon:'🧠', name:'Quiz Master', earned: quizTotalSum>0 && quizAccuracy >= 0.8,
