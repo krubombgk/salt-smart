@@ -126,6 +126,7 @@
       <div class="navitem" data-p="p-missions" onclick="showPanel('p-missions')">🎯 ภารกิจ/ตรวจสอบ</div>
       <div class="navitem" data-p="p-leaderboard" onclick="showPanel('p-leaderboard')">🏆 อันดับ/รางวัล</div>
       <div class="navitem" data-p="p-campaign" onclick="showPanel('p-campaign')">⚙️ ตั้งค่าแคมเปญ</div>
+      <div class="navitem" data-p="p-assessment" onclick="showPanel('p-assessment')">📋 ผล Baseline/Pre-Post</div>
     </div>
     <div class="content">
 
@@ -373,6 +374,27 @@
         </div>
       </div>
 
+      <!-- ASSESSMENT RESULTS -->
+      <div class="panel" id="p-assessment">
+        <h2>ผล Baseline Survey / Pre-Post Test</h2>
+        <p style="font-size:12.5px; color:#9aa8ab; margin-top:-8px;">ข้อมูลจากหน้า assessment.html (แยกจากระบบเกม) — ตารางนี้เป็นสรุปเบื้องต้นให้เห็นภาพรวมเท่านั้น ถ้าจะวิเคราะห์สถิติจริง (paired t-test, CI ฯลฯ) แนะนำ Export CSV ไปทำต่อใน Excel/SPSS ตามที่ระบุไว้ในรายงานออกแบบเครื่องมือ</p>
+        <div class="card">
+          <div class="field" style="max-width:260px;"><label>กรองตามห้อง</label><select id="assessClassFilter" onchange="loadAssessmentResults()"></select></div>
+          <div id="assessSummary" style="display:flex; flex-wrap:wrap; gap:8px; margin:10px 0;"></div>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button class="btn btn-ghost" onclick="exportAssessmentCsv('behaviorSurveys')">⬇️ Export Baseline/Post Survey (CSV)</button>
+            <button class="btn btn-ghost" onclick="exportAssessmentCsv('knowledgeTests')">⬇️ Export Pre/Post Test (CSV)</button>
+          </div>
+        </div>
+        <div class="card">
+          <table>
+            <thead><tr><th>ชื่อ</th><th>ห้อง</th><th>Baseline (A/B/C)</th><th>Post Survey (A/B/C)</th><th>Pre-test</th><th>Post-test</th><th>เปลี่ยนแปลง</th></tr></thead>
+            <tbody id="assessTable"></tbody>
+          </table>
+          <div class="empty-note" id="assessEmptyNote" style="display:none;">ยังไม่มีข้อมูล</div>
+        </div>
+      </div>
+
     </div>
   </div>
 </div>
@@ -449,6 +471,7 @@ function showPanel(id){
   if(id==='p-overview') loadOverview();
   if(id==='p-leaderboard') switchLbCat(currentLbCat);
   if(id==='p-missions') loadReviewQueue();
+  if(id==='p-assessment') loadAssessmentResults();
 }
 
 async function boot(){
@@ -1133,6 +1156,105 @@ function setMsg(id, text, isErr){
   el.textContent = text;
   el.classList.toggle('err', !!isErr);
   setTimeout(()=>{el.textContent='';}, 3000);
+}
+
+/* ---- ผล Baseline Survey / Pre-Post Test (จาก assessment.html แยกระบบ) ---- */
+async function loadAssessmentResults(){
+  // เติม dropdown กรองห้องถ้ายังไม่เคยเติม
+  const filterEl = document.getElementById('assessClassFilter');
+  if(filterEl.options.length===0){
+    filterEl.innerHTML = '<option value="">ทุกห้อง</option>' + classesCache.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+  }
+  const classFilter = filterEl.value;
+
+  const [behaviorSnap, testSnap] = await Promise.all([
+    db.collection('behaviorSurveys').get(),
+    db.collection('knowledgeTests').get()
+  ]);
+  const behaviorDocs = behaviorSnap.docs.map(d=>({id:d.id, ...d.data()}));
+  const testDocs = testSnap.docs.map(d=>({id:d.id, ...d.data()}));
+
+  // รวมข้อมูลตาม studentId — คนเดียวอาจมีได้สูงสุด 4 เอกสาร (behaviorPre/Post + testPre/Post)
+  const byStudent = {};
+  function ensure(sid, name, classId, className){
+    if(!byStudent[sid]) byStudent[sid] = {studentId:sid, name, classId, className, behaviorPre:null, behaviorPost:null, testPre:null, testPost:null};
+    return byStudent[sid];
+  }
+  behaviorDocs.forEach(d=>{
+    const rec = ensure(d.studentId, d.studentName, d.classId, d.className);
+    if(d.phase==='pre') rec.behaviorPre = d; else rec.behaviorPost = d;
+  });
+  testDocs.forEach(d=>{
+    const rec = ensure(d.studentId, d.studentName, d.classId, d.className);
+    if(d.phase==='pre') rec.testPre = d; else rec.testPost = d;
+  });
+
+  let rows = Object.values(byStudent);
+  if(classFilter) rows = rows.filter(r=>r.classId===classFilter);
+  rows.sort((a,b)=>(a.name||'').localeCompare(b.name||'','th'));
+
+  // สรุปจำนวนแบบโปร่งใส ตามที่รายงานออกแบบเครื่องมือแนะนำ (N enrolled → N pre → N post → N paired)
+  const nBaseline = rows.filter(r=>r.behaviorPre).length;
+  const nPostSurvey = rows.filter(r=>r.behaviorPost).length;
+  const nPretest = rows.filter(r=>r.testPre).length;
+  const nPosttest = rows.filter(r=>r.testPost).length;
+  const paired = rows.filter(r=>r.testPre && r.testPost);
+  const avgPre = paired.length ? paired.reduce((s,r)=>s+r.testPre.score,0)/paired.length : null;
+  const avgPost = paired.length ? paired.reduce((s,r)=>s+r.testPost.score,0)/paired.length : null;
+
+  let summaryHtml = `
+    <span class="pill">นักเรียนทั้งหมดในระบบนี้: ${rows.length} คน</span>
+    <span class="pill">Baseline: ${nBaseline}</span>
+    <span class="pill">Pre-test: ${nPretest}</span>
+    <span class="pill">Post Survey: ${nPostSurvey}</span>
+    <span class="pill">Post-test: ${nPosttest}</span>
+    <span class="pill" style="background:#E4F5F3;">คู่ Pre-Post ครบ (ใช้วิเคราะห์ได้): ${paired.length}</span>
+  `;
+  if(avgPre!==null){
+    const diff = avgPost - avgPre;
+    summaryHtml += `<span class="pill" style="background:#E4F5F3;">คะแนนเฉลี่ย Pre→Post: ${avgPre.toFixed(1)} → ${avgPost.toFixed(1)} (${diff>=0?'+':''}${diff.toFixed(1)})</span>`;
+  }
+  document.getElementById('assessSummary').innerHTML = summaryHtml;
+
+  const domainText = (d) => d ? `A:${d.domainA_score??'-'} B:${d.domainB_score??'-'} C:${d.domainC_score??'-'}` : '—';
+  document.getElementById('assessTable').innerHTML = rows.map(r=>{
+    const diff = (r.testPre && r.testPost) ? (r.testPost.score - r.testPre.score) : null;
+    return `<tr>
+      <td>${r.name||'-'}</td><td>${r.className||'-'}</td>
+      <td>${domainText(r.behaviorPre)}</td>
+      <td>${domainText(r.behaviorPost)}</td>
+      <td>${r.testPre ? r.testPre.score+'/'+r.testPre.total : '—'}</td>
+      <td>${r.testPost ? r.testPost.score+'/'+r.testPost.total : '—'}</td>
+      <td>${diff!==null ? (diff>=0?'+':'')+diff : '—'}</td>
+    </tr>`;
+  }).join('');
+  document.getElementById('assessEmptyNote').style.display = rows.length===0 ? 'block' : 'none';
+}
+
+function csvEscape(val){
+  const s = (val===null||val===undefined) ? '' : String(val);
+  return '"' + s.replace(/"/g,'""') + '"';
+}
+
+async function exportAssessmentCsv(collectionName){
+  const snap = await db.collection(collectionName).get();
+  const docs = snap.docs.map(d=>({id:d.id, ...d.data()}));
+  if(docs.length===0){ alert('ยังไม่มีข้อมูลให้ export'); return; }
+  let rows, header;
+  if(collectionName==='behaviorSurveys'){
+    header = ['studentId','studentName','classId','className','phase','submittedAt','domainA_score','domainA_validCount','domainB_score','domainB_validCount','domainC_score','domainC_validCount'];
+    rows = docs.map(d=> header.map(h=> h==='submittedAt' ? (d.submittedAt ? d.submittedAt.toDate().toISOString() : '') : d[h]));
+  } else {
+    header = ['studentId','studentName','classId','className','phase','submittedAt','score','total'];
+    rows = docs.map(d=> header.map(h=> h==='submittedAt' ? (d.submittedAt ? d.submittedAt.toDate().toISOString() : '') : d[h]));
+  }
+  const csv = [header.join(','), ...rows.map(r=>r.map(csvEscape).join(','))].join('\n');
+  const blob = new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8;'}); // ใส่ BOM กัน Excel อ่านภาษาไทยเพี้ยน
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = collectionName + '_' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 loadCampaignForm();
