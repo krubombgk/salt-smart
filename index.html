@@ -187,6 +187,46 @@
   .home-card-label{font-size:12.5px; color:#9aa8ab; margin-bottom:4px;}
   .home-card-value{font-family:'Kanit'; font-weight:700; font-size:16px; color:var(--deep-sea);}
   .home-card-arrow{font-size:20px; color:var(--lagoon); white-space:nowrap;}
+
+  /* ---- Home tab redesign (Hero mission card, today's progress, sodium bar, quick actions) ---- */
+  .home-hero{
+    background:linear-gradient(135deg, #E4F5F3, #D7F0EA);
+    border-radius:20px; padding:20px; margin:16px 0;
+    box-shadow:0 4px 14px rgba(11,61,76,0.08); cursor:pointer;
+  }
+  .home-hero-tag{
+    display:inline-block; background:var(--lagoon); color:#fff; font-family:'Kanit'; font-weight:600;
+    font-size:12px; padding:5px 12px; border-radius:20px; margin-bottom:10px;
+  }
+  .home-hero-title{font-family:'Kanit'; font-weight:700; font-size:19px; color:var(--deep-sea); margin-bottom:6px; line-height:1.4;}
+  .home-hero-reward{
+    display:inline-block; background:rgba(42,157,143,0.14); color:var(--lagoon); font-family:'Kanit'; font-weight:600;
+    font-size:12.5px; padding:5px 12px; border-radius:20px; margin-bottom:14px;
+  }
+  .home-progress-row{display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;}
+  .home-progress-title{font-family:'Kanit'; font-weight:700; font-size:15px;}
+  .home-progress-count{font-family:'Kanit'; font-weight:700; color:var(--lagoon); font-size:15px;}
+  .progress-track{height:8px; background:#EFE9D9; border-radius:6px; overflow:hidden; margin-bottom:12px;}
+  .progress-fill-bar{height:100%; background:var(--lagoon); border-radius:6px; transition:width .3s ease;}
+  .status-pill-row{display:grid; grid-template-columns:repeat(3,1fr); gap:8px;}
+  .status-pill{
+    background:var(--sand); border-radius:12px; padding:9px 4px; text-align:center;
+    font-size:11px; color:#6b7c80; font-family:'Kanit'; font-weight:600; cursor:pointer; line-height:1.5;
+  }
+  .status-pill span{display:block; font-size:10.5px; font-weight:500;}
+  .status-pill.done{background:#E4F5F3; color:var(--lagoon);}
+  .sodium-summary-row{display:flex; align-items:center; gap:14px;}
+  .sodium-icon-badge{
+    width:52px; height:52px; border-radius:50%; background:#E4F5F3; color:var(--lagoon);
+    display:flex; align-items:center; justify-content:center; font-family:'Kanit'; font-weight:800; font-size:15px; flex-shrink:0;
+  }
+  .quick-action-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:16px;}
+  .quick-action{border-radius:16px; padding:14px; cursor:pointer; display:flex; align-items:center; gap:10px;}
+  .quick-action.qa-check{background:#E4F5F3;}
+  .quick-action.qa-add{background:#FCEFDC;}
+  .quick-action-icon{font-size:24px; flex-shrink:0;}
+  .quick-action-title{font-family:'Kanit'; font-weight:700; font-size:13.5px; color:var(--deep-sea);}
+  .quick-action-sub{font-size:10.5px; color:#6b7c80; margin-top:1px;}
   .home-shortcut-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:10px;}
   .home-shortcut{
     background:#fff; border-radius:14px; padding:14px 4px; text-align:center; cursor:pointer;
@@ -570,43 +610,58 @@
 
     <!-- TAB: HOME (ย้ายมาจาก screen-home เดิม เพื่อรวมเป็นแท็บเดียวในระบบเดียวกับแท็บอื่น) -->
     <div class="tabpanel" id="tab-home">
-      <div class="section-title" id="homeGreeting" style="font-size:16px;">สวัสดี! 👋</div>
-      <div class="stat-grid">
+      <div class="section-title" id="homeGreeting" style="font-size:16px; margin-top:0;">สวัสดี! 👋</div>
+      <div class="stat-grid" style="grid-template-columns:repeat(3,1fr);">
         <div class="mini-stat"><div class="num" id="homeStreak">0</div><div class="lbl">วันต่อเนื่อง <img class="icon-inline" src="icon-streak.png" alt=""></div></div>
         <div class="mini-stat"><div class="num" id="homePoints">0</div><div class="lbl">คะแนนสะสม <img class="icon-inline" src="icon-score.png" alt=""></div></div>
         <div class="mini-stat"><div class="num" id="homeCards">0</div><div class="lbl">การ์ดสะสม 🎴</div></div>
       </div>
 
-      <div class="home-card" onclick="switchTab('tab-sodium-hub')">
-        <div>
-          <div class="home-card-label">โซเดียมวันนี้ (คร่าวๆ)</div>
-          <div class="home-card-value" id="homeSodiumToday">0 มก. · 0%</div>
-        </div>
-        <div class="home-card-arrow">🧂 ›</div>
+      <!-- Hero Card: ภารกิจวันนี้ -->
+      <div class="home-hero" onclick="switchTab('tab-mission-hub')">
+        <div class="home-hero-tag">🎯 ภารกิจวันนี้</div>
+        <div class="home-hero-title" id="homeHeroMissionTitle">กำลังโหลด...</div>
+        <div class="home-hero-reward" id="homeHeroMissionReward">+0 คะแนน</div>
+        <button class="btn btn-primary btn-block" id="homeHeroMissionBtn" onclick="event.stopPropagation(); switchTab('tab-mission-hub')">เริ่มภารกิจ</button>
       </div>
 
-      <div class="home-card" onclick="switchTab('tab-mission-hub')">
-        <div>
-          <div class="home-card-label">ภารกิจวันนี้</div>
-          <div class="home-card-value" id="homeMissionStatus">-</div>
+      <!-- วันนี้ทำไปแล้ว X/3 -->
+      <div class="card">
+        <div class="home-progress-row">
+          <div class="home-progress-title">วันนี้ทำไปแล้ว</div>
+          <div class="home-progress-count"><span id="homeTodoCount">0</span>/3</div>
         </div>
-        <div class="home-card-arrow">🎯 ›</div>
+        <div class="progress-track"><div class="progress-fill-bar" id="homeTodoBar" style="width:0%;"></div></div>
+        <div class="status-pill-row">
+          <div class="status-pill" id="homeMissionPill" onclick="switchTab('tab-mission-hub')">🎯 ภารกิจ<span id="homeMissionStatus">-</span></div>
+          <div class="status-pill" id="homeQuizPill" onclick="switchTab('tab-quiz')">❓ Quiz<span id="homeQuizStatus">-</span></div>
+          <div class="status-pill" id="homeLogPill" onclick="switchTab('tab-log')">📝 บันทึก<span id="homeLogStatus">-</span></div>
+        </div>
       </div>
 
-      <div class="home-card" onclick="switchTab('tab-quiz')">
-        <div>
-          <div class="home-card-label">Quiz ประจำวัน</div>
-          <div class="home-card-value" id="homeQuizStatus">-</div>
+      <!-- โซเดียมวันนี้ -->
+      <div class="card" onclick="switchTab('tab-sodium-hub')" style="cursor:pointer;">
+        <div class="sodium-summary-row">
+          <div class="sodium-icon-badge">Na</div>
+          <div style="flex:1;">
+            <div class="home-card-label">โซเดียมวันนี้</div>
+            <div class="home-card-value" id="homeSodiumToday">0 มก. · 0%</div>
+          </div>
         </div>
-        <div class="home-card-arrow">❓ ›</div>
+        <div class="progress-track" style="margin-top:12px;"><div class="progress-fill-bar" id="homeSodiumBar" style="width:0%;"></div></div>
+        <p style="font-size:12px; color:#9aa8ab; margin:0;" id="homeSodiumRemainText"></p>
       </div>
 
-      <div class="home-card" onclick="switchTab('tab-log')">
-        <div>
-          <div class="home-card-label">บันทึกวันนี้</div>
-          <div class="home-card-value" id="homeLogStatus">-</div>
+      <!-- Quick Actions -->
+      <div class="quick-action-grid">
+        <div class="quick-action qa-check" onclick="goHomeShortcut('tab-check')">
+          <div class="quick-action-icon">📷</div>
+          <div><div class="quick-action-title">ตรวจฉลาก</div><div class="quick-action-sub">สแกน/กรอกดูโซเดียม</div></div>
         </div>
-        <div class="home-card-arrow">📝 ›</div>
+        <div class="quick-action qa-add" onclick="goHomeShortcut('tab-today')">
+          <div class="quick-action-icon">🍽️</div>
+          <div><div class="quick-action-title">เพิ่มอาหาร</div><div class="quick-action-sub">บันทึกที่ทานวันนี้</div></div>
+        </div>
       </div>
     </div>
 
@@ -1403,6 +1458,52 @@ function refreshHomeTab(){
   document.getElementById('homeMissionStatus').textContent = missionLabels[state.todaysMissionStatus] || 'ยังไม่ได้ส่ง';
   document.getElementById('homeQuizStatus').textContent = state.quizFinished ? '✅ ทำแล้ว' : 'ยังไม่ได้ทำ';
   document.getElementById('homeLogStatus').textContent = (state.targetLog && state.targetLog.submitted) ? '✅ บันทึกแล้ว' : 'ยังไม่ได้บันทึก';
+
+  // ---- Hero card: ภารกิจวันนี้ ----
+  const heroTitleEl = document.getElementById('homeHeroMissionTitle');
+  const heroRewardEl = document.getElementById('homeHeroMissionReward');
+  const heroBtnEl = document.getElementById('homeHeroMissionBtn');
+  if(state.todaysMission && heroTitleEl){
+    heroTitleEl.textContent = state.todaysMission.text || 'ภารกิจวันนี้';
+    heroRewardEl.textContent = `+${state.todaysMission.points||15} คะแนน`;
+  }
+  const missionDone = state.todaysMissionStatus && state.todaysMissionStatus !== 'not_submitted';
+  if(heroBtnEl){
+    if(state.todaysMissionStatus==='approved') heroBtnEl.textContent = '✅ ผ่านแล้ว ดูรายละเอียด';
+    else if(state.todaysMissionStatus==='pending') heroBtnEl.textContent = '⏳ ส่งแล้ว รอตรวจ';
+    else if(state.todaysMissionStatus==='rejected') heroBtnEl.textContent = 'ส่งใหม่อีกครั้ง';
+    else heroBtnEl.textContent = 'เริ่มภารกิจ';
+  }
+
+  // ---- วันนี้ทำไปแล้ว X/3 (ภารกิจ/Quiz/บันทึกวันนี้) ----
+  const quizDone = !!state.quizFinished;
+  const logDone = !!(state.targetLog && state.targetLog.submitted);
+  const doneCount = (missionDone?1:0) + (quizDone?1:0) + (logDone?1:0);
+  const todoCountEl = document.getElementById('homeTodoCount');
+  if(todoCountEl){
+    todoCountEl.textContent = doneCount;
+    document.getElementById('homeTodoBar').style.width = Math.round(doneCount/3*100) + '%';
+    document.getElementById('homeMissionPill').classList.toggle('done', missionDone);
+    document.getElementById('homeQuizPill').classList.toggle('done', quizDone);
+    document.getElementById('homeLogPill').classList.toggle('done', logDone);
+  }
+
+  // ---- โซเดียมวันนี้: progress bar + ข้อความ "เหลืออีกเท่าไหร่ก่อนถึงขีดจำกัด" (ไม่ใช้คำว่า "เป้าหมาย") ----
+  const sodiumBarEl = document.getElementById('homeSodiumBar');
+  if(sodiumBarEl){
+    const goal = getSodiumGoal();
+    const total = state.sodiumTodayTotal || 0;
+    const pct = Math.min(Math.round((total/goal)*100), 100);
+    sodiumBarEl.style.width = pct + '%';
+    const remainEl = document.getElementById('homeSodiumRemainText');
+    if(total >= goal){
+      remainEl.textContent = `เกินขีดจำกัดที่แนะนำแล้ว ${(total-goal).toLocaleString('th-TH')} มก.`;
+      remainEl.style.color = 'var(--red-high)';
+    } else {
+      remainEl.textContent = `เหลืออีก ${(goal-total).toLocaleString('th-TH')} มก. ก่อนถึงขีดจำกัดที่แนะนำ (ไม่ควรเกิน ${goal.toLocaleString('th-TH')} มก.)`;
+      remainEl.style.color = '#9aa8ab';
+    }
+  }
 }
 
 // อัปเดตสถานะย่อในแท็บฮับ "ภารกิจ" (ภารกิจ/Quiz/บันทึกวันนี้ รวมเป็นทางเข้าเดียว)
