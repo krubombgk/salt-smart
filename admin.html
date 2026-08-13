@@ -215,7 +215,11 @@
           <div class="msg" id="quizMsg"></div>
         </div>
         <div class="card">
-          <h3 style="margin-top:0;">คำถามทั้งหมด (<span id="quizCount">0</span> ข้อ)</h3>
+          <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+            <h3 style="margin:0;">คำถามทั้งหมด (<span id="quizCount">0</span> ข้อ)</h3>
+            <button class="btn btn-danger" style="padding:8px 14px; font-size:12.5px;" onclick="deleteAllQuizQuestions()">🗑️ ลบคำถามทั้งหมด</button>
+          </div>
+          <div class="msg" id="deleteAllQuizMsg"></div>
           <table><thead><tr><th>คำถาม</th><th>หมวด</th><th>คำตอบ</th><th>สถานะ</th><th></th></tr></thead><tbody id="quizTable"></tbody></table>
         </div>
       </div>
@@ -741,6 +745,21 @@ async function loadQuizBank(){
 }
 async function toggleQuiz(id, active){ await db.collection('quizBank').doc(id).update({active}); await loadQuizBank(); }
 async function deleteQuiz(id){ if(confirm('ลบคำถามนี้?')){ await db.collection('quizBank').doc(id).delete(); await loadQuizBank(); } }
+
+async function deleteAllQuizQuestions(){
+  if(quizCache.length===0){ setMsg('deleteAllQuizMsg','ไม่มีคำถามให้ลบอยู่แล้ว'); return; }
+  if(!confirm(`ลบคำถามทั้งหมด ${quizCache.length} ข้อ? กู้คืนไม่ได้ ถ้าจะแก้ชุดใหม่ทั้งหมด แนะนำเตรียมไฟล์นำเข้าชุดใหม่ให้พร้อมก่อนกดยืนยัน`)) return;
+  // Firestore batch เขียน/ลบได้สูงสุด 500 รายการต่อครั้ง แบ่งเป็นชุดๆ กันเผื่อมีคำถามเกิน 500 ข้อในอนาคต
+  const chunks = [];
+  for(let i=0;i<quizCache.length;i+=450) chunks.push(quizCache.slice(i,i+450));
+  for(const chunk of chunks){
+    const batch = db.batch();
+    chunk.forEach(q=> batch.delete(db.collection('quizBank').doc(q.id)));
+    await batch.commit();
+  }
+  setMsg('deleteAllQuizMsg', `ลบคำถามทั้งหมดแล้ว (${quizCache.length} ข้อ) — นำเข้าชุดใหม่ได้เลย`);
+  await loadQuizBank();
+}
 
 /* ---- KNOWLEDGE CARDS ---- */
 let cardsCache = [];
