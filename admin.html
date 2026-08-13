@@ -182,6 +182,11 @@
           </div>
         </div>
         <div class="card">
+          <h3 style="margin-top:0;">ห้องเรียนทั้งหมด</h3>
+          <p style="font-size:12px; color:#9aa8ab; margin-top:-6px;">ลบห้องได้เฉพาะห้องที่ไม่มีนักเรียนอยู่แล้ว (กันลบพลาดทำข้อมูลนักเรียนหลุดห้อง) — ถ้าจะลบห้องที่มีคนอยู่ ให้ลบนักเรียนในห้องนั้นออกให้หมดก่อน</p>
+          <table><thead><tr><th>ลำดับ</th><th>ชื่อห้อง</th><th>จำนวนนักเรียน</th><th></th></tr></thead><tbody id="classTable"></tbody></table>
+        </div>
+        <div class="card">
           <h3 style="margin-top:0;">รายชื่อนักเรียนทั้งหมด</h3>
           <div class="field" style="max-width:260px;"><label>กรองตามห้อง</label><select id="filterClassSelect" onchange="loadStudentTable()"></select></div>
           <table><thead><tr><th>เลขที่</th><th>ชื่อ</th><th>ห้อง</th><th>คะแนน</th><th>Streak</th><th>PIN</th><th></th></tr></thead><tbody id="studentTable"></tbody></table>
@@ -600,6 +605,26 @@ async function loadClasses(){
     el.innerHTML = (id==='filterClassSelect' ? '<option value="">ทุกห้อง</option>' : '') +
       classesCache.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
   });
+  loadClassTable();
+}
+function loadClassTable(){
+  const el = document.getElementById('classTable');
+  if(!el) return; // ยังไม่โหลด studentsCache ตอนแรกสุด ไม่เป็นไร เดี๋ยว loadStudentsCache() เรียกซ้ำให้เอง
+  el.innerHTML = classesCache.map(c=>{
+    const count = (studentsCache||[]).filter(s=>s.classId===c.id).length;
+    return `
+    <tr>
+      <td>${c.order||'-'}</td><td>${c.name}</td><td>${count} คน</td>
+      <td><button class="btn btn-danger" style="padding:6px 10px;font-size:12px;" onclick="deleteClass('${c.id}','${(c.name||'').replace(/'/g,"\\'")}')">ลบ</button></td>
+    </tr>`;
+  }).join('');
+}
+async function deleteClass(id, name){
+  const count = (studentsCache||[]).filter(s=>s.classId===id).length;
+  if(count>0){ alert(`ลบห้อง "${name}" ไม่ได้ เพราะยังมีนักเรียนอยู่ ${count} คน — ลบนักเรียนในห้องนี้ออกก่อน (หรือย้ายไปห้องอื่น) แล้วค่อยลบห้อง`); return; }
+  if(!confirm(`ลบห้อง "${name}" เลยไหม? กู้คืนไม่ได้`)) return;
+  await db.collection('classes').doc(id).delete();
+  await loadClasses();
 }
 async function addClass(){
   const name = document.getElementById('newClassName').value.trim();
@@ -614,6 +639,7 @@ async function addClass(){
 async function loadStudentsCache(){
   const snap = await db.collection('students').get();
   studentsCache = snap.docs.map(d=>({id:d.id, ...d.data()}));
+  loadClassTable(); // รีเฟรชจำนวนนักเรียนต่อห้องให้ถูก หลังโหลด studentsCache เสร็จจริง
 }
 
 // เดาเพศจากคำนำหน้าชื่อภาษาไทยที่กรอกอยู่แล้ว (ไม่ต้องเปลี่ยนฟอร์แมตที่ครูใช้ปกติ)
@@ -659,8 +685,15 @@ function loadStudentTable(){
       <td>
         <button class="btn btn-ghost" style="padding:6px 10px;font-size:12px;" onclick="resetPin('${s.id}')">รีเซ็ต PIN</button>
         <button class="btn btn-ghost" style="padding:6px 10px;font-size:12px;" onclick="resetTodayLog('${s.id}')">ปลดล็อกบันทึก...</button>
+        <button class="btn btn-danger" style="padding:6px 10px;font-size:12px;" onclick="deleteStudent('${s.id}','${(s.name||'').replace(/'/g,"\\'")}')">ลบ</button>
       </td>
     </tr>`).join('');
+}
+async function deleteStudent(id, name){
+  if(!confirm(`ลบนักเรียน "${name}" ออกจากระบบเลยไหม? ข้อมูลคะแนน/ประวัติทั้งหมดของคนนี้จะหายไปด้วย กู้คืนไม่ได้`)) return;
+  await db.collection('students').doc(id).delete();
+  await loadStudentsCache();
+  loadStudentTable();
 }
 async function resetPin(id){
   await db.collection('students').doc(id).update({pin:''});
