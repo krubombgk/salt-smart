@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Salt Smart | แบบประเมินก่อน-หลังโครงการ</title>
+<link rel="icon" href="favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;600;700;800&family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --deep-sea:#0B3D4C; --lagoon:#2A9D8F; --coral:#F4A261; --clay:#E76F51;
+    --sand:#F3ECDD; --salt-white:#FDFBF6; --green-ok:#3FA66B; --red-high:#D9503F;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; font-family:'Sarabun',sans-serif; background:var(--salt-white); color:var(--deep-sea);}
+  h1,h2,h3{font-family:'Kanit',sans-serif;}
+  .wrap{max-width:520px; margin:0 auto; padding:20px;}
+  .brandbar{background:linear-gradient(135deg,var(--deep-sea),var(--lagoon)); padding:20px;}
+  .brand-title{font-family:'Kanit'; font-weight:700; font-size:18px; color:#fff;}
+  .brand-sub{font-size:12.5px; color:#dff; opacity:.9;}
+  .card{background:#fff; border:1.5px solid #EFE9D9; border-radius:16px; padding:18px; margin-bottom:14px;}
+  .btn{font-family:'Kanit'; font-weight:600; border:none; border-radius:12px; padding:13px 18px; cursor:pointer; font-size:15px; width:100%; text-align:center;}
+  .btn-primary{background:var(--lagoon); color:#fff;}
+  .btn-ghost{background:#fff; color:var(--deep-sea); border:1.5px solid #E4DFCF;}
+  .btn:disabled{opacity:0.5; cursor:not-allowed;}
+  .pick-tile{
+    background:#fff; border:2px solid #EFE9D9; border-radius:14px; padding:16px 10px; text-align:center;
+    cursor:pointer; font-family:'Kanit'; font-weight:600; margin-bottom:10px;
+  }
+  .pick-tile.active{border-color:var(--lagoon); background:#E4F5F3;}
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+  .q-item{margin-bottom:22px;}
+  .q-num{font-family:'Kanit'; font-weight:700; font-size:14px; color:var(--lagoon); margin-bottom:6px;}
+  .q-text{font-size:14.5px; margin-bottom:10px; line-height:1.5;}
+  .opt-row{display:flex; flex-direction:column; gap:6px;}
+  .opt{
+    border:2px solid #E4DFCF; border-radius:10px; padding:10px 12px; cursor:pointer; font-size:13.5px;
+  }
+  .opt.active{border-color:var(--lagoon); background:#E4F5F3; font-weight:600;}
+  .progress-bar{height:6px; background:#EFE9D9; border-radius:4px; margin-bottom:16px; overflow:hidden;}
+  .progress-fill{height:100%; background:var(--lagoon); transition:width .2s ease;}
+  .section-title{font-family:'Kanit'; font-weight:700; font-size:16px; margin:18px 0 8px;}
+  .empty-note{color:#8b979a; font-size:13.5px; text-align:center; padding:20px 0;}
+  .msg{font-size:13px; color:var(--red-high); min-height:18px; text-align:center;}
+</style>
+</head>
+<body>
+
+<div class="brandbar">
+  <div class="brand-title">🧂 Salt Smart</div>
+  <div class="brand-sub" id="topSub">แบบประเมินก่อน-หลังโครงการ</div>
+</div>
+
+<div class="wrap">
+
+  <!-- SCREEN: เลือกช่วง -->
+  <div id="screen-phase">
+    <div class="card">
+      <h3 style="margin-top:0;">เลือกแบบประเมินที่จะทำวันนี้</h3>
+      <p style="color:#6b7c80; font-size:13.5px;">ครูจะเป็นผู้แจ้งว่าวันนี้ให้ทำชุดไหน — เลือกให้ถูกตามที่ครูบอก</p>
+      <div class="pick-tile" onclick="selectPhase('pre')">
+        <div style="font-size:22px;">🟢</div>
+        ก่อนเริ่มโครงการ<br><span style="font-weight:400; font-size:12px;">(Baseline Survey + Pre-test)</span>
+      </div>
+      <div class="pick-tile" onclick="selectPhase('post')">
+        <div style="font-size:22px;">🏁</div>
+        หลังจบโครงการ 21 วัน<br><span style="font-weight:400; font-size:12px;">(Post Behavior Survey + Post-test)</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCREEN: เลือกห้อง -->
+  <div id="screen-class" style="display:none;">
+    <div class="card">
+      <h3 style="margin-top:0;">เลือกห้องเรียน</h3>
+      <div id="classGrid" class="grid2"></div>
+      <div class="empty-note" id="classEmptyNote" style="display:none;">กำลังโหลด…</div>
+    </div>
+  </div>
+
+  <!-- SCREEN: เลือกชื่อ -->
+  <div id="screen-student" style="display:none;">
+    <div class="card">
+      <h3 style="margin-top:0;">เลือกชื่อของคุณ</h3>
+      <div id="studentGrid"></div>
+      <div class="empty-note" id="studentEmptyNote" style="display:none;">กำลังโหลด…</div>
+      <button class="btn btn-ghost" style="margin-top:10px;" onclick="goScreen('screen-class')">‹ กลับไปเลือกห้อง</button>
+    </div>
+  </div>
+
+  <!-- SCREEN: Baseline / Post Behavior Survey (15 ข้อ) -->
+  <div id="screen-behavior" style="display:none;">
+    <div class="card">
+      <h3 style="margin-top:0;" id="behaviorTitle">แบบสำรวจพฤติกรรม</h3>
+      <p style="color:#6b7c80; font-size:13px;">คำถามต่อไปนี้ถามถึงพฤติกรรมของคุณใน 7 วันที่ผ่านมา ไม่มีคำตอบถูกหรือผิด กรุณาตอบตามสิ่งที่เกิดขึ้นจริง</p>
+    </div>
+    <div class="card">
+      <div id="behaviorItems"></div>
+      <div class="msg" id="behaviorMsg"></div>
+      <button class="btn btn-primary" onclick="submitBehaviorSurvey()">ส่งคำตอบ ไปทำแบบทดสอบต่อ ›</button>
+    </div>
+  </div>
+
+  <!-- SCREEN: Pre/Post Knowledge Test (20 ข้อ) -->
+  <div id="screen-test" style="display:none;">
+    <div class="card">
+      <div class="progress-bar"><div class="progress-fill" id="testProgressFill" style="width:0%;"></div></div>
+      <div id="testBody"></div>
+    </div>
+  </div>
+
+  <!-- SCREEN: เสร็จสิ้น -->
+  <div id="screen-done" style="display:none;">
+    <div class="card" style="text-align:center;">
+      <div style="font-size:44px;">✅</div>
+      <h3>ส่งคำตอบเรียบร้อยแล้ว</h3>
+      <p style="color:#6b7c80; font-size:13.5px;">ขอบคุณที่ตั้งใจทำนะ ผลจะไม่แสดงคะแนน/เฉลยที่นี่ เพื่อให้การประเมินครั้งต่อไปแม่นยำ</p>
+    </div>
+  </div>
+
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyDV0wpw4bQ6f2uztfpdVjYiC-toIP1B_oA",
+  authDomain: "salt-smart-2569.firebaseapp.com",
+  projectId: "salt-smart-2569",
+  storageBucket: "salt-smart-2569.firebasestorage.app",
+  messagingSenderId: "91998754790",
+  appId: "1:91998754790:web:2f50cd0e43a9a1fdd16827"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+let state = { phase:null, classId:null, className:null, student:null, classes:[], students:[] };
+
+function goScreen(id){
+  ['screen-phase','screen-class','screen-student','screen-behavior','screen-test','screen-done'].forEach(s=>{
+    document.getElementById(s).style.display = (s===id) ? 'block' : 'none';
+  });
+}
+
+async function selectPhase(phase){
+  state.phase = phase; // 'pre' หรือ 'post'
+  document.getElementById('topSub').textContent = phase==='pre' ? 'ก่อนเริ่มโครงการ: Baseline + Pre-test' : 'หลังจบโครงการ: Post Behavior Survey + Post-test';
+  goScreen('screen-class');
+  document.getElementById('classEmptyNote').style.display='block';
+  const snap = await db.collection('classes').orderBy('order').get();
+  state.classes = snap.docs.map(d=>({id:d.id, ...d.data()}));
+  document.getElementById('classEmptyNote').style.display='none';
+  const grid = document.getElementById('classGrid');
+  grid.innerHTML = state.classes.map(c=>`<div class="pick-tile" onclick="selectClass('${c.id}','${(c.name||'').replace(/'/g,"\\'")}')">${c.name}</div>`).join('');
+}
+
+async function selectClass(classId, className){
+  state.classId = classId; state.className = className;
+  goScreen('screen-student');
+  document.getElementById('studentEmptyNote').style.display='block';
+  const snap = await db.collection('students').where('classId','==',classId).orderBy('studentNo').get();
+  state.students = snap.docs.map(d=>({id:d.id, ...d.data()}));
+  document.getElementById('studentEmptyNote').style.display='none';
+  const grid = document.getElementById('studentGrid');
+  grid.innerHTML = state.students.map(s=>`<div class="pick-tile" onclick='selectStudent(${JSON.stringify(s.id)})'>${s.studentNo}. ${s.name}</div>`).join('');
+}
+
+function selectStudent(studentId){
+  state.student = state.students.find(s=>s.id===studentId);
+  if(!state.student) return;
+  startBehaviorSurvey();
+}
+
+/* =========================================================
+   BASELINE / POST BEHAVIOR SURVEY — 15 ข้อ
+   ดัดแปลงจาก "แบบประเมินความตระหนักรู้ด้านการบริโภคเกลือและโซเดียมของประชาชน" กรมควบคุมโรค
+   และสาระการรู้เท่าทันฉลากอาหารของ อย. — recall 7 วัน (ปรับจาก 1 เดือน ให้เหมาะกับ intervention 21 วัน)
+   ========================================================= */
+const FREQ_SCALE = ['0 วัน','1–2 วัน','3–4 วัน','5–6 วัน','7 วัน'];
+const OPP_SCALE = ['ไม่มีโอกาสซื้อ/เลือกใน 7 วันที่ผ่านมา','ไม่เคย','น้อยกว่าครึ่งหนึ่งของครั้งที่เลือก','ประมาณครึ่งหนึ่ง','มากกว่าครึ่งหนึ่ง','ทุกครั้ง'];
+
+const BEHAVIOR_ITEMS = [
+  {n:1, domain:'A', scale:'freq', reverse:true,  text:'ใน 7 วันที่ผ่านมา คุณกิน ขนมขบเคี้ยวรสเค็ม/ปรุงรส เช่น มันฝรั่งทอด ข้าวเกรียบ ขนมอบกรอบ กี่วัน'},
+  {n:2, domain:'A', scale:'freq', reverse:true,  text:'คุณกิน บะหมี่กึ่งสำเร็จรูป โจ๊ก/ข้าวต้มกึ่งสำเร็จรูป หรืออาหารกึ่งสำเร็จรูปอื่น ๆ กี่วัน'},
+  {n:3, domain:'A', scale:'freq', reverse:true,  text:'คุณกิน ไส้กรอก ลูกชิ้น หมูยอ แฮม เบคอน หรือเนื้อสัตว์แปรรูป กี่วัน'},
+  {n:4, domain:'A', scale:'freq', reverse:true,  text:'คุณกิน อาหารหมักดองหรืออาหารเค็ม เช่น ปลาเค็ม ปลาร้า ผักดอง หรืออาหารลักษณะใกล้เคียง กี่วัน'},
+  {n:5, domain:'A', scale:'freq', reverse:true,  text:'คุณ ซดน้ำซุปหรือกินน้ำจิ้ม/ซอสในปริมาณมากหรือจนเกือบหมด กี่วัน'},
+  {n:6, domain:'B', scale:'freq', reverse:true,  text:'หลังได้รับอาหารแล้ว คุณ เติมน้ำปลา ซีอิ๊ว ซอสปรุงรส หรือซอส/น้ำจิ้มเพิ่ม กี่วัน'},
+  {n:7, domain:'B', scale:'freq', reverse:true,  text:'คุณ เติมเครื่องปรุงรสเค็มก่อนชิมอาหาร กี่วัน'},
+  {n:8, domain:'B', scale:'freq', reverse:true,  text:'คุณ เติมเครื่องปรุงรสเค็มมากกว่าหนึ่งชนิดในมื้อเดียวกัน กี่วัน'},
+  {n:9, domain:'B', scale:'freq', reverse:false, text:'คุณ ชิมอาหารก่อน แล้วจึงตัดสินใจว่าจำเป็นต้องเติมเครื่องปรุงหรือไม่ กี่วัน'},
+  {n:10,domain:'B', scale:'freq', reverse:false, text:'คุณตั้งใจ ลดจิ้ม ลดซด ลดปรุง หรือเลือก/สั่งอาหารเค็มน้อยลง กี่วัน'},
+  {n:11,domain:'C', scale:'opp',  reverse:false, text:'เมื่อคุณเลือกหรือซื้ออาหารบรรจุสำเร็จ คุณ อ่านฉลากโภชนาการ ก่อนเลือกบ่อยเพียงใด'},
+  {n:12,domain:'C', scale:'opp',  reverse:false, text:'คุณ ดูตัวเลขโซเดียม บนฉลากก่อนเลือกบ่อยเพียงใด'},
+  {n:13,domain:'C', scale:'opp',  reverse:false, text:'คุณใช้ ฉลาก GDA / หวาน มัน เค็ม ช่วยตัดสินใจเลือกอาหารบ่อยเพียงใด'},
+  {n:14,domain:'C', scale:'opp',  reverse:false, text:'คุณสังเกตหรือใช้ สัญลักษณ์ทางเลือกสุขภาพ (Healthier Choice) ประกอบการเลือกบ่อยเพียงใด'},
+  {n:15,domain:'C', scale:'opp',  reverse:false, text:'เมื่อมีอาหารชนิดใกล้เคียงกันให้เลือก คุณ เปรียบเทียบโซเดียมและเลือกตัวที่มีโซเดียมน้อยกว่า บ่อยเพียงใด'},
+];
+
+function startBehaviorSurvey(){
+  document.getElementById('behaviorTitle').textContent = state.phase==='pre' ? '📋 Baseline Behavior Survey' : '📋 Post Behavior Survey';
+  const wrap = document.getElementById('behaviorItems');
+  wrap.innerHTML = BEHAVIOR_ITEMS.map(item=>{
+    const opts = item.scale==='freq' ? FREQ_SCALE : OPP_SCALE;
+    const optHtml = opts.map((label,i)=>`<div class="opt" data-item="${item.n}" data-val="${i}" onclick="pickBehaviorOpt(${item.n},${i})">${label}</div>`).join('');
+    return `<div class="q-item"><div class="q-num">ข้อ ${item.n}</div><div class="q-text">${item.text}</div><div class="opt-row" id="opt-row-${item.n}">${optHtml}</div></div>`;
+  }).join('');
+  state.behaviorAnswers = {};
+  goScreen('screen-behavior');
+  window.scrollTo(0,0);
+}
+
+function pickBehaviorOpt(itemNum, val){
+  state.behaviorAnswers[itemNum] = val;
+  document.querySelectorAll(`#opt-row-${itemNum} .opt`).forEach(el=>el.classList.remove('active'));
+  document.querySelector(`#opt-row-${itemNum} .opt[data-val="${val}"]`).classList.add('active');
+}
+
+function scoreBehaviorDomain(items, answers){
+  // ให้คะแนนตามกติกา: freq scale ปกติ 0-4 ตามลำดับตัวเลือก (index ที่เลือก), reverse=true ให้กลับค่า (4-index)
+  // opp scale: index 0 = "ไม่มีโอกาส" = NA (ไม่นับ), index 1-5 => คะแนน 0-4 ตรง ๆ (index-1)
+  let sum=0, count=0;
+  items.forEach(item=>{
+    const raw = answers[item.n];
+    if(raw===undefined) return; // ไม่ตอบ
+    let score;
+    if(item.scale==='freq'){
+      score = item.reverse ? (4-raw) : raw;
+    } else { // opp
+      if(raw===0) return; // "ไม่มีโอกาส" = NA ไม่นับ ไม่ใช่ 0 คะแนน
+      score = raw-1; // 1..5 -> 0..4
+    }
+    sum += score; count++;
+  });
+  return {sum, count, avg: count>0 ? sum/count : null};
+}
+
+async function submitBehaviorSurvey(){
+  const answeredCount = Object.keys(state.behaviorAnswers).length;
+  if(answeredCount < 15){
+    document.getElementById('behaviorMsg').textContent = `ยังตอบไม่ครบ (ตอบแล้ว ${answeredCount}/15 ข้อ)`;
+    return;
+  }
+  const domA = scoreBehaviorDomain(BEHAVIOR_ITEMS.filter(i=>i.domain==='A'), state.behaviorAnswers);
+  const domB = scoreBehaviorDomain(BEHAVIOR_ITEMS.filter(i=>i.domain==='B'), state.behaviorAnswers);
+  const domC = scoreBehaviorDomain(BEHAVIOR_ITEMS.filter(i=>i.domain==='C'), state.behaviorAnswers);
+  const domainScore = (d)=> d.avg!==null ? Math.round((d.avg/4)*100) : null;
+
+  await db.collection('behaviorSurveys').add({
+    studentId: state.student.id,
+    studentName: state.student.name,
+    classId: state.classId,
+    className: state.className,
+    phase: state.phase, // 'pre' | 'post'
+    submittedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    answers: state.behaviorAnswers,
+    domainA_score: domainScore(domA), domainA_validCount: domA.count,
+    domainB_score: domainScore(domB), domainB_validCount: domB.count,
+    domainC_score: domainScore(domC), domainC_validCount: domC.count,
+  });
+
+  startKnowledgeTest();
+}
+
+/* =========================================================
+   PRE-TEST / POST-TEST — 20 ข้อ (ก/ข/ค/ง สุ่มลำดับข้อ+ตัวเลือกทุกครั้ง)
+   พัฒนาข้อคำถามจากข้อมูลสำนักงานคณะกรรมการอาหารและยา กองอาหาร และกรมอนามัย
+   ไม่เปิดเผยเฉลย/คำอธิบายให้นักเรียนเห็นหลังตอบ เพื่อรักษาความแม่นยำของ Pre/Post comparison
+   ========================================================= */
+const TEST_ITEMS_RAW = [
+  {id:'q1', text:'ข้อใดเป็นตัวอย่างของโรคไม่ติดต่อเรื้อรัง (NCDs)', choices:['ไข้หวัดใหญ่','ความดันโลหิตสูง','ไข้เลือดออก','อีสุกอีใส'], correct:1},
+  {id:'q2', text:'การได้รับโซเดียมมากเกินไปเป็นประจำสัมพันธ์กับความเสี่ยงต่อข้อใดมากที่สุด', choices:['ความดันโลหิตสูง','ตาแดง','ไข้หวัด','อีสุกอีใส'], correct:0},
+  {id:'q3', text:'โดยทั่วไปควรจำกัดการบริโภคโซเดียมไว้ที่ประมาณเท่าใดต่อวัน', choices:['500 มก.','1,000 มก.','น้อยกว่า 2,000 มก.','5,000 มก.'], correct:2},
+  {id:'q4', text:'โซเดียมประมาณ 2,000 มก. สัมพันธ์กับเกลือประมาณเท่าใดตามคำแนะนำทั่วไปที่เผยแพร่โดยหน่วยงานสาธารณสุข', choices:['½ กรัม','1 กรัม','2 กรัม','ประมาณ 5 กรัม หรือน้อยกว่านั้น'], correct:3},
+  {id:'q5', text:'ข้อใดกล่าวถูกต้องเกี่ยวกับแหล่งของโซเดียม', choices:['พบเฉพาะในเกลือแกง','พบได้จากเกลือ เครื่องปรุง และส่วนประกอบ/สารปรุงแต่งหลายชนิด','พบเฉพาะอาหารที่มีรสเค็มจัด','ขนมบรรจุซองไม่มีโซเดียม'], correct:1},
+  {id:'q6', text:'ถ้าต้องการลดโซเดียมจากอาหาร วิธีใดเหมาะสมที่สุด', choices:['ชิมก่อนปรุง และลดการจิ้ม ซด หรือเติมเครื่องปรุงเมื่อไม่จำเป็น','เติมน้ำปลาก่อนชิม','เติมเครื่องปรุงหลายชนิดแต่ลดชนิดละเล็กน้อย','เลือกจากสีของอาหาร'], correct:0},
+  {id:'q7', text:'ฉลาก GDA หรือ "หวาน มัน เค็ม" แสดงข้อมูลหลักข้อใด', choices:['โปรตีน วิตามิน แคลเซียม เหล็ก','ราคา น้ำหนัก วันผลิต วันหมดอายุ','พลังงาน น้ำตาล ไขมัน และโซเดียม','โซเดียมเพียงอย่างเดียว'], correct:2},
+  {id:'q8', text:'บน GDA ปริมาณโซเดียมมักแสดงเป็นหน่วยใด', choices:['ลิตร','กิโลแคลอรี','กรัมต่อกิโลกรัมเสมอ','มิลลิกรัม'], correct:3},
+  {id:'q9', text:'ถ้าอาหารหนึ่งรายการให้โซเดียม 500 มก. คิดเป็นประมาณกี่เปอร์เซ็นต์ของ 2,000 มก.', choices:['25%','40%','50%','75%'], correct:0},
+  {id:'q10', text:'วันนี้ได้รับโซเดียมไปแล้ว 500 มก. ถ้าใช้ 2,000 มก. เป็นกรอบอ้างอิง จะเหลือประมาณเท่าใด', choices:['500 มก.','1,500 มก.','2,000 มก.','2,500 มก.'], correct:1},
+  {id:'q11', text:'ฉลากระบุโซเดียม 400 มก. ต่อหนึ่งหน่วยบริโภค หากกิน 2 หน่วย จะได้รับโซเดียมประมาณเท่าใด', choices:['200 มก.','400 มก.','800 มก.','2,000 มก.'], correct:2},
+  {id:'q12', text:'ผลิตภัณฑ์ A และ B เป็นอาหารชนิดเดียวกันและเปรียบเทียบที่ปริมาณเท่ากัน A มีโซเดียม 300 มก. ส่วน B มี 600 มก. หากต้องการลดโซเดียมควรเลือกข้อใด', choices:['B เพราะตัวเลขสูงกว่า','เลือกจากราคาก่อน','เท่ากัน','A'], correct:3},
+  {id:'q13', text:'ผลิตภัณฑ์ A มีโซเดียม 300 มก. ต่อ 30 กรัม ส่วน B มี 400 มก. ต่อ 60 กรัม หากจะกิน 60 กรัมเท่ากัน ผลิตภัณฑ์ใดให้โซเดียมน้อยกว่า', choices:['A เพราะเห็นตัวเลข 300 ต่ำกว่า 400','B เพราะ 60 กรัมของ A ให้ 600 มก. แต่ B ให้ 400 มก.','เท่ากัน','เปรียบเทียบไม่ได้แม้รู้ปริมาณที่จะกิน'], correct:1},
+  {id:'q14', text:'อาหารหนึ่งซองมี 2 หน่วยบริโภค หากกินหมดทั้งซอง ควรคิดข้อมูลโภชนาการอย่างไร', choices:['คิดตามปริมาณทั้งหมดที่กิน ไม่ใช่เพียงหนึ่งหน่วย','ใช้ค่าหนึ่งหน่วยเสมอ','โซเดียมจะลดครึ่งหนึ่ง','ไม่ต้องสนใจจำนวนหน่วย'], correct:0},
+  {id:'q15', text:'ข้อใดอธิบายสัญลักษณ์ "ทางเลือกสุขภาพ" ได้ถูกต้องที่สุด', choices:['หมายความว่าผลิตภัณฑ์ไม่มีโซเดียม','หมายความว่ากินได้ไม่จำกัด','หมายความว่าดีกว่าอาหารทุกชนิดทุกกลุ่ม','เป็นเครื่องหมายช่วยเลือกอาหารที่ผ่านหลักเกณฑ์โภชนาการที่กำหนดสำหรับกลุ่มผลิตภัณฑ์นั้น'], correct:3},
+  {id:'q16', text:'เหตุใดจึงควรระวังการเปรียบเทียบ Healthier Choice ข้ามอาหารคนละประเภท', choices:['เพราะใช้ได้เฉพาะเครื่องดื่ม','เพราะใช้ได้เฉพาะอาหารเด็ก','เพราะเกณฑ์สารอาหารกำหนดตามกลุ่มอาหาร จึงเหมาะกับการใช้เป็นตัวช่วยเลือกภายในบริบทของกลุ่มนั้น','เพราะเครื่องหมายไม่ได้เกี่ยวกับโภชนาการ'], correct:2},
+  {id:'q17', text:'ถ้าอาหารมีสัญลักษณ์ Healthier Choice หมายความว่ากินได้ไม่จำกัดหรือไม่', choices:['ไม่ใช่ ยังควรคำนึงถึงปริมาณที่กินและอาหารรวมทั้งวัน','ใช่ เพราะไม่มีโซเดียม','ใช่ ถ้าเป็นนักเรียน','ใช่ ถ้ากินหลังออกกำลังกาย'], correct:0},
+  {id:'q18', text:'ข้อใดเป็นชุดผลิตภัณฑ์ที่อยู่ภายใต้ความรับผิดชอบของ อย.', choices:['เสื้อผ้า รองเท้า หนังสือ เครื่องเขียน','อาหาร ยา เครื่องสำอาง และเครื่องมือแพทย์','รถยนต์ โทรศัพท์ เฟอร์นิเจอร์ เครื่องใช้ไฟฟ้าทุกชนิด','หนังสือเรียน อุปกรณ์กีฬา และเครื่องแบบนักเรียน'], correct:1},
+  {id:'q19', text:'นักเรียนต้องการเลือกขนมเพื่อลดโซเดียม วิธีใดให้ข้อมูลดีที่สุด', choices:['เลือกซองที่เขียนว่า "อร่อย"','เลือกยี่ห้อที่เพื่อนกินมากที่สุด','ดูปริมาณที่จะกินจริง อ่านค่าโซเดียม/GDA และเปรียบเทียบกับผลิตภัณฑ์ที่เทียบกันได้','เลือกจากสีซอง'], correct:2},
+  {id:'q20', text:'วันนี้โรงเรียนมีก๋วยเตี๋ยว นักเรียนต้องการลดการได้รับโซเดียม วิธีใดเหมาะสมที่สุด', choices:['เติมน้ำปลาก่อนชิมเพื่อให้รู้ว่าจะต้องเติมเพิ่มอีกไหม','เติมน้ำปลาและซีอิ๊วอย่างละครึ่งหนึ่ง','ซดน้ำซุปให้หมดแต่ไม่เติมน้ำปลา','ชิมก่อนปรุง ลดหรือไม่เติมเครื่องปรุงเพิ่ม และไม่จำเป็นต้องซดน้ำซุปจนหมด'], correct:3},
+];
+
+function shuffleArray(arr){
+  const a = arr.slice();
+  for(let i=a.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [a[i],a[j]] = [a[j],a[i]];
+  }
+  return a;
+}
+
+function startKnowledgeTest(){
+  // สุ่มลำดับข้อ + สุ่มลำดับตัวเลือกในแต่ละข้อ ใหม่ทุกครั้งที่เริ่ม (ทั้ง pre และ post)
+  const shuffledItems = shuffleArray(TEST_ITEMS_RAW).map(item=>{
+    const order = shuffleArray([0,1,2,3]);
+    const choices = order.map(i=>item.choices[i]);
+    const correctIndex = order.indexOf(item.correct);
+    return {id:item.id, text:item.text, choices, correctIndex};
+  });
+  state.testItems = shuffledItems;
+  state.testIndex = 0;
+  state.testAnswers = [];
+  goScreen('screen-test');
+  renderTestQuestion();
+}
+
+function renderTestQuestion(){
+  const q = state.testItems[state.testIndex];
+  document.getElementById('testProgressFill').style.width = Math.round((state.testIndex/state.testItems.length)*100)+'%';
+  let html = `<div class="q-num">ข้อ ${state.testIndex+1} / ${state.testItems.length}</div><div class="q-text" style="font-size:16px; font-weight:600;">${q.text}</div><div class="opt-row">`;
+  q.choices.forEach((c,i)=>{
+    html += `<div class="opt" onclick="answerTest(${i})">${c}</div>`;
+  });
+  html += `</div>`;
+  document.getElementById('testBody').innerHTML = html;
+}
+
+function answerTest(choiceIndex){
+  const q = state.testItems[state.testIndex];
+  state.testAnswers.push({questionId:q.id, selectedIndex:choiceIndex, correct: choiceIndex===q.correctIndex});
+  state.testIndex++;
+  if(state.testIndex >= state.testItems.length){
+    finishKnowledgeTest();
+  }else{
+    renderTestQuestion();
+  }
+}
+
+async function finishKnowledgeTest(){
+  document.getElementById('testProgressFill').style.width = '100%';
+  const score = state.testAnswers.filter(a=>a.correct).length;
+  await db.collection('knowledgeTests').add({
+    studentId: state.student.id,
+    studentName: state.student.name,
+    classId: state.classId,
+    className: state.className,
+    phase: state.phase, // 'pre' | 'post'
+    submittedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    answers: state.testAnswers,
+    score: score,
+    total: state.testItems.length
+  });
+  goScreen('screen-done');
+}
+
+goScreen('screen-phase');
+</script>
+</body>
+</html>
