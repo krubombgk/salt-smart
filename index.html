@@ -611,12 +611,10 @@
         </div>
         <div class="home-card-arrow">🔍 ›</div>
       </div>
-      <div class="home-card" onclick="switchTab('tab-today')">
-        <div>
-          <div class="home-card-label">โซเดียมวันนี้ (คร่าวๆ)</div>
-          <div class="home-card-value" id="hubSodiumToday">0 มก. · 0%</div>
-        </div>
-        <div class="home-card-arrow">🧂 ›</div>
+      <div class="card" style="cursor:pointer; text-align:center;" onclick="switchTab('tab-today')">
+        <div class="home-card-label" style="margin-bottom:2px;">โซเดียมวันนี้ (คร่าวๆ)</div>
+        <div id="hubSodiumGaugeArea"></div>
+        <div style="color:var(--lagoon); font-family:'Kanit'; font-weight:600; font-size:13px; margin-top:4px;">ดูรายละเอียด/เพิ่มรายการ ›</div>
       </div>
 
       <div class="card">
@@ -1380,7 +1378,7 @@ function refreshMissionHub(){
 
 // อัปเดตยอดโซเดียมในแท็บฮับ "โซเดียม" (ตรวจฉลาก + โซเดียมวันนี้ รวมเป็นทางเข้าเดียว)
 function refreshSodiumHub(){
-  document.getElementById('hubSodiumToday').textContent = `${state.sodiumTodayTotal||0} มก. · ${state.sodiumTodayPct||0}%`;
+  document.getElementById('hubSodiumGaugeArea').innerHTML = renderSodiumGauge(state.sodiumTodayTotal||0, getSodiumGoal());
   document.getElementById('sodiumGoalDisplay').textContent = getSodiumGoal().toLocaleString('th-TH') + ' มก.';
 }
 
