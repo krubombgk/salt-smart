@@ -43,6 +43,16 @@
   .section-title{font-family:'Kanit'; font-weight:700; font-size:16px; margin:18px 0 8px;}
   .empty-note{color:#8b979a; font-size:13.5px; text-align:center; padding:20px 0;}
   .msg{font-size:13px; color:var(--red-high); min-height:18px; text-align:center;}
+  .pin-dots{display:flex; justify-content:center; gap:14px; margin:22px 0;}
+  .pin-dot{width:16px;height:16px;border-radius:50%; border:2px solid var(--lagoon); background:transparent;}
+  .pin-dot.filled{background:var(--lagoon);}
+  .keypad{display:grid; grid-template-columns:repeat(3,1fr); gap:12px; max-width:280px; margin:0 auto;}
+  .key{
+    background:#fff; border:2px solid #EFE9D9; border-radius:16px; padding:18px 0;
+    font-family:'Kanit'; font-size:22px; font-weight:600; color:var(--deep-sea); cursor:pointer; text-align:center;
+  }
+  .key:active{background:var(--sand); transform:scale(0.95);}
+  .key.action{color:var(--clay); font-size:14px;}
 </style>
 </head>
 <body>
@@ -86,6 +96,19 @@
       <div id="studentGrid"></div>
       <div class="empty-note" id="studentEmptyNote" style="display:none;">กำลังโหลด…</div>
       <button class="btn btn-ghost" style="margin-top:10px;" onclick="goScreen('screen-class')">‹ กลับไปเลือกห้อง</button>
+    </div>
+  </div>
+
+  <!-- SCREEN: PIN (ตั้งครั้งแรก หรือยืนยันตัวตนถ้ามีอยู่แล้ว — ใช้ PIN เดียวกับแอปหลัก) -->
+  <div id="screen-pin" style="display:none;">
+    <div class="card" style="text-align:center;">
+      <h3 style="margin-top:0;" id="pinStudentName">สวัสดี</h3>
+      <div id="pinModeText" style="color:#6b7c80; font-size:13.5px;">ใส่รหัสผ่าน 4 หลัก</div>
+      <div class="pin-dots" id="pinDots">
+        <div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div>
+      </div>
+      <div class="msg" id="pinError"></div>
+      <div class="keypad" id="keypad"></div>
     </div>
   </div>
 
@@ -138,7 +161,7 @@ const db = firebase.firestore();
 let state = { phase:null, classId:null, className:null, student:null, classes:[], students:[] };
 
 function goScreen(id){
-  ['screen-phase','screen-class','screen-student','screen-behavior','screen-test','screen-done'].forEach(s=>{
+  ['screen-phase','screen-class','screen-student','screen-pin','screen-behavior','screen-test','screen-done'].forEach(s=>{
     document.getElementById(s).style.display = (s===id) ? 'block' : 'none';
   });
 }
@@ -179,7 +202,78 @@ async function selectClass(classId, className){
 function selectStudent(studentId){
   state.student = state.students.find(s=>s.id===studentId);
   if(!state.student) return;
-  startBehaviorSurvey();
+  // ใช้ PIN เดียวกับแอปหลัก Salt Smart — ใครเข้าก่อน (pre-test หรือแอปเกม) จะได้ตั้ง PIN ก่อน อีกฝั่งค่อยยืนยันด้วย PIN เดิม
+  state.pinMode = state.student.pin ? 'verify' : 'setup';
+  state.pinBuffer = ''; state.pendingPin = '';
+  document.getElementById('pinStudentName').textContent = 'สวัสดี ' + state.student.name;
+  updatePinModeText();
+  renderKeypad();
+  updatePinDots();
+  document.getElementById('pinError').textContent = '';
+  goScreen('screen-pin');
+}
+
+function updatePinModeText(){
+  const txt = {
+    verify:'ใส่รหัสผ่าน 4 หลักของเรา (รหัสเดียวกับที่ใช้เข้าแอป Salt Smart)',
+    setup:'ครั้งแรก! ตั้งรหัสผ่าน 4 หลักของตัวเอง (จะใช้รหัสนี้เข้าแอป Salt Smart ด้วย)',
+    confirm:'ใส่รหัส 4 หลักอีกครั้งเพื่อยืนยัน'
+  };
+  document.getElementById('pinModeText').textContent = txt[state.pinMode];
+}
+
+function renderKeypad(){
+  const kp = document.getElementById('keypad');
+  kp.innerHTML='';
+  const keys = ['1','2','3','4','5','6','7','8','9','ลบ','0','เปลี่ยนคน'];
+  keys.forEach(k=>{
+    const el = document.createElement('div');
+    el.className = 'key' + (k==='ลบ'||k==='เปลี่ยนคน' ? ' action':'');
+    el.textContent = k;
+    el.onclick = ()=>pressKey(k);
+    kp.appendChild(el);
+  });
+}
+
+function updatePinDots(){
+  const dots = document.querySelectorAll('#pinDots .pin-dot');
+  dots.forEach((d,i)=> d.classList.toggle('filled', i < state.pinBuffer.length));
+}
+
+function pressKey(k){
+  if(k==='เปลี่ยนคน'){ goScreen('screen-student'); return; }
+  if(k==='ลบ'){ state.pinBuffer = state.pinBuffer.slice(0,-1); updatePinDots(); return; }
+  if(state.pinBuffer.length>=4) return;
+  state.pinBuffer += k;
+  updatePinDots();
+  if(state.pinBuffer.length===4){ setTimeout(handlePinComplete, 150); }
+}
+
+async function handlePinComplete(){
+  const entered = state.pinBuffer;
+  if(state.pinMode==='verify'){
+    if(entered === state.student.pin){
+      startBehaviorSurvey();
+    }else{
+      document.getElementById('pinError').textContent = 'รหัสไม่ถูกต้อง ลองใหม่อีกครั้ง';
+      state.pinBuffer=''; updatePinDots();
+    }
+  } else if(state.pinMode==='setup'){
+    state.pendingPin = entered;
+    state.pinBuffer=''; updatePinDots();
+    state.pinMode='confirm';
+    updatePinModeText();
+  } else if(state.pinMode==='confirm'){
+    if(entered === state.pendingPin){
+      await db.collection('students').doc(state.student.id).update({pin:entered});
+      state.student.pin = entered;
+      startBehaviorSurvey();
+    }else{
+      document.getElementById('pinError').textContent = 'รหัสไม่ตรงกัน กรุณาตั้งใหม่';
+      state.pinBuffer=''; state.pendingPin=''; state.pinMode='setup';
+      updatePinModeText(); updatePinDots();
+    }
+  }
 }
 
 /* =========================================================
