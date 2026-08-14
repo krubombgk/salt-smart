@@ -271,6 +271,51 @@
   .mh-bonus-mascot{width:52px; height:52px; object-fit:contain; flex-shrink:0;}
   .mh-bonus-title{font-family:'Kanit'; font-weight:700; font-size:13.5px; color:var(--deep-sea);}
   .mh-bonus-sub{font-size:11.5px; color:#4c5c60; margin-top:2px;}
+
+  /* ---- Sodium Hub (tab-sodium-hub) redesign ---- */
+  .sh-header{
+    background:linear-gradient(135deg,var(--deep-sea),var(--lagoon)); border-radius:22px;
+    padding:22px 20px; margin-bottom:14px; display:flex; align-items:flex-start; justify-content:space-between;
+  }
+  .sh-header-title{font-family:'Kanit'; font-weight:800; font-size:24px; color:#fff; margin-bottom:4px;}
+  .sh-header-sub{font-size:12.5px; color:#DCF3EF;}
+  .sh-header-mascot{width:64px; height:64px; object-fit:contain; flex-shrink:0; margin-left:10px;}
+  .sh-summary-card{padding-top:18px;}
+  .sh-summary-label{font-size:13px; color:#6b7c80; margin-bottom:6px;}
+  .sh-summary-row{display:flex; align-items:center; justify-content:space-between; gap:10px;}
+  .sh-summary-number{font-family:'Kanit'; font-weight:800; font-size:34px; color:var(--deep-sea); flex-shrink:0;}
+  .sh-summary-number span{font-size:16px; font-weight:600; color:#9aa8ab;}
+  .sh-summary-pct{font-family:'Kanit'; font-weight:700; font-size:14px; color:var(--lagoon); margin-top:10px;}
+  .sh-summary-limit{font-size:12.5px; color:#6b7c80; margin-top:2px;}
+  .sh-edit-link{color:var(--lagoon); font-family:'Kanit'; font-weight:600; font-size:12px; cursor:pointer; margin-left:8px; text-decoration:underline;}
+  .sh-list-header{display:flex; align-items:center; justify-content:space-between; margin:20px 0 10px;}
+  .sh-list-count{background:#E4F5F3; color:var(--lagoon); font-family:'Kanit'; font-weight:600; font-size:12px; padding:4px 12px; border-radius:20px;}
+  .sh-food-item{display:flex; align-items:center; gap:12px; padding:12px 0; border-bottom:1px solid #F0EBDC;}
+  .sh-food-item:last-child{border-bottom:none;}
+  .sh-food-icon{
+    width:44px; height:44px; border-radius:12px; background:var(--sand); flex-shrink:0;
+    display:flex; align-items:center; justify-content:center; font-size:22px;
+  }
+  .sh-food-info{flex:1; min-width:0;}
+  .sh-food-name{font-family:'Kanit'; font-weight:600; font-size:13.5px; color:var(--deep-sea); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .sh-food-qty{font-size:11.5px; color:#9aa8ab; margin-top:1px;}
+  .sh-food-right{text-align:right; flex-shrink:0;}
+  .sh-food-sodium{font-family:'Kanit'; font-weight:700; font-size:14px; color:var(--deep-sea);}
+  .sh-food-badge{display:inline-block; font-size:10.5px; font-family:'Kanit'; font-weight:600; padding:2px 9px; border-radius:10px; margin-top:3px;}
+  .sh-food-badge.high{background:#FBE6E2; color:var(--red-high);}
+  .sh-food-badge.medium{background:#FDEEDB; color:var(--coral);}
+  .sh-food-badge.low{background:#DFF3E5; color:var(--green-ok);}
+  .sh-food-actions{display:flex; gap:8px; margin-left:6px; flex-shrink:0;}
+  .sh-food-actions span{cursor:pointer; font-size:14px; opacity:0.6;}
+  .sh-food-actions span:active{opacity:1;}
+  .sh-tip-card{
+    display:flex; align-items:center; gap:12px; background:var(--sand); border-radius:18px; padding:14px 16px; margin-top:16px;
+  }
+  .sh-tip-mascot{width:46px; height:46px; object-fit:contain; flex-shrink:0;}
+  .sh-tip-text{flex:1;}
+  .sh-tip-badge{display:inline-block; background:var(--lagoon); color:#fff; font-family:'Kanit'; font-weight:600; font-size:10.5px; padding:3px 10px; border-radius:20px; margin-bottom:4px;}
+  .sh-tip-body{font-family:'Kanit'; font-weight:600; font-size:13px; color:var(--deep-sea);}
+  .sh-tip-icon{font-size:22px; flex-shrink:0;}
   .home-shortcut-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:10px;}
   .home-shortcut{
     background:#fff; border-radius:14px; padding:14px 4px; text-align:center; cursor:pointer;
@@ -716,35 +761,64 @@
 
     <!-- TAB: SODIUM HUB (รวม ตรวจฉลาก + โซเดียมวันนี้ เข้าด้วยกันเป็นทางเข้าเดียว) -->
     <div class="tabpanel" id="tab-sodium-hub">
-      <div class="section-title">🧂 วัดปริมาณโซเดียม</div>
-      <p style="color:#6b7c80; font-size:13px; margin-top:-8px;">มาดูกันว่าวันนี้กินเค็มไปแค่ไหนแล้ว</p>
-      <div class="stat-pill" style="margin-bottom:10px; display:inline-flex;">🔥 เก็บข้อมูลต่อเนื่อง <span id="sodiumTrackStreakVal" style="margin-left:4px;">0</span> วัน</div>
-      <div class="home-card" onclick="switchTab('tab-check')">
-        <div>
-          <div class="home-card-label">ตรวจฉลากอาหาร</div>
-          <div class="home-card-value">📷 สแกน/กรอกเพื่อดูโซเดียม</div>
+      <div class="sh-header">
+        <div class="sh-header-text">
+          <div class="sh-header-title">โซเดียมของฉัน</div>
+          <div class="sh-header-sub">ตรวจฉลากและติดตามโซเดียมจากอาหารที่กิน</div>
         </div>
-        <div class="home-card-arrow">🔍 ›</div>
-      </div>
-      <div class="card" style="cursor:pointer; text-align:center;" onclick="switchTab('tab-today')">
-        <div class="home-card-label" style="margin-bottom:2px;">โซเดียมวันนี้ (คร่าวๆ)</div>
-        <div id="hubSodiumGaugeArea"></div>
-        <div style="color:var(--lagoon); font-family:'Kanit'; font-weight:600; font-size:13px; margin-top:4px;">ดูรายละเอียด/เพิ่มรายการ ›</div>
+        <img src="mascot-header.png" alt="" class="sh-header-mascot">
       </div>
 
-      <div class="card">
-        <div style="display:flex; align-items:center; justify-content:space-between;">
-          <div>
-            <div style="font-size:12.5px; color:#6b7c80;">ขีดจำกัดโซเดียมต่อวัน (ไม่ควรเกิน)</div>
-            <div style="font-family:'Kanit'; font-weight:700; font-size:17px;" id="sodiumGoalDisplay">2,000 มก.</div>
-          </div>
-          <button class="btn btn-ghost" onclick="toggleSodiumGoalEdit()" id="sodiumGoalEditBtn">แก้ไข</button>
+      <div class="stat-pill" style="margin-bottom:10px; display:inline-flex;">🔥 เก็บข้อมูลต่อเนื่อง <span id="sodiumTrackStreakVal" style="margin-left:4px;">0</span> วัน</div>
+
+      <!-- Sodium Summary Card -->
+      <div class="card sh-summary-card">
+        <div class="sh-summary-label">วันนี้บันทึกแล้ว</div>
+        <div class="sh-summary-row">
+          <div class="sh-summary-number" id="hubSodiumBigNum">0 <span>mg</span></div>
+          <div id="hubSodiumGaugeSvgArea"></div>
         </div>
-        <div id="sodiumGoalEditArea" style="display:none; margin-top:10px;">
-          <p style="color:#9aa8ab; font-size:11.5px; margin:0 0 8px;">ปรับได้ตามคำแนะนำที่ครู/นักโภชนาการให้ไว้ (ค่าแนะนำทั่วไปคือ 2,000 มก./วัน)</p>
+        <div class="sh-summary-pct" id="hubSodiumPctText">ประมาณ 0% ของขีดจำกัดที่แนะนำ</div>
+        <div class="sh-summary-limit">
+          ไม่ควรเกิน <span id="sodiumGoalDisplay">2,000 มก.</span>/วัน
+          <span class="sh-edit-link" onclick="toggleSodiumGoalEdit()" id="sodiumGoalEditBtn">แก้ไข</span>
+        </div>
+        <div id="sodiumGoalEditArea" style="display:none; margin-top:10px; text-align:left;">
+          <p style="color:#9aa8ab; font-size:11.5px; margin:0 0 8px;">ปรับได้ตามคำแนะนำที่ครู/นักโภชนาการให้ไว้ (ค่าแนะนำทั่วไปคือ 2,000 มก./วัน) — เป็นขีดจำกัดที่ไม่ควรเกิน ไม่ใช่เป้าหมายที่ต้องกินให้ถึง</p>
           <input type="number" id="sodiumGoalInput" min="500" max="5000" step="100" style="margin-bottom:8px;">
           <button class="btn btn-primary btn-block" onclick="saveSodiumGoal()">บันทึกขีดจำกัด</button>
         </div>
+      </div>
+
+      <!-- Quick Actions -->
+      <div class="quick-action-grid">
+        <div class="quick-action qa-check" onclick="switchTab('tab-check')">
+          <div class="quick-action-icon">📷</div>
+          <div><div class="quick-action-title">ตรวจฉลากอาหาร</div><div class="quick-action-sub">ถ่ายรูปหรือกรอกข้อมูลโซเดียม</div></div>
+        </div>
+        <div class="quick-action qa-add" onclick="switchTab('tab-today')">
+          <div class="quick-action-icon">🍽️</div>
+          <div><div class="quick-action-title">เพิ่มอาหารที่กิน</div><div class="quick-action-sub">เลือกจากรายการอาหารทั่วไป</div></div>
+        </div>
+      </div>
+
+      <!-- รายการอาหารวันนี้ -->
+      <div class="sh-list-header">
+        <div class="section-title" style="margin:0;">🍽️ รายการอาหารวันนี้</div>
+        <div class="sh-list-count" id="hubFoodCount">0 รายการ</div>
+      </div>
+      <div class="card" id="hubFoodListCard">
+        <div id="hubFoodList"><div class="empty-note">ยังไม่มีรายการวันนี้</div></div>
+      </div>
+
+      <!-- Tip Card -->
+      <div class="sh-tip-card">
+        <img src="mascot-tips.png" alt="" class="sh-tip-mascot">
+        <div class="sh-tip-text">
+          <span class="sh-tip-badge">เคล็ดลับ</span>
+          <div class="sh-tip-body">ชิมก่อนปรุง และอ่านฉลากก่อนเลือกอาหาร</div>
+        </div>
+        <div class="sh-tip-icon">💡</div>
       </div>
     </div>
 
@@ -1186,6 +1260,37 @@ function renderSodiumGauge(total, goal){
       <div style="font-family:'Kanit'; font-weight:800; font-size:26px; color:${overLimit?'#D9503F':'#0B3D4C'};">${Math.round(total).toLocaleString('th-TH')} <span style="font-size:14px; font-weight:600; color:#9aa8ab;">มก.</span></div>
       <div style="font-size:13px; color:#6b7c80;">${Math.round(total/goal*100)}% ของขีดจำกัดต่อวัน (${goal.toLocaleString('th-TH')} มก.)</div>
     </div>
+  `;
+}
+
+// เอาแค่ตัว SVG หน้าปัด (ไม่มีตัวเลข/ข้อความแนบ) ใช้กับหน้าโซเดียมของฉันที่จัดเลย์เอาต์ตัวเลข+เกจแยกฝั่งกัน
+// ใช้สูตรคำนวณชุดเดียวกับ renderSodiumGauge() เป๊ะ แค่ตัดส่วนตัวเลข/ข้อความออก กันสองฟังก์ชันขัดแย้งกัน
+function renderSodiumGaugeSvgOnly(total, goal){
+  const gaugeMax = goal * 1.5;
+  const cx=100, cy=95, r=78, strokeW=16;
+  const greenEnd = goal*0.7, yellowEnd = goal;
+  function angleForValue(v){ return 180 - Math.min(Math.max(v,0),gaugeMax)/gaugeMax*180; }
+  function pt(angleDeg){
+    const rad = angleDeg*Math.PI/180;
+    return [cx + r*Math.cos(rad), cy - r*Math.sin(rad)];
+  }
+  function arc(v1,v2){
+    const [x1,y1] = pt(angleForValue(v1)), [x2,y2] = pt(angleForValue(v2));
+    return `M ${x1.toFixed(1)} ${y1.toFixed(1)} A ${r} ${r} 0 0 1 ${x2.toFixed(1)} ${y2.toFixed(1)}`;
+  }
+  const needleAngle = angleForValue(total);
+  const needleLen = r - strokeW/2 - 4;
+  const rad = needleAngle*Math.PI/180;
+  const needleX = cx + needleLen*Math.cos(rad);
+  const needleY = cy - needleLen*Math.sin(rad);
+  return `
+    <svg viewBox="0 0 200 112" style="width:100%; max-width:150px; display:block;">
+      <path d="${arc(0,greenEnd)}" fill="none" stroke="#3FA66B" stroke-width="${strokeW}" stroke-linecap="round"/>
+      <path d="${arc(greenEnd,yellowEnd)}" fill="none" stroke="#E8A33D" stroke-width="${strokeW}" stroke-linecap="round"/>
+      <path d="${arc(yellowEnd,gaugeMax)}" fill="none" stroke="#D9503F" stroke-width="${strokeW}" stroke-linecap="round"/>
+      <line x1="${cx}" y1="${cy}" x2="${needleX.toFixed(1)}" y2="${needleY.toFixed(1)}" stroke="#0B3D4C" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="${cx}" cy="${cy}" r="7" fill="#0B3D4C"/>
+    </svg>
   `;
 }
 // เมนูอาหารไทยยอดฮิต + ค่ากลางโซเดียมโดยประมาณ (มก.)
@@ -1662,9 +1767,73 @@ function refreshMissionHub(){
 
 // อัปเดตยอดโซเดียมในแท็บฮับ "โซเดียม" (ตรวจฉลาก + โซเดียมวันนี้ รวมเป็นทางเข้าเดียว)
 function refreshSodiumHub(){
-  document.getElementById('hubSodiumGaugeArea').innerHTML = renderSodiumGauge(state.sodiumTodayTotal||0, getSodiumGoal());
-  document.getElementById('sodiumGoalDisplay').textContent = getSodiumGoal().toLocaleString('th-TH') + ' มก.';
+  const total = state.sodiumTodayTotal || 0;
+  const goal = getSodiumGoal();
+  document.getElementById('hubSodiumGaugeSvgArea').innerHTML = renderSodiumGaugeSvgOnly(total, goal);
+  document.getElementById('hubSodiumBigNum').innerHTML = `${Math.round(total).toLocaleString('th-TH')} <span>mg</span>`;
+  document.getElementById('hubSodiumPctText').textContent = `ประมาณ ${Math.round(total/goal*100)}% ของขีดจำกัดที่แนะนำ`;
+  document.getElementById('sodiumGoalDisplay').textContent = goal.toLocaleString('th-TH') + ' มก.';
   document.getElementById('sodiumTrackStreakVal').textContent = state.selectedStudent.sodiumTrackStreak || 0;
+}
+
+// เกณฑ์สูง/ปานกลาง/ต่ำ — "ต่ำ" อ้างอิงเกณฑ์ทางการ อย. (ประกาศกระทรวงสาธารณสุข ฉบับที่ 182 พ.ศ.2541
+// บัญชีหมายเลข 4 ตารางที่ 1: กล่าวอ้าง "โซเดียมต่ำ" ได้ต้องมีน้อยกว่า 140 มก./หน่วยบริโภค)
+// "สูง" ไม่มีเกณฑ์ทางการจาก อย. โดยตรง (กฎหมายกำหนดแค่เกณฑ์ฝั่ง "ต่ำ") ใช้ 400 มก. ตามที่สื่อสุขศึกษาทั่วไปใช้อ้างอิง
+function sodiumTier(mg){
+  if(mg >= 400) return {cls:'high', label:'สูง'};
+  if(mg >= 140) return {cls:'medium', label:'ปานกลาง'};
+  return {cls:'low', label:'ต่ำ'};
+}
+
+// รายการอาหารวันนี้ในหน้า "โซเดียมของฉัน" — ใช้ข้อมูลชุดเดียวกับ renderCheckHistory() เป๊ะ (เรียกจากในนั้นเลย กันข้อมูลไม่ตรงกัน)
+// index ที่ใช้เรียก editSodiumCheck/deleteSodiumCheck/editMealEntry/deleteMealEntry ต้องอ้างอิงตำแหน่งจริงใน state.sodiumChecks/mealSodiumEntries เท่านั้น
+function renderHubFoodList(){
+  const listEl = document.getElementById('hubFoodList');
+  const countEl = document.getElementById('hubFoodCount');
+  if(!listEl) return; // ยังไม่ได้เปิดหน้านี้ ไม่ต้องทำอะไร
+
+  const checkRows = (state.sodiumChecks||[]).map((c,i)=>{
+    if(c.consumed===false) return null; // แค่ตรวจดู ไม่ได้กิน ไม่นับในรายการวันนี้
+    const tier = sodiumTier(c.sodium||0);
+    const qty = c.servings>1 ? `${c.servings} หน่วย` : '1 หน่วย';
+    return `
+      <div class="sh-food-item">
+        <div class="sh-food-icon">📦</div>
+        <div class="sh-food-info">
+          <div class="sh-food-name">${c.name}</div>
+          <div class="sh-food-qty">${qty}${c.time?' · '+c.time:''}</div>
+        </div>
+        <div class="sh-food-right">
+          <div class="sh-food-sodium">${c.sodium} mg</div>
+          <div class="sh-food-badge ${tier.cls}">${tier.label}</div>
+        </div>
+        <div class="sh-food-actions"><span onclick="editSodiumCheck(${i})">✏️</span><span onclick="deleteSodiumCheck(${i})">🗑️</span></div>
+      </div>`;
+  }).filter(Boolean);
+
+  const mealRows = (state.mealSodiumEntries||[]).map((m,i)=>{
+    const dish = THAI_DISHES.find(d=>d.name===m.dishName);
+    const icon = dish ? dish.icon : '🍽️';
+    const tier = sodiumTier(m.estimatedSodium||0);
+    const qty = m.gramsEaten ? `${m.gramsEaten} กรัม` : (m.servings>1 ? `${m.servings} หน่วย` : '1 หน่วย');
+    return `
+      <div class="sh-food-item">
+        <div class="sh-food-icon">${icon}</div>
+        <div class="sh-food-info">
+          <div class="sh-food-name">${m.dishName}</div>
+          <div class="sh-food-qty">${qty}${m.time?' · '+m.time:''}</div>
+        </div>
+        <div class="sh-food-right">
+          <div class="sh-food-sodium">~${m.estimatedSodium} mg</div>
+          <div class="sh-food-badge ${tier.cls}">${tier.label}</div>
+        </div>
+        <div class="sh-food-actions"><span onclick="editMealEntry(${i})">✏️</span><span onclick="deleteMealEntry(${i})">🗑️</span></div>
+      </div>`;
+  });
+
+  const allRows = mealRows.concat(checkRows); // เรียงเมนูอาหารก่อนแล้วตามด้วยรายการที่ตรวจฉลาก (ลำดับเดียวกับ renderCheckHistory เดิม)
+  countEl.textContent = allRows.length + ' รายการ';
+  listEl.innerHTML = allRows.length>0 ? allRows.join('') : '<div class="empty-note">ยังไม่มีรายการวันนี้</div>';
 }
 
 function toggleSodiumGoalEdit(){
@@ -2157,6 +2326,7 @@ function renderCheckHistory(){
     </div>
   `).join('');
   list.innerHTML = mealHtml + checkHtml;
+  renderHubFoodList(); // อัปเดตรายการอาหารวันนี้ในหน้า "โซเดียมของฉัน" ให้ตรงกันเสมอ (ใช้ข้อมูลชุดเดียวกัน)
 }
 
 // ประวัติการตรวจฉลากทั้งหมดที่เคยตรวจมา (ไม่ว่าจะกินหรือแค่ตรวจดู) — แสดงในหน้าตรวจฉลากเอง แยกจากยอดรวมวันนี้
