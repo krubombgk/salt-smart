@@ -2451,7 +2451,9 @@ async function confirmMealEntry(){
       estimatedSodium = perUnitSodium * servings;
     }
 
-    const entry = { dishName, level, estimatedSodium, perUnitSodium, servings, gramsEaten, time: new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'}) };
+    // gramsEaten เป็น undefined สำหรับเมนูที่ไม่ใช่แบบกรัม (เช่น ก๋วยเตี๋ยว, ส้มตำ ฯลฯ) — Firestore ไม่ยอมรับ field ที่เป็น undefined เด็ดขาด
+    // (นี่คือสาเหตุจริงของบั๊ก "เพิ่มอาหารไม่เข้าลิสต์" ที่แจ้งมา ต้องแปลงเป็น null แทน)
+    const entry = { dishName, level, estimatedSodium, perUnitSodium, servings, gramsEaten: gramsEaten ?? null, time: new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'}) };
     state.mealSodiumEntries.push(entry);
     await db.collection('dailyLogs').doc(logDocId()).set({
       studentId: state.selectedStudent.id,
