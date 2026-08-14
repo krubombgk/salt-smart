@@ -367,6 +367,40 @@
   .rw-history-icon{font-size:22px; flex-shrink:0;}
   .rw-history-name{font-family:'Kanit'; font-weight:600; font-size:13px; color:var(--deep-sea);}
   .rw-history-date{font-size:11px; color:#9aa8ab;}
+
+  /* ---- Daily Log (tab-log) redesign ---- */
+  .log-header{
+    background:linear-gradient(135deg,#E4F5F3,#D7F0EA); border-radius:22px; padding:20px;
+    margin-bottom:14px; display:flex; align-items:flex-start; justify-content:space-between;
+  }
+  .log-header-title{font-family:'Kanit'; font-weight:800; font-size:22px; color:var(--deep-sea); margin-bottom:4px;}
+  .log-header-sub{font-size:12.5px; color:#4c5c60;}
+  .log-header-mascot{width:70px; height:70px; object-fit:contain; flex-shrink:0; margin-left:10px;}
+  .log-date-title{font-family:'Kanit'; font-weight:700; font-size:14.5px; margin-bottom:8px;}
+  .log-section{display:flex; align-items:flex-start; gap:10px; margin-bottom:14px;}
+  .log-section-icon{
+    width:40px; height:40px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    font-size:19px; flex-shrink:0; margin-top:6px;
+  }
+  .log-card{flex:1; min-width:0; margin-bottom:0;}
+  .log-card-head{display:flex; align-items:center; gap:6px;}
+  .log-card-head h3{margin:0; flex:1;}
+  .info-icon{cursor:pointer; color:var(--lagoon); font-size:15px; flex-shrink:0;}
+  .info-box{
+    display:none; background:var(--sand); border-radius:10px; padding:8px 12px; margin:8px 0 0;
+    font-size:12px; color:#4c5c60; line-height:1.5;
+  }
+  .log-card-sub{color:#6b7c80; font-size:13.5px; margin:2px 0 10px;}
+  .log-optional-badge{
+    display:inline-block; background:var(--sand); color:#9aa8ab; font-size:11px; font-weight:600;
+    padding:2px 10px; border-radius:20px; margin-left:6px; vertical-align:middle;
+  }
+  .log-encourage{
+    display:flex; align-items:center; gap:12px; background:#E4F5F3; border-radius:18px; padding:14px 16px; margin:6px 0 16px;
+  }
+  .log-encourage-mascot{width:46px; height:46px; object-fit:contain; flex-shrink:0;}
+  .log-encourage-text{font-family:'Kanit'; font-weight:600; font-size:13px; color:var(--deep-sea);}
+  .log-submit-btn{font-size:16px; padding:15px 18px;}
   .home-shortcut-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:10px;}
   .home-shortcut{
     background:#fff; border-radius:14px; padding:14px 4px; text-align:center; cursor:pointer;
@@ -1019,9 +1053,16 @@
 
     <!-- TAB: LOG -->
     <div class="tabpanel" id="tab-log">
+      <div class="log-header">
+        <div>
+          <div class="log-header-title">บันทึกวันนี้</div>
+          <div class="log-header-sub">ทบทวนอาหารและพฤติกรรมของเมื่อวาน</div>
+        </div>
+        <img src="mascot-text.png" alt="" class="log-header-mascot">
+      </div>
+
       <div class="card" id="backfillPicker" style="display:none; background:var(--sand);">
-        <div style="font-family:'Kanit'; font-weight:700; font-size:14.5px; margin-bottom:8px;">📅 จะบันทึกของวันไหน?</div>
-        <p style="color:#6b7c80; font-size:13px; margin-top:-4px;">ปกติให้บันทึกพฤติกรรมของ "เมื่อวาน" (ตามหลักแบบสอบถามพฤติกรรม 24 ชม.) แต่ถ้าอยากบันทึกวันนี้ไปก่อน หรือลืมบันทึกวันก่อนๆ เลือกวันที่ต้องการได้เลย</p>
+        <div class="log-date-title">📅 เลือกวันที่</div>
         <div class="chip-row" id="backfillChips"></div>
       </div>
       <div class="card" id="logLockedBanner" style="display:none; background:var(--sand); border:2px solid var(--lagoon);">
@@ -1030,57 +1071,83 @@
       </div>
       <div id="logFormArea">
       <div id="logDateHeading" style="font-family:'Kanit'; font-weight:700; font-size:15px; color:var(--deep-sea); margin-bottom:10px;"></div>
-      <div class="card">
-        <h3 style="margin-top:0;">🏃 ออกกำลังกาย</h3>
-        <p style="color:#6b7c80; font-size:13.5px; margin-top:-8px;">แตะได้มากกว่า 1 อย่าง</p>
-        <div class="sticker-row" id="exerciseChips"></div>
-      </div>
 
-      <div class="card">
-        <h3 style="margin-top:0;">🧂 กินเค็มแค่ไหน</h3>
-        <p style="color:#6b7c80; font-size:13.5px; margin-top:-8px;">ประเมินตามความรู้สึกจริง ไม่ต้องเป๊ะเป๊ะ</p>
-        <div id="levelRows"></div>
-        <div id="tastePrefRow" style="display:none; margin-top:14px;">
-          <div class="lvl-label" style="font-family:'Kanit'; font-weight:600; font-size:14.5px; margin-bottom:8px;">ชอบรสเค็มระดับนั้นไหม</div>
-          <div class="sticker-row" id="tastePrefChips"></div>
+      <div class="log-section">
+        <div class="log-section-icon" style="background:#D7F0EA;">🏃</div>
+        <div class="card log-card">
+          <div class="log-card-head"><h3>1. วันนี้ขยับร่างกายอะไรบ้าง?</h3><span class="info-icon" onclick="toggleInfoBox(this)">ⓘ</span></div>
+          <div class="info-box">ยิ่งเคลื่อนไหวร่างกายบ่อย ก็ยิ่งช่วยให้ร่างกายจัดการเกลือแร่ได้ดีขึ้น</div>
+          <p class="log-card-sub">แตะได้มากกว่า 1 อย่าง</p>
+          <div class="sticker-row" id="exerciseChips"></div>
         </div>
       </div>
 
-      <div class="card">
-        <h3 style="margin-top:0;">🧂 เมื่อวานเติมเครื่องปรุงเพิ่มไหม</h3>
-        <p style="color:#6b7c80; font-size:13.5px; margin-top:-8px;">แตะได้มากกว่า 1 อย่าง (ไม่มีคำตอบไหนได้คะแนนมากกว่ากัน)</p>
-        <div class="sticker-row" id="condimentChips"></div>
-      </div>
-
-      <div class="card">
-        <h3 style="margin-top:0;">✅ พฤติกรรมสุขภาพอื่น ๆ</h3>
-        <div class="sticker-row" id="otherBehaviorList"></div>
-      </div>
-
-      <div class="card">
-        <div class="field">
-          <label>มื้ออาหาร/เครื่องดื่ม (สรุปสั้น ๆ)</label>
-          <div class="voice-input-row">
-            <textarea id="mealNote" placeholder="เช่น เช้า-ข้าวไข่เจียว, กลางวัน-ก๋วยเตี๋ยว, ของว่าง-ชานมไข่มุก" style="min-height:60px;"></textarea>
-            <button type="button" class="mic-btn" id="micBtn-mealNote" onclick="toggleVoiceInput('mealNote')">🎤</button>
+      <div class="log-section">
+        <div class="log-section-icon" style="background:#FBF0CE;">🧂</div>
+        <div class="card log-card">
+          <div class="log-card-head"><h3>2. เมื่อวานอาหารของคุณ รู้สึกเค็มแค่ไหน?</h3><span class="info-icon" onclick="toggleInfoBox(this)">ⓘ</span></div>
+          <div class="info-box">ตอบตามความรู้สึกจริงของคุณ ไม่มีคำตอบไหนถูกหรือผิด</div>
+          <div id="levelRows"></div>
+          <div id="tastePrefRow" style="display:none; margin-top:14px;">
+            <div class="lvl-label" style="font-family:'Kanit'; font-weight:600; font-size:14.5px; margin-bottom:8px;">ชอบรสเค็มระดับนั้นไหม</div>
+            <div class="sticker-row" id="tastePrefChips"></div>
           </div>
         </div>
-        <div class="field">
-          <label>วันนั้นฉันเลือกได้ดีตรงไหน เพราะอะไร</label>
-          <div class="voice-input-row">
-            <textarea id="reflectionText" placeholder="เขียนสั้น ๆ เล่าให้ฟังหน่อย…"></textarea>
-            <button type="button" class="mic-btn" id="micBtn-reflectionText" onclick="toggleVoiceInput('reflectionText')">🎤</button>
-          </div>
-        </div>
-        <div class="field">
-          <label>สิ่งที่ควรปรับปรุงในวันถัดไป</label>
-          <div class="voice-input-row">
-            <textarea id="improveText" placeholder="พรุ่งนี้อยากทำอะไรให้ดีขึ้น…" style="min-height:60px;"></textarea>
-            <button type="button" class="mic-btn" id="micBtn-improveText" onclick="toggleVoiceInput('improveText')">🎤</button>
-          </div>
-        </div>
-        <button class="btn btn-primary btn-block" id="submitLogBtn" onclick="submitDailyLog()">บันทึก</button>
       </div>
+
+      <div class="log-section">
+        <div class="log-section-icon" style="background:#DCEBFA;">🧂</div>
+        <div class="card log-card">
+          <div class="log-card-head"><h3>3. เมื่อวานเติมอะไรเพิ่มไหม?</h3><span class="info-icon" onclick="toggleInfoBox(this)">ⓘ</span></div>
+          <div class="info-box">ทุกคำตอบให้คะแนนเท่ากันหมด แค่อยากรู้พฤติกรรมจริงของคุณ</div>
+          <p class="log-card-sub">แตะได้มากกว่า 1 อย่าง (ไม่มีคำตอบไหนได้คะแนนมากกว่ากัน)</p>
+          <div class="sticker-row" id="condimentChips"></div>
+        </div>
+      </div>
+
+      <div class="log-section">
+        <div class="log-section-icon" style="background:#EAE3F7;">✅</div>
+        <div class="card log-card">
+          <div class="log-card-head"><h3>4. พฤติกรรมเล็ก ๆ ที่ทำได้เมื่อวาน</h3><span class="info-icon" onclick="toggleInfoBox(this)">ⓘ</span></div>
+          <div class="info-box">ทำได้กี่ข้อก็ได้ ไม่ต้องกดดันตัวเอง</div>
+          <div class="sticker-row" id="otherBehaviorList"></div>
+        </div>
+      </div>
+
+      <div class="log-section">
+        <div class="log-section-icon" style="background:#FBEADB;">📝</div>
+        <div class="card log-card">
+          <div class="log-card-head"><h3>5. เล่าเพิ่มนิดเดียว <span class="log-optional-badge">ไม่บังคับ</span></h3></div>
+          <div class="field">
+            <label>มื้ออาหารของฉัน</label>
+            <div class="voice-input-row">
+              <textarea id="mealNote" placeholder="เช้า / กลางวัน / เย็น / ของว่าง" style="min-height:60px;"></textarea>
+              <button type="button" class="mic-btn" id="micBtn-mealNote" onclick="toggleVoiceInput('mealNote')">🎤</button>
+            </div>
+          </div>
+          <div class="field">
+            <label>สิ่งที่ทำได้ดีวันนี้</label>
+            <div class="voice-input-row">
+              <textarea id="reflectionText" placeholder="วันนี้มีอะไรที่เรารู้สึกว่าทำได้ดี?"></textarea>
+              <button type="button" class="mic-btn" id="micBtn-reflectionText" onclick="toggleVoiceInput('reflectionText')">🎤</button>
+            </div>
+          </div>
+          <div class="field">
+            <label>สิ่งที่อยากพัฒนา</label>
+            <div class="voice-input-row">
+              <textarea id="improveText" placeholder="พรุ่งนี้อยากลองปรับอะไรนิดหนึ่ง?" style="min-height:60px;"></textarea>
+              <button type="button" class="mic-btn" id="micBtn-improveText" onclick="toggleVoiceInput('improveText')">🎤</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="log-encourage">
+        <img src="mascot-complete.png" alt="" class="log-encourage-mascot">
+        <div class="log-encourage-text">ไม่มีคำตอบถูกหรือผิด บันทึกตามที่เกิดขึ้นจริงได้เลย 😊</div>
+      </div>
+
+      <button class="btn btn-primary btn-block log-submit-btn" id="submitLogBtn" onclick="submitDailyLog()">✓ บันทึกวันนี้</button>
       </div>
     </div>
 
@@ -2919,6 +2986,14 @@ function setupVoiceInput(){
     stopVoiceInput();
   };
   voiceRecognition.onend = () => stopVoiceInput();
+}
+
+// เปิด/ปิดกล่องคำอธิบายสั้นๆ ใต้หัวข้อแต่ละส่วนในหน้าบันทึกวันนี้ (ไอคอน ⓘ)
+function toggleInfoBox(iconEl){
+  const box = iconEl.closest('.log-card-head').nextElementSibling;
+  if(box && box.classList.contains('info-box')){
+    box.style.display = box.style.display === 'block' ? 'none' : 'block';
+  }
 }
 
 function toggleVoiceInput(fieldId){
