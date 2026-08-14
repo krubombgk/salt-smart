@@ -323,6 +323,48 @@
   .sh-tip-badge{display:inline-block; background:var(--lagoon); color:#fff; font-family:'Kanit'; font-weight:600; font-size:10.5px; padding:3px 10px; border-radius:20px; margin-bottom:4px;}
   .sh-tip-body{font-family:'Kanit'; font-weight:600; font-size:13px; color:var(--deep-sea);}
   .sh-tip-icon{font-size:22px; flex-shrink:0;}
+
+  /* ---- Rewards page (tab-album) redesign ---- */
+  .rw-header{
+    background:linear-gradient(135deg,#E4F5F3,#D7F0EA); border-radius:22px; padding:22px 20px;
+    margin-bottom:14px; display:flex; align-items:flex-start; justify-content:space-between;
+  }
+  .rw-header-title{font-family:'Kanit'; font-weight:800; font-size:24px; color:var(--deep-sea); margin-bottom:4px;}
+  .rw-header-sub{font-size:12.5px; color:#4c5c60;}
+  .rw-header-mascot{width:76px; height:76px; object-fit:contain; flex-shrink:0; margin-left:10px;}
+  .rw-summary-card{display:flex; align-items:center; padding:18px;}
+  .rw-summary-col{flex:1; text-align:center;}
+  .rw-summary-icon{font-size:20px; margin-bottom:2px;}
+  .rw-summary-label{font-size:11.5px; color:#6b7c80;}
+  .rw-summary-num{font-family:'Kanit'; font-weight:800; font-size:19px; color:var(--deep-sea); margin-top:2px;}
+  .rw-summary-num span{font-size:11px; font-weight:600; color:#9aa8ab;}
+  .rw-summary-divider{width:1px; height:44px; background:#EFE9D9;}
+  .rw-filter{border:1.5px solid #E4DFCF; border-radius:20px; padding:6px 12px; font-family:'Kanit'; font-size:12.5px; color:var(--deep-sea); background:#fff;}
+  .rw-badge-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:16px;}
+  .rw-badge-card{
+    background:#fff; border-radius:18px; padding:16px 12px; text-align:center; box-shadow:0 2px 8px rgba(11,61,76,0.06); cursor:pointer;
+  }
+  .rw-badge-card.locked{background:#F3F1EA; filter:grayscale(0.9); opacity:0.75;}
+  .rw-badge-icon{font-size:34px; margin-bottom:8px;}
+  .rw-badge-name{font-family:'Kanit'; font-weight:700; font-size:13px; color:var(--deep-sea); margin-bottom:4px;}
+  .rw-badge-desc{font-size:10.5px; color:#6b7c80; line-height:1.4; margin-bottom:6px; min-height:28px;}
+  .rw-badge-lock{font-size:20px; margin-bottom:8px;}
+  .rw-progress-card{display:flex; align-items:center; gap:14px; margin-bottom:20px;}
+  .rw-progress-icon{font-size:32px; flex-shrink:0;}
+  .rw-progress-text{flex:1;}
+  .rw-progress-num{font-family:'Kanit'; font-weight:800; font-size:19px; color:var(--deep-sea); margin-bottom:6px;}
+  .rw-progress-num span{font-size:12px; font-weight:600; color:#9aa8ab;}
+  .rw-progress-msg{font-size:11.5px; color:#6b7c80; margin-top:4px;}
+  .rw-bonus-banner{
+    display:flex; align-items:center; gap:12px; background:#E4F5F3; border-radius:18px; padding:16px; margin:6px 0 20px;
+  }
+  .rw-bonus-mascot{width:46px; height:46px; object-fit:contain; flex-shrink:0;}
+  .rw-bonus-text{font-family:'Kanit'; font-weight:600; font-size:13px; color:var(--deep-sea);}
+  .rw-history-item{display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid #F0EBDC; text-align:left;}
+  .rw-history-item:last-child{border-bottom:none;}
+  .rw-history-icon{font-size:22px; flex-shrink:0;}
+  .rw-history-name{font-family:'Kanit'; font-weight:600; font-size:13px; color:var(--deep-sea);}
+  .rw-history-date{font-size:11px; color:#9aa8ab;}
   .home-shortcut-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:10px;}
   .home-shortcut{
     background:#fff; border-radius:14px; padding:14px 4px; text-align:center; cursor:pointer;
@@ -1078,16 +1120,73 @@
 
     <!-- TAB: REWARDS (เดิมชื่อ การ์ด — ย้าย badgeArea มารวมไว้ที่นี่ด้วย ตามหมวดใหม่ "รางวัล") -->
     <div class="tabpanel" id="tab-album">
-      <div class="card">
-        <h3 style="margin-top:0;">🏅 เหรียญรางวัลของฉัน</h3>
-        <div id="badgeArea"></div>
+      <div class="rw-header">
+        <div>
+          <div class="rw-header-title">รางวัลของฉัน</div>
+          <div class="rw-header-sub">สะสมให้ครบ รับตราเกียรติยศและของรางวัลพิเศษ!</div>
+        </div>
+        <img src="mascot-trophy.png" alt="" class="rw-header-mascot">
       </div>
+
+      <div class="card rw-summary-card">
+        <div class="rw-summary-col">
+          <div class="rw-summary-icon">⭐</div>
+          <div class="rw-summary-label">คะแนนทั้งหมด</div>
+          <div class="rw-summary-num" id="rwTotalPoints">0 <span>คะแนน</span></div>
+        </div>
+        <div class="rw-summary-divider"></div>
+        <div class="rw-summary-col">
+          <div class="rw-summary-icon">🎁</div>
+          <div class="rw-summary-label">ตราที่ได้รับ</div>
+          <div class="rw-summary-num" id="rwBadgeRatio">0 / 0 <span>อัน</span></div>
+        </div>
+      </div>
+      <button class="btn btn-ghost btn-block" style="margin:10px 0 18px;" onclick="openRewardHistory()">📅 ประวัติการได้รับ</button>
+
+      <div class="sh-list-header">
+        <div class="section-title" style="margin:0;">🏅 คอลเลกชันตราเกียรติยศ</div>
+        <select id="rwBadgeFilter" class="rw-filter" onchange="renderRewardsPage()">
+          <option value="all">ทั้งหมด</option>
+          <option value="earned">ได้แล้ว</option>
+          <option value="locked">ยังไม่ปลดล็อก</option>
+        </select>
+      </div>
+      <div class="rw-badge-grid" id="rwEarnedGrid"></div>
+
+      <div class="card rw-progress-card">
+        <div class="rw-progress-icon">🎒</div>
+        <div class="rw-progress-text">
+          <div class="rw-progress-num"><span id="rwProgressNum">0 / 0</span> <span>ตรา</span></div>
+          <div class="progress-track"><div class="progress-fill-bar" id="rwProgressBar" style="width:0%;"></div></div>
+          <div class="rw-progress-msg" id="rwProgressMsg"></div>
+        </div>
+      </div>
+
+      <div class="section-title">🔒 ตราที่รอการปลดล็อก</div>
+      <div class="rw-badge-grid" id="rwLockedGrid"></div>
+
+      <div class="rw-bonus-banner">
+        <img src="mascot-complete.png" alt="" class="rw-bonus-mascot">
+        <div class="rw-bonus-text">สะสมให้ครบทุกตรา แล้วมาลุ้นเซอร์ไพรส์พิเศษกันนะ!</div>
+      </div>
+
+      <div class="section-title">🎴 ห้องเก็บการ์ดความรู้</div>
       <div class="card" style="text-align:center;">
-        <h3 style="margin-top:0;">🎴 ห้องเก็บการ์ด</h3>
         <div id="albumProgress" style="font-family:'Kanit'; font-weight:700; color:var(--lagoon);">กำลังโหลด…</div>
       </div>
       <div class="card">
         <div id="albumGrid"></div>
+      </div>
+    </div>
+
+    <!-- Reward History modal -->
+    <div class="kcard-overlay" id="rwHistoryOverlay" style="display:none;" onclick="if(event.target===this) closeRewardHistory()">
+      <div class="kcard-box" style="max-width:360px;">
+        <div style="padding:18px 20px 8px; display:flex; align-items:center; justify-content:space-between;">
+          <h3 style="margin:0; font-family:'Kanit';">📅 ประวัติการได้รับ</h3>
+          <span style="cursor:pointer; font-size:20px;" onclick="closeRewardHistory()">✕</span>
+        </div>
+        <div style="padding:8px 20px 20px; max-height:60vh; overflow-y:auto;" id="rwHistoryList"><div class="empty-note">กำลังโหลด…</div></div>
       </div>
     </div>
 
@@ -3154,31 +3253,131 @@ function renderStats(){
   // รายชื่อ badge ทั้งหมด (ยังเป็นชุดชั่วคราว รอคุยกันว่าจะปรับรายการ/เงื่อนไขจริงหรือไม่)
   // แสดงครบทุกใบเสมอ ใบที่ยังไม่ปลดล็อกจะเป็นสีเทา กดดูได้ว่าต้องทำอะไรถึงจะได้
   const BADGE_DEFS = [
-    { icon:'⭐', name:'Consistency Star', earned:(state.selectedStudent.longestStreak||0) >= halfway,
+    { key:'consistency', icon:'⭐', name:'Consistency Star', earned:(state.selectedStudent.longestStreak||0) >= halfway,
       desc:`ทำต่อเนื่องติดกัน ${halfway} วัน (ตอนนี้ทำได้สูงสุด ${state.selectedStudent.longestStreak||0} วัน)` },
-    { icon:'🧂', name:'Sodium Tracker', earned:(state.selectedStudent.sodiumTrackLongestStreak||0) >= halfway,
+    { key:'sodiumTracker', icon:'🧂', name:'Sodium Tracker', earned:(state.selectedStudent.sodiumTrackLongestStreak||0) >= halfway,
       desc:`เก็บข้อมูลโซเดียม (ตรวจฉลากหรือเพิ่มเมนูอาหาร) ต่อเนื่อง ${halfway} วัน (ตอนนี้ทำได้สูงสุด ${state.selectedStudent.sodiumTrackLongestStreak||0} วัน)` },
-    { icon:'🔍', name:'Label Detective', earned:(state.selectedStudent.sodiumCheckCount||0) >= 10,
+    { key:'labelDetective', icon:'🔍', name:'Label Detective', earned:(state.selectedStudent.sodiumCheckCount||0) >= 10,
       desc:`ตรวจฉลากอาหารสะสม 10 ครั้ง (ตอนนี้ตรวจไปแล้ว ${state.selectedStudent.sodiumCheckCount||0} ครั้ง)` },
-    { icon:'🧠', name:'Quiz Master', earned: quizTotalSum>0 && quizAccuracy >= 0.8,
+    { key:'quizMaster', icon:'🧠', name:'Quiz Master', earned: quizTotalSum>0 && quizAccuracy >= 0.8,
       desc:`ตอบ Quiz ถูกสะสม 80% ขึ้นไป (ตอนนี้ ${quizTotalSum>0 ? Math.round(quizAccuracy*100) : 0}%)` },
-    { icon:'🎯', name:'Mission Explorer', earned: approvedMissionCount >= 15,
+    { key:'missionExplorer', icon:'🎯', name:'Mission Explorer', earned: approvedMissionCount >= 15,
       desc:`ผ่านภารกิจสะสม 15 ครั้ง (ตอนนี้ผ่านแล้ว ${approvedMissionCount} ครั้ง)` },
-    { icon:'💚', name:'Healthy Choice', earned: healthyChoiceCount >= 10,
+    { key:'healthyChoice', icon:'💚', name:'Healthy Choice', earned: healthyChoiceCount >= 10,
       desc:`เลือกทางเลือกสุขภาพสะสม 10 วัน (ตอนนี้ ${healthyChoiceCount} วัน)` },
-    { icon:'🏆', name:'21-Day Finisher', earned:(state.selectedStudent.daysCompleted||0) >= state.totalDays,
+    { key:'finisher', icon:'🏆', name:'21-Day Finisher', earned:(state.selectedStudent.daysCompleted||0) >= state.totalDays,
       desc:`ทำกิจกรรมครบทุกวันตลอด ${state.totalDays} วัน (ตอนนี้ทำสำเร็จ ${state.selectedStudent.daysCompleted||0} วัน)` },
   ];
-  state.badgeDefsCache = BADGE_DEFS; // เก็บไว้ให้ showBadgeDetail() อ่านตอนกดดูรายละเอียด
-  document.getElementById('badgeArea').innerHTML = BADGE_DEFS.map((b,i)=>
-    `<span class="badge-chip${b.earned?'':' locked'}" onclick="showBadgeDetail(${i})">${b.earned?'':'🔒 '}${b.icon} ${b.name}</span>`
-  ).join('');
+  state.badgeDefsCache = BADGE_DEFS; // เก็บไว้ให้ showBadgeDetail()/renderRewardsPage() อ่านตอนกดดูรายละเอียด
+  captureBadgeTimestamps(BADGE_DEFS); // บันทึกเวลาที่ปลดล็อกครั้งแรกของแต่ละ badge (ไว้ใช้ทำประวัติการได้รับ)
+  renderRewardsPage(BADGE_DEFS); // วาดหน้า "รางวัลของฉัน" แบบ Collection ใหม่ (ใช้ badge ชุดเดียวกันเป๊ะ ไม่คำนวณซ้ำ)
+}
+
+// บันทึกเวลาที่ badge แต่ละอันปลดล็อกครั้งแรก (เขียนแค่ครั้งเดียวตอนเพิ่งเปลี่ยนจากล็อกเป็นปลดล็อก) — ใช้ทำ "ประวัติการได้รับ"
+async function captureBadgeTimestamps(badgeDefs){
+  const existing = state.selectedStudent.badgeEarnedAt || {};
+  const newlyEarned = badgeDefs.filter(b => b.earned && !existing[b.key]);
+  if(newlyEarned.length===0) return;
+  const update = {};
+  newlyEarned.forEach(b => { update[b.key] = new Date().toISOString(); });
+  const merged = {...existing, ...update};
+  state.selectedStudent.badgeEarnedAt = merged;
+  try{
+    await db.collection('students').doc(state.selectedStudent.id).update({ badgeEarnedAt: merged });
+  }catch(e){ console.error('captureBadgeTimestamps error:', e); }
 }
 
 function showBadgeDetail(i){
   const b = (state.badgeDefsCache||[])[i];
   if(!b) return;
   alert(`${b.icon} ${b.name}\n\n${b.earned ? '✅ ปลดล็อกแล้ว!' : '🔒 ยังไม่ปลดล็อก'}\n\nวิธีได้รับ: ${b.desc}`);
+}
+
+// วาดหน้า "รางวัลของฉัน" แบบ Collection (สรุปคะแนน/จำนวนตรา, กริดตราที่ได้แล้ว, progress, กริดตราที่รอปลดล็อก)
+function renderRewardsPage(badgeDefs){
+  badgeDefs = badgeDefs || state.badgeDefsCache || [];
+  const gridEl = document.getElementById('rwEarnedGrid');
+  if(!gridEl || badgeDefs.length===0) return;
+
+  const filterEl = document.getElementById('rwBadgeFilter');
+  const filter = filterEl ? filterEl.value : 'all';
+  const earnedCount = badgeDefs.filter(b=>b.earned).length;
+  const total = badgeDefs.length;
+
+  document.getElementById('rwTotalPoints').innerHTML = `${(state.selectedStudent.totalPoints||0).toLocaleString('th-TH')} <span>คะแนน</span>`;
+  document.getElementById('rwBadgeRatio').innerHTML = `${earnedCount} / ${total} <span>อัน</span>`;
+  document.getElementById('rwProgressNum').textContent = `${earnedCount} / ${total}`;
+  document.getElementById('rwProgressBar').style.width = Math.round(earnedCount/total*100) + '%';
+  const remaining = total - earnedCount;
+  document.getElementById('rwProgressMsg').textContent = remaining>0
+    ? `สะสมอีก ${remaining} ตรา รับกล่องของขวัญพิเศษ!`
+    : 'สะสมครบทุกตราแล้ว เก่งมาก! 🎉';
+
+  function badgeCardHtml(b, idx, locked){
+    return `
+      <div class="rw-badge-card${locked?' locked':''}" onclick="showBadgeDetail(${idx})">
+        ${locked ? '<div class="rw-badge-lock">🔒</div>' : `<div class="rw-badge-icon">${b.icon}</div>`}
+        <div class="rw-badge-name">${b.name}</div>
+        <div class="rw-badge-desc">${b.desc}</div>
+      </div>`;
+  }
+
+  const earnedList = badgeDefs.filter(b=>b.earned);
+  const lockedList = badgeDefs.filter(b=>!b.earned);
+  const showEarned = filter==='all' || filter==='earned';
+  const showLocked = filter==='all' || filter==='locked';
+
+  gridEl.style.display = showEarned ? 'grid' : 'none';
+  gridEl.innerHTML = earnedList.length>0
+    ? earnedList.map(b=> badgeCardHtml(b, badgeDefs.indexOf(b), false)).join('')
+    : '<div class="empty-note">ยังไม่ได้ตราใดเลย ลองทำกิจกรรมดูนะ</div>';
+
+  const lockedGridEl = document.getElementById('rwLockedGrid');
+  lockedGridEl.style.display = showLocked ? 'grid' : 'none';
+  lockedGridEl.innerHTML = lockedList.length>0
+    ? lockedList.map(b=> badgeCardHtml(b, badgeDefs.indexOf(b), true)).join('')
+    : '<div class="empty-note">ปลดล็อกครบทุกตราแล้ว!</div>';
+  const lockedTitleEl = lockedGridEl.previousElementSibling;
+  if(lockedTitleEl && lockedTitleEl.classList.contains('section-title')) lockedTitleEl.style.display = showLocked ? 'block' : 'none';
+}
+
+// ประวัติการได้รับ — รวม badge (จาก badgeEarnedAt ที่เพิ่งเพิ่ม) + การ์ดความรู้ (มี collectedAt เก็บไว้อยู่แล้ว) เรียงใหม่สุดก่อน
+async function openRewardHistory(){
+  document.getElementById('rwHistoryOverlay').style.display = 'flex';
+  const listEl = document.getElementById('rwHistoryList');
+  listEl.innerHTML = '<div class="empty-note">กำลังโหลด…</div>';
+  try{
+    const events = [];
+    const badgeEarnedAt = state.selectedStudent.badgeEarnedAt || {};
+    (state.badgeDefsCache||[]).forEach(b=>{
+      if(badgeEarnedAt[b.key]) events.push({icon:b.icon, name:b.name, date:badgeEarnedAt[b.key]});
+    });
+
+    const cardSnap = await db.collection('cardCollections').where('studentId','==',state.selectedStudent.id).get();
+    const cardsById = {};
+    (state.albumCardsCache||[]).forEach(c=>{ cardsById[c.id]=c; });
+    cardSnap.docs.forEach(d=>{
+      const data = d.data();
+      const card = cardsById[data.cardId];
+      if(!card || !data.collectedAt) return;
+      events.push({icon: card.isSpecial ? '🌟' : '🎴', name: (card.text||'การ์ดความรู้').slice(0,36), date: data.collectedAt});
+    });
+
+    events.sort((a,b)=> new Date(b.date) - new Date(a.date));
+    listEl.innerHTML = events.length>0
+      ? events.map(e=>`
+        <div class="rw-history-item">
+          <div class="rw-history-icon">${e.icon}</div>
+          <div><div class="rw-history-name">${e.name}</div><div class="rw-history-date">${dayLabelThai(e.date.slice(0,10))}</div></div>
+        </div>`).join('')
+      : '<div class="empty-note">ยังไม่มีประวัติการได้รับ ลองทำกิจกรรมดูนะ</div>';
+  }catch(e){
+    console.error('openRewardHistory error:', e);
+    listEl.innerHTML = '<div class="empty-note">โหลดประวัติไม่สำเร็จ</div>';
+  }
+}
+function closeRewardHistory(){
+  document.getElementById('rwHistoryOverlay').style.display = 'none';
 }
 
 /* ---- กราฟแนวโน้มโซเดียมรายวัน (SVG ธรรมดา ไม่ใช้ library ภายนอก) ---- */
