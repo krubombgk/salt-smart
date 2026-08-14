@@ -230,6 +230,47 @@
   .quick-action-icon{font-size:24px; flex-shrink:0;}
   .quick-action-title{font-family:'Kanit'; font-weight:700; font-size:13.5px; color:var(--deep-sea);}
   .quick-action-sub{font-size:10.5px; color:#6b7c80; margin-top:1px;}
+
+  /* ---- Mission Hub (tab-mission-hub) redesign ---- */
+  .mh-header{display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;}
+  .mh-header-mascot{width:48px; height:48px; object-fit:contain;}
+  .mh-progress-msg{font-size:12.5px; color:#6b7c80; margin:0;}
+  .mh-hero{
+    background:linear-gradient(135deg,#FDEEDB,#FCE3C7); border-radius:20px; padding:18px;
+    margin:14px 0; box-shadow:0 4px 14px rgba(11,61,76,0.08); cursor:pointer;
+  }
+  .mh-hero.done{background:linear-gradient(135deg,#E4F5F3,#D7F0EA);}
+  .mh-hero-top{display:flex; align-items:flex-start; justify-content:space-between; gap:10px;}
+  .mh-hero-text{flex:1; min-width:0;}
+  .mh-hero-mascot{width:80px; height:80px; object-fit:contain; flex-shrink:0; margin-top:-4px;}
+  .mh-tag{
+    display:inline-block; font-family:'Kanit'; font-weight:600; font-size:11.5px;
+    padding:4px 11px; border-radius:20px; margin-bottom:8px;
+  }
+  .mh-tag-mission{background:var(--coral); color:#fff;}
+  .mh-tag-quiz{background:#8B7FD6; color:#fff;}
+  .mh-tag-log{background:#5B9BD5; color:#fff;}
+  .mh-tag-status{background:rgba(255,255,255,0.85); color:var(--deep-sea); float:right;}
+  .mh-tag-status.approved{background:#DFF3E5; color:var(--green-ok);}
+  .mh-tag-status.rejected{background:#FBE6E2; color:var(--red-high);}
+  .mh-hero-title{font-family:'Kanit'; font-weight:700; font-size:17px; color:var(--deep-sea); margin-bottom:5px; line-height:1.4;}
+  .mh-reward{font-size:12.5px; color:#4c5c60; margin-bottom:12px;}
+  .mh-reward b{color:var(--lagoon); font-family:'Kanit';}
+  .mh-card{
+    background:#fff; border-radius:18px; padding:16px; margin-bottom:12px;
+    box-shadow:0 2px 8px rgba(11,61,76,0.06); display:flex; flex-direction:column; cursor:pointer;
+  }
+  .mh-card.mh-quiz{background:#F3F1FB;}
+  .mh-card.mh-log{background:#EDF4FB;}
+  .mh-card.done{background:#E4F5F3;}
+  .mh-card-title{font-family:'Kanit'; font-weight:700; font-size:15px; color:var(--deep-sea); margin-bottom:3px;}
+  .mh-card-sub{font-size:12px; color:#6b7c80; margin-bottom:8px;}
+  .mh-bonus{
+    display:flex; align-items:center; gap:12px; background:#E4F5F3; border-radius:18px; padding:14px 16px; margin-top:6px;
+  }
+  .mh-bonus-mascot{width:52px; height:52px; object-fit:contain; flex-shrink:0;}
+  .mh-bonus-title{font-family:'Kanit'; font-weight:700; font-size:13.5px; color:var(--deep-sea);}
+  .mh-bonus-sub{font-size:11.5px; color:#4c5c60; margin-top:2px;}
   .home-shortcut-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:10px;}
   .home-shortcut{
     background:#fff; border-radius:14px; padding:14px 4px; text-align:center; cursor:pointer;
@@ -780,28 +821,65 @@
 
     <!-- TAB: MISSION HUB (รวม ภารกิจ + Quiz + บันทึกวันนี้ เข้าด้วยกันเป็นทางเข้าเดียว) -->
     <div class="tabpanel" id="tab-mission-hub">
-      <div class="section-title">🎯 ภารกิจ</div>
-      <p style="color:#6b7c80; font-size:13px; margin-top:-8px;">สิ่งที่นักเรียนควรทำเป็นประจำทุกวัน</p>
-      <div class="home-card" onclick="switchTab('tab-mission')">
+      <div class="mh-header">
         <div>
-          <div class="home-card-label">ภารกิจประจำวัน</div>
-          <div class="home-card-value" id="hubMissionStatus">-</div>
+          <div class="section-title" style="margin:0 0 2px;">ภารกิจ</div>
+          <p class="mh-progress-msg">ทำให้ครบทุกกิจกรรมของวันนี้!</p>
         </div>
-        <div class="home-card-arrow">🎯 ›</div>
+        <img src="mascot-mission.png" alt="" class="mh-header-mascot">
       </div>
-      <div class="home-card" onclick="switchTab('tab-quiz')">
-        <div>
-          <div class="home-card-label">Quiz ประจำวัน</div>
-          <div class="home-card-value" id="hubQuizStatus">-</div>
+
+      <div class="card">
+        <div class="home-progress-row">
+          <div class="home-progress-title" id="mhProgressTitle">วันนี้ทำไปแล้ว</div>
+          <div class="home-progress-count"><span id="mhTodoCount">0</span>/3</div>
         </div>
-        <div class="home-card-arrow">❓ ›</div>
+        <div class="progress-track"><div class="progress-fill-bar" id="mhTodoBar" style="width:0%;"></div></div>
+        <p class="mh-progress-msg" id="mhProgressMsg"></p>
       </div>
-      <div class="home-card" onclick="switchTab('tab-log')">
-        <div>
-          <div class="home-card-label">บันทึกวันนี้</div>
-          <div class="home-card-value" id="hubLogStatus">-</div>
+
+      <!-- ภารกิจประจำวัน: Hero card เด่นสุด -->
+      <div class="mh-hero" id="mhMissionCard" onclick="switchTab('tab-mission')">
+        <div class="mh-hero-top">
+          <div class="mh-hero-text">
+            <span class="mh-tag mh-tag-status" id="hubMissionStatus">-</span>
+            <div class="mh-tag mh-tag-mission">ภารกิจหลัก</div>
+            <div class="mh-hero-title">ภารกิจของวันนี้</div>
+            <div class="mh-hero-desc" id="hubMissionDesc" style="font-size:13px; color:#4c5c60; margin-bottom:10px; line-height:1.5;">กำลังโหลด...</div>
+            <div class="mh-reward" id="hubMissionReward"></div>
+          </div>
+          <img src="mascot-photo.png" alt="" class="mh-hero-mascot" id="mhMissionMascot">
         </div>
-        <div class="home-card-arrow">📝 ›</div>
+        <button class="btn btn-primary btn-block" id="mhMissionBtn" onclick="event.stopPropagation(); switchTab('tab-mission')">เริ่มภารกิจ</button>
+      </div>
+
+      <!-- Quiz ประจำวัน -->
+      <div class="mh-card mh-quiz" id="mhQuizCard" onclick="switchTab('tab-quiz')">
+        <span class="mh-tag mh-tag-status" id="hubQuizStatus" style="align-self:flex-end;">-</span>
+        <div class="mh-tag mh-tag-quiz">ความรู้</div>
+        <div class="mh-card-title">Quiz ประจำวัน</div>
+        <div class="mh-card-sub" id="hubQuizSub">3 คำถาม · ใช้เวลาประมาณ 2 นาที</div>
+        <div class="mh-reward" id="hubQuizReward"></div>
+        <button class="btn btn-primary btn-block" id="mhQuizBtn" onclick="event.stopPropagation(); switchTab('tab-quiz')">เริ่ม Quiz</button>
+      </div>
+
+      <!-- บันทึกวันนี้ -->
+      <div class="mh-card mh-log" id="mhLogCard" onclick="switchTab('tab-log')">
+        <span class="mh-tag mh-tag-status" id="hubLogStatus" style="align-self:flex-end;">-</span>
+        <div class="mh-tag mh-tag-log">บันทึก</div>
+        <div class="mh-card-title">บันทึกวันนี้</div>
+        <div class="mh-card-sub">ทบทวนพฤติกรรมของเมื่อวาน</div>
+        <div class="mh-reward" id="hubLogReward"></div>
+        <button class="btn btn-primary btn-block" id="mhLogBtn" onclick="event.stopPropagation(); switchTab('tab-log')">เริ่มบันทึก</button>
+      </div>
+
+      <!-- Motivation banner -->
+      <div class="mh-bonus">
+        <img src="mascot-complete.png" alt="" class="mh-bonus-mascot">
+        <div>
+          <div class="mh-bonus-title">🎁 ครบทั้ง 3 ภารกิจ รับโบนัสพิเศษ!</div>
+          <div class="mh-bonus-sub">ทำครบทุกกิจกรรมวันนี้ เพื่อสะสมคะแนนและปลดล็อกการ์ด</div>
+        </div>
       </div>
     </div>
 
@@ -1449,6 +1527,7 @@ async function enterApp(){
   refreshHomeTab();
   refreshMissionHub();
   refreshSodiumHub();
+  checkAndGrantDailyCard(); // เผื่อครบ 3 กิจกรรมไปแล้วตั้งแต่ก่อนรีเฟรชหน้า แต่ยังไม่เคยได้การ์ด (มี flag กันซ้ำอยู่แล้ว ปลอดภัย)
   switchTab('tab-home', true); // ตั้งค่าแท็บเริ่มต้น ไม่ push history ตรงนี้ ให้ goScreen ด้านล่าง push รวมทีเดียว
   goScreen('screen-main');
 }
@@ -1516,10 +1595,69 @@ function refreshHomeTab(){
 
 // อัปเดตสถานะย่อในแท็บฮับ "ภารกิจ" (ภารกิจ/Quiz/บันทึกวันนี้ รวมเป็นทางเข้าเดียว)
 function refreshMissionHub(){
-  const missionLabels = {pending:'⏳ รอตรวจ', approved:'✅ ผ่านแล้ว', rejected:'❌ ยังไม่ผ่าน ลองใหม่ได้', not_submitted:'ยังไม่ได้ส่ง'};
-  document.getElementById('hubMissionStatus').textContent = missionLabels[state.todaysMissionStatus] || 'ยังไม่ได้ส่ง';
-  document.getElementById('hubQuizStatus').textContent = state.quizFinished ? '✅ ทำแล้ว' : 'ยังไม่ได้ทำ';
+  const missionLabels = {pending:'⏳ ส่งแล้ว รอตรวจ', approved:'✅ ผ่านแล้ว', rejected:'⚠️ ต้องแก้ไข/ส่งใหม่', not_submitted:'ยังไม่ได้เริ่ม'};
+  const hubMissionStatusEl = document.getElementById('hubMissionStatus');
+  hubMissionStatusEl.textContent = missionLabels[state.todaysMissionStatus] || 'ยังไม่ได้เริ่ม';
+  hubMissionStatusEl.classList.toggle('approved', state.todaysMissionStatus==='approved');
+  hubMissionStatusEl.classList.toggle('rejected', state.todaysMissionStatus==='rejected');
+  document.getElementById('hubQuizStatus').textContent = state.quizFinished ? '✅ ทำ Quiz แล้ว' : 'ยังไม่ได้ทำ';
   document.getElementById('hubLogStatus').textContent = (state.targetLog && state.targetLog.submitted) ? '✅ บันทึกแล้ว' : 'ยังไม่ได้บันทึก';
+
+  // ---- ภารกิจประจำวัน (Hero card) ----
+  const mission = state.todaysMission;
+  const missionCard = document.getElementById('mhMissionCard');
+  const missionBtn = document.getElementById('mhMissionBtn');
+  if(mission){
+    document.getElementById('hubMissionDesc').textContent = mission.text || '';
+    document.getElementById('hubMissionReward').innerHTML = `⭐ <b>+${mission.points||15} คะแนน</b>`;
+    // เลือกภาพ mascot ตามประเภทหลักฐานที่ต้องส่ง — 'text' ใช้ท่าจดบันทึก นอกนั้น (photo/both) ใช้ท่าถ่ายรูป
+    document.getElementById('mhMissionMascot').src = mission.evidenceType==='text' ? 'mascot-text.png' : 'mascot-photo.png';
+  }
+  const missionDone = state.todaysMissionStatus==='approved' || state.todaysMissionStatus==='pending';
+  missionCard.classList.toggle('done', missionDone);
+  if(state.todaysMissionStatus==='approved') missionBtn.textContent = '✅ ผ่านแล้ว ดูรายละเอียด';
+  else if(state.todaysMissionStatus==='pending') missionBtn.textContent = '⏳ ส่งแล้ว รอตรวจ';
+  else if(state.todaysMissionStatus==='rejected') missionBtn.textContent = 'ส่งใหม่อีกครั้ง';
+  else missionBtn.textContent = 'เริ่มภารกิจ';
+
+  // ---- Quiz ประจำวัน ----
+  const quizCard = document.getElementById('mhQuizCard');
+  const quizBtn = document.getElementById('mhQuizBtn');
+  const totalQ = (state.todaysQuiz && state.todaysQuiz.length) || 3;
+  document.getElementById('hubQuizSub').textContent = `${totalQ} คำถาม · ใช้เวลาประมาณ 2 นาที`;
+  const quizRewardEl = document.getElementById('hubQuizReward');
+  if(state.quizFinished){
+    const correct = state.quizAnswers.filter(a=>a.correct).length;
+    quizRewardEl.innerHTML = `⭐ ได้ <b>${correct*5} คะแนน</b> (${correct}/${totalQ} ข้อถูก)`;
+    quizBtn.textContent = '✅ ทำ Quiz แล้ว';
+  } else {
+    quizRewardEl.innerHTML = `⭐ ได้สูงสุด <b>${totalQ*5} คะแนน</b>`;
+    quizBtn.textContent = 'เริ่ม Quiz';
+  }
+  quizCard.classList.toggle('done', !!state.quizFinished);
+
+  // ---- บันทึกวันนี้ ----
+  const logCard = document.getElementById('mhLogCard');
+  const logBtn = document.getElementById('mhLogBtn');
+  const logDone = !!(state.targetLog && state.targetLog.submitted);
+  const logRewardEl = document.getElementById('hubLogReward');
+  if(logDone){
+    logRewardEl.innerHTML = `⭐ ได้ <b>${state.targetLog.pointsEarned||0} คะแนน</b>`; // โชว์คะแนนจริงที่บันทึกไว้ ไม่ใช่ตัวเลขคงที่
+    logBtn.textContent = '✅ บันทึกแล้ว';
+  } else {
+    logRewardEl.innerHTML = `⭐ ได้ <b>10–47 คะแนน</b> ตามที่บันทึก`; // คะแนนไม่คงที่ ขึ้นกับกรอกครบแค่ไหน จึงบอกเป็นช่วง
+    logBtn.textContent = 'เริ่มบันทึก';
+  }
+  logCard.classList.toggle('done', logDone);
+
+  // ---- วันนี้ทำไปแล้ว X/3 ----
+  const doneCount = (missionDone?1:0) + (state.quizFinished?1:0) + (logDone?1:0);
+  document.getElementById('mhTodoCount').textContent = doneCount;
+  document.getElementById('mhTodoBar').style.width = Math.round(doneCount/3*100) + '%';
+  document.getElementById('mhProgressTitle').textContent = doneCount>=3 ? '✅ วันนี้ทำครบแล้ว' : 'วันนี้ทำไปแล้ว';
+  document.getElementById('mhProgressMsg').textContent = doneCount>=3
+    ? 'เก่งมาก! วันนี้ทำครบทุกกิจกรรมแล้ว 🎉'
+    : 'เก่งมาก! ทำต่ออีกนิดนะ 💪';
 }
 
 // อัปเดตยอดโซเดียมในแท็บฮับ "โซเดียม" (ตรวจฉลาก + โซเดียมวันนี้ รวมเป็นทางเข้าเดียว)
@@ -2360,6 +2498,7 @@ async function submitMission(){
     });
     showToast('ส่งภารกิจแล้ว รอครูตรวจนะ 🎉');
     loadMission();
+    checkAndGrantDailyCard(); // เช็คว่าครบ 3 กิจกรรมของวันนี้หรือยัง (ภารกิจ+Quiz+บันทึก) ถึงจะปลดล็อกการ์ด
   }catch(e){
     console.error(e);
     msgEl.style.color = 'var(--red-high)';
@@ -2450,6 +2589,7 @@ async function finishQuiz(){
   await addPoints(points, 'quiz');
   renderQuizDone();
   refreshMissionHub(); refreshHomeTab(); // อัปเดตสถานะ Quiz ในแท็บฮับภารกิจ+Home ทันทีหลังทำเสร็จ
+  checkAndGrantDailyCard(); // เช็คว่าครบ 3 กิจกรรมของวันนี้หรือยัง (ภารกิจ+Quiz+บันทึก) ถึงจะปลดล็อกการ์ด
 }
 
 function renderQuizDone(){
@@ -2668,7 +2808,29 @@ async function submitDailyLog(){
   renderStats();
   await renderBackfillChips();
   refreshMissionHub(); refreshHomeTab(); // อัปเดตสถานะบันทึกวันนี้ในแท็บฮับภารกิจ+Home ทันทีหลังบันทึกสำเร็จ
-  showKnowledgeCard();
+  checkAndGrantDailyCard(); // เปลี่ยนจากเดิม (บันทึกอย่างเดียวก็ได้การ์ด) เป็นต้องครบ 3 กิจกรรมของวันนี้ก่อน
+}
+
+// การ์ดความรู้จะปลดล็อกก็ต่อเมื่อทำครบ 3 กิจกรรมของ "วันนี้" (ภารกิจ+Quiz+บันทึก) เท่านั้น ไม่ใช่แค่บันทึกอย่างเดียวเหมือนเดิม
+// เช็คจาก Firestore สดๆ ทุกครั้ง (ไม่พึ่ง state ที่อาจกำลังแสดงข้อมูลวันอื่นที่ย้อนหลังอยู่) กันให้การ์ดซ้ำด้วย flag dailyCardGranted
+async function checkAndGrantDailyCard(){
+  const todayLogRef = db.collection('dailyLogs').doc(logDocId()); // logDocId() ผูกกับ "วันนี้" เสมอ ไม่ว่าหน้าจอตอนนี้จะกำลังดูวันย้อนหลังอยู่หรือไม่
+  const todaySnap = await todayLogRef.get();
+  const todayData = todaySnap.exists ? todaySnap.data() : {};
+  if(todayData.dailyCardGranted) return; // ให้ไปแล้ววันนี้ กันซ้ำ
+
+  const logDone = !!todayData.submitted;
+  const quizDone = !!(todayData.quizAnswers && todayData.quizAnswers.length > 0);
+  if(!(logDone && quizDone)) return; // เช็คเร็วๆ ก่อน กันยิง query มิชชั่นถ้ายังไม่ครบ 2 อย่างแรก
+
+  const missionSnap = await db.collection('missionSubmissions').doc(state.selectedStudent.id + '_' + state.todaysDateStr).get();
+  const missionStatus = missionSnap.exists ? missionSnap.data().status : null;
+  const missionDone = missionStatus === 'pending' || missionStatus === 'approved'; // ส่งแล้ว/ผ่านแล้วนับเป็นทำสำเร็จ ส่วน rejected ยังไม่นับ
+
+  if(!missionDone) return;
+
+  await todayLogRef.set({ dailyCardGranted: true }, {merge:true});
+  await showKnowledgeCard();
 }
 
 /* ---- Knowledge card (สุ่มโชว์หลังบันทึกสำเร็จ จัดการเนื้อหาผ่านหน้า Admin) ---- */
