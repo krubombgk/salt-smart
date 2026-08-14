@@ -245,6 +245,7 @@
     margin:14px 0; box-shadow:0 4px 14px rgba(11,61,76,0.08); cursor:pointer;
   }
   .mh-hero.done{background:linear-gradient(135deg,#E4F5F3,#D7F0EA);}
+  .mh-hero-status-row{text-align:right; margin-bottom:8px;}
   .mh-hero-top{display:flex; align-items:flex-start; justify-content:space-between; gap:10px;}
   .mh-hero-text{flex:1; min-width:0;}
   .mh-hero-mascot{width:80px; height:80px; object-fit:contain; flex-shrink:0; align-self:center;}
@@ -255,7 +256,7 @@
   .mh-tag-mission{background:var(--coral); color:#fff;}
   .mh-tag-quiz{background:#8B7FD6; color:#fff;}
   .mh-tag-log{background:#5B9BD5; color:#fff;}
-  .mh-tag-status{background:rgba(255,255,255,0.85); color:var(--deep-sea); float:right;}
+  .mh-tag-status{background:rgba(255,255,255,0.85); color:var(--deep-sea); display:inline-block;}
   .mh-tag-status.approved{background:#DFF3E5; color:var(--green-ok);}
   .mh-tag-status.rejected{background:#FBE6E2; color:var(--red-high);}
   .mh-hero-title{font-family:'Kanit'; font-weight:700; font-size:17px; color:var(--deep-sea); margin-bottom:5px; line-height:1.4;}
@@ -906,9 +907,9 @@
 
       <!-- ภารกิจประจำวัน: Hero card เด่นสุด -->
       <div class="mh-hero" id="mhMissionCard" onclick="switchTab('tab-mission')">
+        <div class="mh-hero-status-row"><span class="mh-tag mh-tag-status" id="hubMissionStatus">-</span></div>
         <div class="mh-hero-top">
           <div class="mh-hero-text">
-            <span class="mh-tag mh-tag-status" id="hubMissionStatus">-</span>
             <div class="mh-hero-title">ภารกิจของวันนี้</div>
             <div class="mh-hero-desc" id="hubMissionDesc" style="font-size:13px; color:#4c5c60; margin-bottom:10px; line-height:1.5;">กำลังโหลด...</div>
             <div class="mh-reward" id="hubMissionReward"></div>
@@ -2378,14 +2379,19 @@ async function deleteMealEntry(i){
 
 /* ---- เมนูอาหารไทย: ประมาณโซเดียมคร่าวๆ จากมื้ออาหารที่กิน ---- */
 function toggleMealPicker(){
-  const area = document.getElementById('mealPickerArea');
-  const isOpen = area.style.display === 'block';
-  if(isOpen){ area.style.display = 'none'; return; }
-  area.style.display = 'block';
-  state.selectedMealDish = state.selectedMealDish || THAI_DISHES[0].name;
-  renderMealDishGrid();
-  renderMealLevelRow('mid');
-  updateMealServingsLabel();
+  try{
+    const area = document.getElementById('mealPickerArea');
+    const isOpen = area.style.display === 'block';
+    if(isOpen){ area.style.display = 'none'; return; }
+    area.style.display = 'block';
+    state.selectedMealDish = state.selectedMealDish || THAI_DISHES[0].name;
+    renderMealDishGrid();
+    renderMealLevelRow('mid');
+    updateMealServingsLabel();
+  }catch(e){
+    console.error('toggleMealPicker error:', e);
+    showToast('⚠️ เปิดฟอร์มเพิ่มอาหารไม่สำเร็จ: ' + e.message);
+  }
 }
 function renderMealDishGrid(){
   const grid = document.getElementById('mealDishGrid');
@@ -2427,37 +2433,43 @@ function renderMealLevelRow(selectedLevel){
   state.mealPickerLevel = selectedLevel;
 }
 async function confirmMealEntry(){
-  const dishName = state.selectedMealDish || THAI_DISHES[0].name;
-  const level = state.mealPickerLevel || 'mid';
-  const servingsInput = parseInt(document.getElementById('mealServings').value);
-  const dish = THAI_DISHES.find(d => d.name === dishName);
-  if(!dish) return;
+  try{
+    const dishName = state.selectedMealDish || THAI_DISHES[0].name;
+    const level = state.mealPickerLevel || 'mid';
+    const servingsInput = parseInt(document.getElementById('mealServings').value);
+    const dish = THAI_DISHES.find(d => d.name === dishName);
+    if(!dish){ showToast('⚠️ ไม่พบเมนูที่เลือก (dishName: ' + dishName + ') ลองเลือกเมนูใหม่อีกครั้ง'); return; }
 
-  let servings, perUnitSodium, estimatedSodium, gramsEaten;
-  if(dish.unit==='gram'){
-    gramsEaten = (!isNaN(servingsInput) && servingsInput > 0) ? servingsInput : 300;
-    estimatedSodium = Math.round(dish.sodiumPer100g * (gramsEaten/100) * (SALTY_LEVEL_MULT[level] || 1));
-    servings = 1; perUnitSodium = estimatedSodium; // เก็บไว้ให้ field เดิมมีค่า ไม่พังกับส่วนอื่นที่อ้างอิง field เหล่านี้
-  } else {
-    servings = (!isNaN(servingsInput) && servingsInput > 0) ? servingsInput : 1;
-    perUnitSodium = Math.round(dish.sodium * (SALTY_LEVEL_MULT[level] || 1));
-    estimatedSodium = perUnitSodium * servings;
+    let servings, perUnitSodium, estimatedSodium, gramsEaten;
+    if(dish.unit==='gram'){
+      gramsEaten = (!isNaN(servingsInput) && servingsInput > 0) ? servingsInput : 300;
+      estimatedSodium = Math.round(dish.sodiumPer100g * (gramsEaten/100) * (SALTY_LEVEL_MULT[level] || 1));
+      servings = 1; perUnitSodium = estimatedSodium; // เก็บไว้ให้ field เดิมมีค่า ไม่พังกับส่วนอื่นที่อ้างอิง field เหล่านี้
+    } else {
+      servings = (!isNaN(servingsInput) && servingsInput > 0) ? servingsInput : 1;
+      perUnitSodium = Math.round(dish.sodium * (SALTY_LEVEL_MULT[level] || 1));
+      estimatedSodium = perUnitSodium * servings;
+    }
+
+    const entry = { dishName, level, estimatedSodium, perUnitSodium, servings, gramsEaten, time: new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'}) };
+    state.mealSodiumEntries.push(entry);
+    await db.collection('dailyLogs').doc(logDocId()).set({
+      studentId: state.selectedStudent.id,
+      classId: state.selectedClassId,
+      date: state.todaysDateStr,
+      mealSodiumEntries: state.mealSodiumEntries
+    }, {merge:true});
+    document.getElementById('mealPickerArea').style.display = 'none';
+    document.getElementById('mealServings').value = '1';
+    renderCheckHistory();
+    refreshSodiumHub(); refreshHomeTab(); // อัปเดตยอดโซเดียมในแท็บฮับ+Home ทันทีหลังเพิ่มเมนูอาหาร
+    await updateSodiumTrackStreak(); // นับว่า "เก็บข้อมูลโซเดียมวันนี้แล้ว" เหมือนกับตรวจฉลาก
+    showToast(`เพิ่ม ${dishName} แล้ว 🍽️`);
+  }catch(e){
+    // ดักจับ error ให้เห็นชัดเจนแทนที่จะเงียบ — ชั่วคราวไว้หาสาเหตุจริงของบั๊กเพิ่มอาหารไม่เข้าลิสต์
+    console.error('confirmMealEntry error:', e);
+    showToast('⚠️ เพิ่มอาหารไม่สำเร็จ: ' + e.message);
   }
-
-  const entry = { dishName, level, estimatedSodium, perUnitSodium, servings, gramsEaten, time: new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'}) };
-  state.mealSodiumEntries.push(entry);
-  await db.collection('dailyLogs').doc(logDocId()).set({
-    studentId: state.selectedStudent.id,
-    classId: state.selectedClassId,
-    date: state.todaysDateStr,
-    mealSodiumEntries: state.mealSodiumEntries
-  }, {merge:true});
-  document.getElementById('mealPickerArea').style.display = 'none';
-  document.getElementById('mealServings').value = '1';
-  renderCheckHistory();
-  refreshSodiumHub(); refreshHomeTab(); // อัปเดตยอดโซเดียมในแท็บฮับ+Home ทันทีหลังเพิ่มเมนูอาหาร
-  await updateSodiumTrackStreak(); // นับว่า "เก็บข้อมูลโซเดียมวันนี้แล้ว" เหมือนกับตรวจฉลาก
-  showToast(`เพิ่ม ${dishName} แล้ว 🍽️`);
 }
 
 /* ---- Quiz ---- */
