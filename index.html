@@ -1053,91 +1053,75 @@
 
     <!-- TAB: LOG -->
     <div class="tabpanel" id="tab-log">
-      <div class="log-header">
-        <div>
-          <div class="log-header-title">บันทึกวันนี้</div>
-          <div class="log-header-sub">ทบทวนอาหารและพฤติกรรมของเมื่อวาน</div>
-        </div>
-        <img src="mascot-text.png" alt="" class="log-header-mascot">
-      </div>
-
-      <div class="card" id="backfillPicker" style="display:none; background:var(--sand);">
-        <div class="log-date-title">📅 เลือกวันที่</div>
+      <div class="card" id="backfillPicker" style="background:var(--sand);">
+        <div style="font-family:'Kanit'; font-weight:700; font-size:14.5px; margin-bottom:8px;">📅 เลือกวันที่จะบันทึก</div>
+        <p style="color:#6b7c80; font-size:13px; margin-top:-4px;">เลือกวันที่ก่อน แล้วแบบบันทึกจะโผล่ขึ้นมาด้านล่าง</p>
         <div class="chip-row" id="backfillChips"></div>
       </div>
+
+      <div id="logPickDatePrompt" class="card" style="text-align:center; color:#9aa8ab; display:block;">
+        👆 เลือกวันที่ด้านบนก่อน เพื่อเริ่มบันทึก
+      </div>
+
       <div class="card" id="logLockedBanner" style="display:none; background:var(--sand); border:2px solid var(--lagoon);">
         <div style="font-family:'Kanit'; font-weight:700; color:var(--lagoon);" id="logLockedTitle">✅ บันทึกไปแล้ว</div>
         <div style="font-size:13.5px; color:#4c5c60; margin-top:4px;">ดูรายการที่บันทึกไว้ได้ แต่แก้ไขไม่ได้แล้ว</div>
       </div>
-      <div id="logFormArea">
+
+      <div id="logFormArea" style="display:none;">
       <div id="logDateHeading" style="font-family:'Kanit'; font-weight:700; font-size:15px; color:var(--deep-sea); margin-bottom:10px;"></div>
 
-      <div class="log-section">
-        <div class="log-section-icon" style="background:#D7F0EA;">🏃</div>
-        <div class="card log-card">
-          <div class="log-card-head"><h3>1. วันนี้ขยับร่างกายอะไรบ้าง?</h3><span class="info-icon" onclick="toggleInfoBox(this)">ⓘ</span></div>
-          <div class="info-box">ยิ่งเคลื่อนไหวร่างกายบ่อย ก็ยิ่งช่วยให้ร่างกายจัดการเกลือแร่ได้ดีขึ้น</div>
-          <p class="log-card-sub">แตะได้มากกว่า 1 อย่าง</p>
-          <div class="sticker-row" id="exerciseChips"></div>
+      <div class="card">
+        <div class="log-card-head"><h3 style="margin:0;">1. วันนี้ขยับร่างกายอะไรบ้าง?</h3><span class="info-icon" onclick="toggleInfoBox(this)">ⓘ</span></div>
+        <div class="info-box">ยิ่งเคลื่อนไหวร่างกายบ่อย ก็ยิ่งช่วยให้ร่างกายจัดการเกลือแร่ได้ดีขึ้น</div>
+        <p style="color:#6b7c80; font-size:13.5px; margin:2px 0 10px;">แตะได้มากกว่า 1 อย่าง</p>
+        <div class="sticker-row" id="exerciseChips"></div>
+      </div>
+
+      <div class="card">
+        <div class="log-card-head"><h3 style="margin:0;">2. วันนี้อาหารของคุณ รู้สึกเค็มแค่ไหน?</h3><span class="info-icon" onclick="toggleInfoBox(this)">ⓘ</span></div>
+        <div class="info-box">ตอบตามความรู้สึกจริงของคุณ ไม่มีคำตอบไหนถูกหรือผิด</div>
+        <div id="levelRows"></div>
+        <div id="tastePrefRow" style="display:none; margin-top:14px;">
+          <div class="lvl-label" style="font-family:'Kanit'; font-weight:600; font-size:14.5px; margin-bottom:8px;">ชอบรสเค็มระดับนั้นไหม</div>
+          <div class="sticker-row" id="tastePrefChips"></div>
         </div>
       </div>
 
-      <div class="log-section">
-        <div class="log-section-icon" style="background:#FBF0CE;">🧂</div>
-        <div class="card log-card">
-          <div class="log-card-head"><h3>2. เมื่อวานอาหารของคุณ รู้สึกเค็มแค่ไหน?</h3><span class="info-icon" onclick="toggleInfoBox(this)">ⓘ</span></div>
-          <div class="info-box">ตอบตามความรู้สึกจริงของคุณ ไม่มีคำตอบไหนถูกหรือผิด</div>
-          <div id="levelRows"></div>
-          <div id="tastePrefRow" style="display:none; margin-top:14px;">
-            <div class="lvl-label" style="font-family:'Kanit'; font-weight:600; font-size:14.5px; margin-bottom:8px;">ชอบรสเค็มระดับนั้นไหม</div>
-            <div class="sticker-row" id="tastePrefChips"></div>
+      <div class="card">
+        <div class="log-card-head"><h3 style="margin:0;">3. วันนี้เติมเครื่องปรุงเพิ่มไหม?</h3><span class="info-icon" onclick="toggleInfoBox(this)">ⓘ</span></div>
+        <div class="info-box">ทุกคำตอบให้คะแนนเท่ากันหมด แค่อยากรู้พฤติกรรมจริงของคุณ</div>
+        <p style="color:#6b7c80; font-size:13.5px; margin:2px 0 10px;">แตะได้มากกว่า 1 อย่าง (ไม่มีคำตอบไหนได้คะแนนมากกว่ากัน)</p>
+        <div class="sticker-row" id="condimentChips"></div>
+      </div>
+
+      <div class="card">
+        <div class="log-card-head"><h3 style="margin:0;">4. พฤติกรรมเล็ก ๆ ที่ทำได้วันนี้</h3><span class="info-icon" onclick="toggleInfoBox(this)">ⓘ</span></div>
+        <div class="info-box">ทำได้กี่ข้อก็ได้ ไม่ต้องกดดันตัวเอง</div>
+        <div class="sticker-row" id="otherBehaviorList"></div>
+      </div>
+
+      <div class="card">
+        <h3 style="margin-top:0;">5. เล่าเพิ่มนิดเดียว <span class="log-optional-badge">ไม่บังคับ</span></h3>
+        <div class="field">
+          <label>มื้ออาหาร/เครื่องดื่ม (สรุปสั้น ๆ)</label>
+          <div class="voice-input-row">
+            <textarea id="mealNote" placeholder="เช่น เช้า-ข้าวไข่เจียว, กลางวัน-ก๋วยเตี๋ยว, ของว่าง-ชานมไข่มุก" style="min-height:60px;"></textarea>
+            <button type="button" class="mic-btn" id="micBtn-mealNote" onclick="toggleVoiceInput('mealNote')">🎤</button>
           </div>
         </div>
-      </div>
-
-      <div class="log-section">
-        <div class="log-section-icon" style="background:#DCEBFA;">🧂</div>
-        <div class="card log-card">
-          <div class="log-card-head"><h3>3. เมื่อวานเติมอะไรเพิ่มไหม?</h3><span class="info-icon" onclick="toggleInfoBox(this)">ⓘ</span></div>
-          <div class="info-box">ทุกคำตอบให้คะแนนเท่ากันหมด แค่อยากรู้พฤติกรรมจริงของคุณ</div>
-          <p class="log-card-sub">แตะได้มากกว่า 1 อย่าง (ไม่มีคำตอบไหนได้คะแนนมากกว่ากัน)</p>
-          <div class="sticker-row" id="condimentChips"></div>
-        </div>
-      </div>
-
-      <div class="log-section">
-        <div class="log-section-icon" style="background:#EAE3F7;">✅</div>
-        <div class="card log-card">
-          <div class="log-card-head"><h3>4. พฤติกรรมเล็ก ๆ ที่ทำได้เมื่อวาน</h3><span class="info-icon" onclick="toggleInfoBox(this)">ⓘ</span></div>
-          <div class="info-box">ทำได้กี่ข้อก็ได้ ไม่ต้องกดดันตัวเอง</div>
-          <div class="sticker-row" id="otherBehaviorList"></div>
-        </div>
-      </div>
-
-      <div class="log-section">
-        <div class="log-section-icon" style="background:#FBEADB;">📝</div>
-        <div class="card log-card">
-          <div class="log-card-head"><h3>5. เล่าเพิ่มนิดเดียว <span class="log-optional-badge">ไม่บังคับ</span></h3></div>
-          <div class="field">
-            <label>มื้ออาหารของฉัน</label>
-            <div class="voice-input-row">
-              <textarea id="mealNote" placeholder="เช้า / กลางวัน / เย็น / ของว่าง" style="min-height:60px;"></textarea>
-              <button type="button" class="mic-btn" id="micBtn-mealNote" onclick="toggleVoiceInput('mealNote')">🎤</button>
-            </div>
+        <div class="field">
+          <label>วันนี้เลือกได้ดีตรงไหน เพราะอะไร</label>
+          <div class="voice-input-row">
+            <textarea id="reflectionText" placeholder="เขียนสั้น ๆ เล่าให้ฟังหน่อย…"></textarea>
+            <button type="button" class="mic-btn" id="micBtn-reflectionText" onclick="toggleVoiceInput('reflectionText')">🎤</button>
           </div>
-          <div class="field">
-            <label>สิ่งที่ทำได้ดีวันนี้</label>
-            <div class="voice-input-row">
-              <textarea id="reflectionText" placeholder="วันนี้มีอะไรที่เรารู้สึกว่าทำได้ดี?"></textarea>
-              <button type="button" class="mic-btn" id="micBtn-reflectionText" onclick="toggleVoiceInput('reflectionText')">🎤</button>
-            </div>
-          </div>
-          <div class="field">
-            <label>สิ่งที่อยากพัฒนา</label>
-            <div class="voice-input-row">
-              <textarea id="improveText" placeholder="พรุ่งนี้อยากลองปรับอะไรนิดหนึ่ง?" style="min-height:60px;"></textarea>
-              <button type="button" class="mic-btn" id="micBtn-improveText" onclick="toggleVoiceInput('improveText')">🎤</button>
-            </div>
+        </div>
+        <div class="field">
+          <label>สิ่งที่ควรปรับปรุงในวันถัดไป</label>
+          <div class="voice-input-row">
+            <textarea id="improveText" placeholder="พรุ่งนี้อยากทำอะไรให้ดีขึ้น…" style="min-height:60px;"></textarea>
+            <button type="button" class="mic-btn" id="micBtn-improveText" onclick="toggleVoiceInput('improveText')">🎤</button>
           </div>
         </div>
       </div>
@@ -1147,7 +1131,7 @@
         <div class="log-encourage-text">ไม่มีคำตอบถูกหรือผิด บันทึกตามที่เกิดขึ้นจริงได้เลย 😊</div>
       </div>
 
-      <button class="btn btn-primary btn-block log-submit-btn" id="submitLogBtn" onclick="submitDailyLog()">✓ บันทึกวันนี้</button>
+      <button class="btn btn-primary btn-block" id="submitLogBtn" onclick="submitDailyLog()">บันทึก</button>
       </div>
     </div>
 
@@ -2070,6 +2054,7 @@ function switchTab(tabId, skipHistory){
   if(tabId==='tab-home') refreshHomeTab();
   if(tabId==='tab-mission-hub') refreshMissionHub();
   if(tabId==='tab-sodium-hub') refreshSodiumHub();
+  if(tabId==='tab-log') updateLogFormVisibility();
   if(tabId==='tab-check') renderAllTimeCheckHistory();
   if(!skipHistory){
     history.pushState({screen:'screen-main', tab:tabId}, '', '');
@@ -2112,11 +2097,24 @@ async function renderBackfillChips(){
   const picker = document.getElementById('backfillPicker');
   const chipsEl = document.getElementById('backfillChips');
   const missed = await getBackfillableDates();
-  picker.style.display='block'; // โชว์เสมอ ให้เห็นชัดว่าเลือกวันได้ ลดความสับสนว่าทำไมบันทึกได้แค่เมื่อวาน
-  const recallChip = `<div class="chip ${state.targetDate===state.recallDate?'active':''}" onclick="loadLogForDate('${state.recallDate}')">เมื่อวาน (${dayLabelThai(state.recallDate)})</div>`;
-  const todayChip = `<div class="chip ${state.targetDate===state.todaysDateStr?'active':''}" onclick="loadLogForDate('${state.todaysDateStr}')">วันนี้ (${dayLabelThai(state.todaysDateStr)})</div>`;
-  const missedChips = missed.map(d => `<div class="chip ${state.targetDate===d?'active':''}" onclick="loadLogForDate('${d}')">วันหยุด: ${dayLabelThai(d)}</div>`).join('');
+  const recallChip = `<div class="chip ${state.targetDate===state.recallDate?'active':''}" onclick="selectLogDate('${state.recallDate}')">เมื่อวาน (${dayLabelThai(state.recallDate)})</div>`;
+  const todayChip = `<div class="chip ${state.targetDate===state.todaysDateStr?'active':''}" onclick="selectLogDate('${state.todaysDateStr}')">วันนี้ (${dayLabelThai(state.todaysDateStr)})</div>`;
+  const missedChips = missed.map(d => `<div class="chip ${state.targetDate===d?'active':''}" onclick="selectLogDate('${d}')">วันหยุด: ${dayLabelThai(d)}</div>`).join('');
   chipsEl.innerHTML = recallChip + todayChip + missedChips;
+}
+
+// ให้เลือกวันที่ก่อน แบบบันทึกถึงจะโผล่ออกมา (ต่างจาก loadLogForDate เดิมที่แค่โหลดข้อมูลเงียบๆ ไม่คุมการแสดงผล)
+async function selectLogDate(dateStr){
+  state.logFormRevealed = true;
+  await loadLogForDate(dateStr);
+  updateLogFormVisibility();
+}
+function updateLogFormVisibility(){
+  const revealed = !!state.logFormRevealed;
+  document.getElementById('logPickDatePrompt').style.display = revealed ? 'none' : 'block';
+  document.getElementById('logFormArea').style.display = revealed ? 'block' : 'none';
+  if(!revealed) document.getElementById('logLockedBanner').style.display = 'none';
+  // ถ้า revealed=true แล้ว logLockedBanner จะถูกจัดการโดย applyLogLockState() ที่เรียกอยู่แล้วใน loadLogForDate()
 }
 
 async function loadLogForDate(dateStr){
@@ -3174,14 +3172,16 @@ async function submitDailyLog(){
 // การ์ดความรู้จะปลดล็อกก็ต่อเมื่อทำครบ 3 กิจกรรมของ "วันนี้" (ภารกิจ+Quiz+บันทึก) เท่านั้น ไม่ใช่แค่บันทึกอย่างเดียวเหมือนเดิม
 // เช็คจาก Firestore สดๆ ทุกครั้ง (ไม่พึ่ง state ที่อาจกำลังแสดงข้อมูลวันอื่นที่ย้อนหลังอยู่) กันให้การ์ดซ้ำด้วย flag dailyCardGranted
 async function checkAndGrantDailyCard(){
-  const todayLogRef = db.collection('dailyLogs').doc(logDocId()); // logDocId() ผูกกับ "วันนี้" เสมอ ไม่ว่าหน้าจอตอนนี้จะกำลังดูวันย้อนหลังอยู่หรือไม่
-  const todaySnap = await todayLogRef.get();
-  const todayData = todaySnap.exists ? todaySnap.data() : {};
-  if(todayData.dailyCardGranted) return; // ให้ไปแล้ววันนี้ กันซ้ำ
-
-  const logDone = !!todayData.submitted;
-  const quizDone = !!(todayData.quizAnswers && todayData.quizAnswers.length > 0);
+  // บั๊กเดิม: เช็ค submitted จาก doc ของ "วันนี้" (todaysDateStr) ตรงๆ แต่บันทึกวันนี้ (24-hour recall) เขียนลง docIdFor(targetDate)
+  // ซึ่งค่า default คือ state.recallDate (เมื่อวาน) — เป็นคนละเอกสารกับ "วันนี้" เกือบตลอดเวลา ทำให้ logDone เป็น false เสมอ การ์ดเลยไม่เคยออก
+  // แก้โดยอ่านจาก state.targetLog (in-memory) แทน ซึ่งอัปเดตถูกต้องอยู่แล้วไม่ว่าจะบันทึกของวันไหน (ใช้ pattern เดียวกับ refreshMissionHub/refreshHomeTab)
+  const logDone = !!(state.targetLog && state.targetLog.submitted);
+  const quizDone = !!state.quizFinished;
   if(!(logDone && quizDone)) return; // เช็คเร็วๆ ก่อน กันยิง query มิชชั่นถ้ายังไม่ครบ 2 อย่างแรก
+
+  const todayLogRef = db.collection('dailyLogs').doc(logDocId()); // flag กันซ้ำยังเก็บที่ doc ของ "วันนี้" เสมอ (คนละเรื่องกับตัว log ที่อาจบันทึกไว้คนละวัน)
+  const todaySnap = await todayLogRef.get();
+  if(todaySnap.exists && todaySnap.data().dailyCardGranted) return; // ให้ไปแล้ววันนี้ กันซ้ำ
 
   const missionSnap = await db.collection('missionSubmissions').doc(state.selectedStudent.id + '_' + state.todaysDateStr).get();
   const missionStatus = missionSnap.exists ? missionSnap.data().status : null;
