@@ -232,8 +232,13 @@
   .quick-action-sub{font-size:10.5px; color:#6b7c80; margin-top:1px;}
 
   /* ---- Mission Hub (tab-mission-hub) redesign ---- */
-  .mh-header{display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;}
-  .mh-header-mascot{width:48px; height:48px; object-fit:contain;}
+  .mh-header{
+    display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;
+    background:linear-gradient(135deg,var(--deep-sea),var(--lagoon)); border-radius:22px; padding:20px;
+  }
+  .mh-header .section-title{color:#fff;}
+  .mh-header .mh-progress-msg{color:#DCF3EF;}
+  .mh-header-mascot{width:56px; height:56px; object-fit:contain;}
   .mh-progress-msg{font-size:12.5px; color:#6b7c80; margin:0;}
   .mh-hero{
     background:linear-gradient(135deg,#FDEEDB,#FCE3C7); border-radius:20px; padding:18px;
@@ -242,7 +247,7 @@
   .mh-hero.done{background:linear-gradient(135deg,#E4F5F3,#D7F0EA);}
   .mh-hero-top{display:flex; align-items:flex-start; justify-content:space-between; gap:10px;}
   .mh-hero-text{flex:1; min-width:0;}
-  .mh-hero-mascot{width:80px; height:80px; object-fit:contain; flex-shrink:0; margin-top:-4px;}
+  .mh-hero-mascot{width:80px; height:80px; object-fit:contain; flex-shrink:0; align-self:center;}
   .mh-tag{
     display:inline-block; font-family:'Kanit'; font-weight:600; font-size:11.5px;
     padding:4px 11px; border-radius:20px; margin-bottom:8px;
@@ -266,11 +271,12 @@
   .mh-card-title{font-family:'Kanit'; font-weight:700; font-size:15px; color:var(--deep-sea); margin-bottom:3px;}
   .mh-card-sub{font-size:12px; color:#6b7c80; margin-bottom:8px;}
   .mh-bonus{
-    display:flex; align-items:center; gap:12px; background:#E4F5F3; border-radius:18px; padding:14px 16px; margin-top:6px;
+    display:flex; flex-direction:column; align-items:center; text-align:center; gap:10px;
+    background:#E4F5F3; border-radius:20px; padding:24px 20px; margin-top:14px;
   }
-  .mh-bonus-mascot{width:52px; height:52px; object-fit:contain; flex-shrink:0;}
-  .mh-bonus-title{font-family:'Kanit'; font-weight:700; font-size:13.5px; color:var(--deep-sea);}
-  .mh-bonus-sub{font-size:11.5px; color:#4c5c60; margin-top:2px;}
+  .mh-bonus-mascot{width:76px; height:76px; object-fit:contain; flex-shrink:0;}
+  .mh-bonus-title{font-family:'Kanit'; font-weight:700; font-size:16px; color:var(--deep-sea);}
+  .mh-bonus-sub{font-size:13px; color:#4c5c60; margin-top:4px;}
 
   /* ---- Sodium Hub (tab-sodium-hub) redesign ---- */
   .sh-header{
@@ -752,7 +758,7 @@
           <div class="quick-action-icon">📷</div>
           <div><div class="quick-action-title">ตรวจฉลาก</div><div class="quick-action-sub">สแกน/กรอกดูโซเดียม</div></div>
         </div>
-        <div class="quick-action qa-add" onclick="goHomeShortcut('tab-today')">
+        <div class="quick-action qa-add" onclick="switchTab('tab-sodium-hub'); toggleMealPicker();">
           <div class="quick-action-icon">🍽️</div>
           <div><div class="quick-action-title">เพิ่มอาหาร</div><div class="quick-action-sub">บันทึกที่ทานวันนี้</div></div>
         </div>
@@ -796,10 +802,21 @@
           <div class="quick-action-icon">📷</div>
           <div><div class="quick-action-title">ตรวจฉลากอาหาร</div><div class="quick-action-sub">ถ่ายรูปหรือกรอกข้อมูลโซเดียม</div></div>
         </div>
-        <div class="quick-action qa-add" onclick="switchTab('tab-today')">
+        <div class="quick-action qa-add" onclick="toggleMealPicker()">
           <div class="quick-action-icon">🍽️</div>
           <div><div class="quick-action-title">เพิ่มอาหารที่กิน</div><div class="quick-action-sub">เลือกจากรายการอาหารทั่วไป</div></div>
         </div>
+      </div>
+
+      <!-- ฟอร์มเพิ่มเมนูอาหาร — ซ่อนไว้เป็นค่าเริ่มต้น เปิดเมื่อกด "เพิ่มอาหารที่กิน" ด้านบน (ย้ายมาจาก tab-today เดิม) -->
+      <div class="card" id="mealPickerArea" style="display:none;">
+        <div id="mealDishGrid" class="dish-grid" style="margin-bottom:8px;"></div>
+        <div class="sticker-row" id="mealLevelRow" style="margin-bottom:8px;"></div>
+        <div class="field" style="margin-bottom:8px;">
+          <label id="mealServingsLabel">กินกี่หน่วย? (1 หน่วย = 1 จาน/ชาม/ที่ ตามค่าเฉลี่ยของเมนูนี้)</label>
+          <input type="number" id="mealServings" value="1" min="1" step="1" inputmode="numeric">
+        </div>
+        <button class="btn btn-primary btn-block" onclick="confirmMealEntry()">เพิ่มรายการนี้</button>
       </div>
 
       <!-- รายการอาหารวันนี้ -->
@@ -868,31 +885,6 @@
       <div id="allCheckHistoryList"><div class="empty-note">กำลังโหลด…</div></div>
     </div>
 
-    <!-- TAB: TODAY'S SODIUM TRACKER -->
-    <div class="tabpanel" id="tab-today">
-      <div class="check-history">
-        <div class="section-title">🧂 รวมโซเดียมวันนี้ (คร่าวๆ)</div>
-        <div class="card" id="sodiumTodayCard" style="background:var(--sand);">
-          <div id="sodiumGaugeArea"></div>
-          <p style="font-size:11.5px; color:#9aa8ab; margin:6px 0 0; text-align:center;">เป็นการประมาณคร่าวๆ จากรายการที่ตรวจ+เมนูที่เลือกไว้เท่านั้น ไม่ใช่ค่าที่วัดจริง</p>
-          <button class="btn btn-ghost btn-block" style="margin-top:10px;" onclick="toggleMealPicker()">🍽️ เพิ่มเมนูอาหารที่กินวันนี้</button>
-          <div id="mealPickerArea" style="display:none; margin-top:10px;">
-            <div id="mealDishGrid" class="dish-grid" style="margin-bottom:8px;"></div>
-            <div class="sticker-row" id="mealLevelRow" style="margin-bottom:8px;"></div>
-            <div class="field" style="margin-bottom:8px;">
-              <label id="mealServingsLabel">กินกี่หน่วย? (1 หน่วย = 1 จาน/ชาม/ที่ ตามค่าเฉลี่ยของเมนูนี้)</label>
-              <input type="number" id="mealServings" value="1" min="1" step="1" inputmode="numeric">
-            </div>
-            <button class="btn btn-primary btn-block" onclick="confirmMealEntry()">เพิ่มรายการนี้</button>
-          </div>
-        </div>
-
-        <div class="section-title">รายการที่ตรวจวันนี้</div>
-        <div id="checkHistoryList"><div class="empty-note">ยังไม่มีรายการที่ตรวจวันนี้</div></div>
-        <button class="btn btn-ghost btn-block" style="margin-top:14px;" onclick="switchTab('tab-check')">📷 ไปตรวจฉลากเพิ่ม</button>
-      </div>
-    </div>
-
     <!-- TAB: MISSION HUB (รวม ภารกิจ + Quiz + บันทึกวันนี้ เข้าด้วยกันเป็นทางเข้าเดียว) -->
     <div class="tabpanel" id="tab-mission-hub">
       <div class="mh-header">
@@ -917,7 +909,6 @@
         <div class="mh-hero-top">
           <div class="mh-hero-text">
             <span class="mh-tag mh-tag-status" id="hubMissionStatus">-</span>
-            <div class="mh-tag mh-tag-mission">ภารกิจหลัก</div>
             <div class="mh-hero-title">ภารกิจของวันนี้</div>
             <div class="mh-hero-desc" id="hubMissionDesc" style="font-size:13px; color:#4c5c60; margin-bottom:10px; line-height:1.5;">กำลังโหลด...</div>
             <div class="mh-reward" id="hubMissionReward"></div>
@@ -930,7 +921,6 @@
       <!-- Quiz ประจำวัน -->
       <div class="mh-card mh-quiz" id="mhQuizCard" onclick="switchTab('tab-quiz')">
         <span class="mh-tag mh-tag-status" id="hubQuizStatus" style="align-self:flex-end;">-</span>
-        <div class="mh-tag mh-tag-quiz">ความรู้</div>
         <div class="mh-card-title">Quiz ประจำวัน</div>
         <div class="mh-card-sub" id="hubQuizSub">3 คำถาม · ใช้เวลาประมาณ 2 นาที</div>
         <div class="mh-reward" id="hubQuizReward"></div>
@@ -940,7 +930,6 @@
       <!-- บันทึกวันนี้ -->
       <div class="mh-card mh-log" id="mhLogCard" onclick="switchTab('tab-log')">
         <span class="mh-tag mh-tag-status" id="hubLogStatus" style="align-self:flex-end;">-</span>
-        <div class="mh-tag mh-tag-log">บันทึก</div>
         <div class="mh-card-title">บันทึกวันนี้</div>
         <div class="mh-card-sub">ทบทวนพฤติกรรมของเมื่อวาน</div>
         <div class="mh-reward" id="hubLogReward"></div>
@@ -1849,8 +1838,8 @@ async function saveSodiumGoal(){
   await db.collection('students').doc(state.selectedStudent.id).update({ sodiumGoal: val });
   state.selectedStudent.sodiumGoal = val;
   document.getElementById('sodiumGoalEditArea').style.display = 'none';
+  renderCheckHistory(); // คำนวณ % ใหม่ตามขีดจำกัดที่เพิ่งเปลี่ยน
   refreshSodiumHub();
-  renderCheckHistory(); // คำนวณ % ใหม่ตามเป้าหมายที่เพิ่งเปลี่ยน
   showToast('ปรับขีดจำกัดโซเดียมแล้ว 🎯');
 }
 
@@ -2285,7 +2274,6 @@ async function incrementSodiumCheckCount(){
 }
 
 function renderCheckHistory(){
-  const list = document.getElementById('checkHistoryList');
   const allChecks = state.sodiumChecks || [];
   const meals = state.mealSodiumEntries || [];
   // เฉพาะรายการที่ "กินแล้ว" เท่านั้นที่นับรวมเป็นโซเดียมวันนี้ — รายการที่แค่ตรวจดูเฉยๆ (consumed:false) ไม่นับในนี้
@@ -2298,35 +2286,9 @@ function renderCheckHistory(){
   const grandPct = Math.round((grandTotal / getSodiumGoal()) * 100);
   state.sodiumTodayTotal = grandTotal;
   state.sodiumTodayPct = grandPct;
-  document.getElementById('sodiumGaugeArea').innerHTML = renderSodiumGauge(grandTotal, getSodiumGoal());
 
-  if(consumedChecks.length===0 && meals.length===0){
-    list.innerHTML = '<div class="empty-note">ยังไม่มีรายการที่กินวันนี้ (รายการที่แค่ตรวจดูเฉยๆ ยังไม่ได้กิน ดูได้ที่หน้าตรวจฉลาก)</div>';
-    return;
-  }
-  // วน allChecks ทั้งชุด แต่ข้ามรายการที่ consumed:false ไม่ให้แสดง — คง index เดิมไว้ ปุ่มแก้ไข/ลบจะได้อ้างอิงถูกตัว
-  const checkHtml = allChecks.map((c,i)=>{
-    if(c.consumed===false) return '';
-    return `
-    <div class="check-item">
-      <div class="ci-name">${c.name}${c.servings>1 ? ` <span style="color:#9aa8ab;font-weight:400;">(${c.servings} หน่วย)</span>` : ''} <span style="color:#9aa8ab;font-weight:400;">· ${c.time||''}</span></div>
-      <div class="ci-right">
-        <div class="ci-val">${c.sodium} มก. (${c.pct}%)</div>
-        <div class="ci-actions"><span onclick="editSodiumCheck(${i})">✏️</span><span onclick="deleteSodiumCheck(${i})">🗑️</span></div>
-      </div>
-    </div>`;
-  }).join('');
-  const mealHtml = meals.map((m,i)=>`
-    <div class="check-item">
-      <div class="ci-name">🍽️ ${m.dishName} (${SALTY_LEVEL_LABEL[m.level]||''})${m.gramsEaten ? ` <span style="color:#9aa8ab;font-weight:400;">(${m.gramsEaten} กรัม)</span>` : (m.servings>1 ? ` <span style="color:#9aa8ab;font-weight:400;">(${m.servings} หน่วย)</span>` : '')} <span style="color:#9aa8ab;font-weight:400;">· ${m.time||''}</span></div>
-      <div class="ci-right">
-        <div class="ci-val">~${m.estimatedSodium} มก.</div>
-        <div class="ci-actions"><span onclick="editMealEntry(${i})">✏️</span><span onclick="deleteMealEntry(${i})">🗑️</span></div>
-      </div>
-    </div>
-  `).join('');
-  list.innerHTML = mealHtml + checkHtml;
-  renderHubFoodList(); // อัปเดตรายการอาหารวันนี้ในหน้า "โซเดียมของฉัน" ให้ตรงกันเสมอ (ใช้ข้อมูลชุดเดียวกัน)
+  // การแสดงผลจริงอยู่ที่หน้า "โซเดียมของฉัน" ทั้งหมดแล้ว (เดิมเคยมีลิสต์แยกอยู่ที่ tab-today ซึ่งยุบรวมมาที่นี่)
+  renderHubFoodList();
 }
 
 // ประวัติการตรวจฉลากทั้งหมดที่เคยตรวจมา (ไม่ว่าจะกินหรือแค่ตรวจดู) — แสดงในหน้าตรวจฉลากเอง แยกจากยอดรวมวันนี้
