@@ -194,6 +194,9 @@
     border-radius:20px; padding:20px; margin:16px 0;
     box-shadow:0 4px 14px rgba(11,61,76,0.08); cursor:pointer;
   }
+  .home-hero-top{display:flex; align-items:flex-start; justify-content:space-between; gap:10px;}
+  .home-hero-text{flex:1; min-width:0;}
+  .home-hero-mascot{width:92px; height:92px; object-fit:contain; flex-shrink:0; margin-top:-6px;}
   .home-hero-tag{
     display:inline-block; background:var(--lagoon); color:#fff; font-family:'Kanit'; font-weight:600;
     font-size:12px; padding:5px 12px; border-radius:20px; margin-bottom:10px;
@@ -619,9 +622,14 @@
 
       <!-- Hero Card: ภารกิจวันนี้ -->
       <div class="home-hero" onclick="switchTab('tab-mission-hub')">
-        <div class="home-hero-tag">🎯 ภารกิจวันนี้</div>
-        <div class="home-hero-title" id="homeHeroMissionTitle">กำลังโหลด...</div>
-        <div class="home-hero-reward" id="homeHeroMissionReward">+0 คะแนน</div>
+        <div class="home-hero-top">
+          <div class="home-hero-text">
+            <div class="home-hero-tag">🎯 ภารกิจวันนี้</div>
+            <div class="home-hero-title" id="homeHeroMissionTitle">กำลังโหลด...</div>
+            <div class="home-hero-reward" id="homeHeroMissionReward">+0 คะแนน</div>
+          </div>
+          <img class="home-hero-mascot" src="mascot-mission.png" alt="">
+        </div>
         <button class="btn btn-primary btn-block" id="homeHeroMissionBtn" onclick="event.stopPropagation(); switchTab('tab-mission-hub')">เริ่มภารกิจ</button>
       </div>
 
