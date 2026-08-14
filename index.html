@@ -120,6 +120,7 @@
     font-family:'Sarabun'; font-size:10.5px; color:var(--deep-sea); line-height:1.25;
   }
   .dish-tile .di{font-size:22px; display:block; margin-bottom:3px;}
+  .dish-tile .di img{width:32px; height:32px; object-fit:contain; display:block; margin:0 auto;}
   .dish-tile:active{transform:scale(0.96);}
   .dish-tile.active{border-color:var(--lagoon); background:#E4F5F3;}
   .pick-avatar{
@@ -1387,31 +1388,31 @@ function renderSodiumGaugeSvgOnly(total, goal){
 // หมายเหตุ: ค่าที่แม่นจริงมีแค่ ก๋วยเตี๋ยว/ส้มตำ (อ้างอิงกรมอนามัย/สื่อสุขภาพ) เมนูอื่นเป็นค่าประมาณเอง ไม่ใช่ตัวเลขวิจัยยืนยัน
 // ใช้คู่กับตัวเลือกความเค็ม (น้อย/ปานกลาง/มาก) ปรับ ±30% จากค่ากลาง
 const THAI_DISHES = [
-  {name:'ก๋วยเตี๋ยว', sodium:1800, icon:'🍜'},
-  {name:'ส้มตำ', sodium:1350, icon:'🥗'},
-  {name:'ผัดกะเพรา', sodium:1000, icon:'🌶️'},
-  {name:'ข้าวผัด', sodium:900, icon:'🍚'},
-  {name:'ต้มยำ', sodium:1500, icon:'🍲'},
-  {name:'แกงเขียวหวาน', sodium:1100, icon:'🍛'},
-  {name:'ผัดไทย', sodium:1000, icon:'🍝'},
-  {name:'ข้าวมันไก่', sodium:1200, icon:'🍗'},
-  {name:'ข้าวหมูแดง/หมูกรอบ', sodium:1300, icon:'🥓'},
-  {name:'สุกี้', sodium:1400, icon:'🍢'},
-  {name:'ราดหน้า', sodium:1300, icon:'🍚'},
-  {name:'ผัดซีอิ๊ว', sodium:1200, icon:'🍜'},
-  {name:'แกงส้ม', sodium:1200, icon:'🍲'},
-  {name:'ลาบ/น้ำตก', sodium:1100, icon:'🥩'},
-  {name:'ก๋วยจั๊บ', sodium:1500, icon:'🍜'},
-  {name:'มาม่า/บะหมี่กึ่งสำเร็จรูป (ทำกินเอง)', sodium:1500, icon:'🍥'},
-  {name:'ข้าวแกงทั่วไป', sodium:900, icon:'🍱'},
-  {name:'ไข่เจียว/ไข่ดาว', sodium:400, icon:'🍳'},
-  {name:'ขนมปัง/แซนวิช', sodium:500, icon:'🥪'},
-  {name:'ซุปหน่อไม้', sodium:700, icon:'🍲'},
-  {name:'ขนมจีนน้ำยา', sodium:1300, icon:'🍜'},
-  {name:'ไข่ต้ม', sodium:70, icon:'🥚'},
-  {name:'ไก่ทอด', sodium:750, icon:'🍖'},
-  {name:'ชาบู', unit:'gram', sodiumPer100g:350, icon:'🍲'},
-  {name:'อื่นๆ (ไม่แน่ใจ)', sodium:800, icon:'❓'}
+  {name:'ก๋วยเตี๋ยว', sodium:1800, icon:'dish-kuaytiew.png'},
+  {name:'ส้มตำ', sodium:1350, icon:'dish-somtam.png'},
+  {name:'ผัดกะเพรา', sodium:1000, icon:'dish-krapao.png'},
+  {name:'ข้าวผัด', sodium:900, icon:'dish-khaophad.png'},
+  {name:'ต้มยำ', sodium:1500, icon:'dish-tomyum.png'},
+  {name:'แกงเขียวหวาน', sodium:1100, icon:'dish-kaewwan.png'},
+  {name:'ผัดไทย', sodium:1000, icon:'dish-padthai.png'},
+  {name:'ข้าวมันไก่', sodium:1200, icon:'dish-khaomankai.png'},
+  {name:'ข้าวหมูแดง/หมูกรอบ', sodium:1300, icon:'dish-khaomoodaeng.png'},
+  {name:'สุกี้', sodium:1400, icon:'dish-suki.png'},
+  {name:'ราดหน้า', sodium:1300, icon:'dish-raadna.png'},
+  {name:'ผัดซีอิ๊ว', sodium:1200, icon:'dish-padsiew.png'},
+  {name:'แกงส้ม', sodium:1200, icon:'dish-kaengsom.png'},
+  {name:'ลาบ/น้ำตก', sodium:1100, icon:'dish-laab.png'},
+  {name:'ก๋วยจั๊บ', sodium:1500, icon:'dish-kuayjub.png'},
+  {name:'มาม่า/บะหมี่กึ่งสำเร็จรูป (ทำกินเอง)', sodium:1500, icon:'dish-mama.png'},
+  {name:'ข้าวแกงทั่วไป', sodium:900, icon:'dish-khaokaeng.png'},
+  {name:'ไข่เจียว/ไข่ดาว', sodium:400, icon:'dish-khaijeaw.png'},
+  {name:'ขนมปัง/แซนวิช', sodium:500, icon:'dish-sandwich.png'},
+  {name:'ซุปหน่อไม้', sodium:700, icon:'dish-soupnormai.png'},
+  {name:'ขนมจีนน้ำยา', sodium:1300, icon:'dish-khanomjeen.png'},
+  {name:'ไข่ต้ม', sodium:70, icon:'dish-khaitom.png'},
+  {name:'ไก่ทอด', sodium:750, icon:'dish-kaithod.png'},
+  {name:'ชาบู', unit:'gram', sodiumPer100g:350, icon:'dish-shabu.png'},
+  {name:'อื่นๆ (ไม่แน่ใจ)', sodium:800, icon:'dish-unsure.png'}
 ];
 const SALTY_LEVEL_MULT = {low:0.7, mid:1.0, high:1.3};
 const SALTY_LEVEL_LABEL = {low:'เค็มน้อย', mid:'ปานกลาง', high:'เค็มมาก'};
@@ -1903,7 +1904,8 @@ function renderHubFoodList(){
 
   const mealRows = (state.mealSodiumEntries||[]).map((m,i)=>{
     const dish = THAI_DISHES.find(d=>d.name===m.dishName);
-    const icon = dish ? dish.icon : '🍽️';
+    const rawIcon = dish ? dish.icon : '🍽️';
+    const icon = rawIcon.endsWith('.png') ? `<img src="${rawIcon}" alt="" style="width:26px;height:26px;object-fit:contain;">` : rawIcon;
     const tier = sodiumTier(m.estimatedSodium||0);
     const qty = m.gramsEaten ? `${m.gramsEaten} กรัม` : (m.servings>1 ? `${m.servings} หน่วย` : '1 หน่วย');
     return `
@@ -2495,11 +2497,14 @@ function toggleMealPicker(){
 }
 function renderMealDishGrid(){
   const grid = document.getElementById('mealDishGrid');
-  grid.innerHTML = THAI_DISHES.map(d => `
+  grid.innerHTML = THAI_DISHES.map(d => {
+    const iconHtml = d.icon.endsWith('.png') ? `<img src="${d.icon}" alt="">` : d.icon; // รองรับทั้งไอคอนรูป (.png) และอิโมจิเดิม (เมนูที่ยังไม่มีรูป)
+    return `
     <div class="dish-tile${d.name===state.selectedMealDish?' active':''}" onclick="selectMealDish('${d.name.replace(/'/g,"\\'")}')">
-      <span class="di">${d.icon}</span>${d.name}
+      <span class="di">${iconHtml}</span>${d.name}
     </div>
-  `).join('');
+  `;
+  }).join('');
 }
 function selectMealDish(name){
   state.selectedMealDish = name;
