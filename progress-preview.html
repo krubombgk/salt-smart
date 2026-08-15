@@ -858,6 +858,12 @@
       <div class="pg-encourage-text" id="pgEncourageText"></div>
     </div>
 
+    <!-- Sodium insight (จุดเด่นเรื่องโซเดียม) -->
+    <div class="card" id="sodiumInsightCard" style="display:none;">
+      <div class="pg-card-icon-row"><span style="font-size:18px;">🌟</span><div class="pg-section-title">จุดเด่นเรื่องโซเดียม</div></div>
+      <div id="sodiumInsightBody"></div>
+    </div>
+
     <!-- 6. Sodium trend -->
     <div class="section-title" style="margin-top:20px;">📉 แนวโน้มโซเดียมของฉัน</div>
     <p style="color:#8b979a; font-size:12px; margin-top:-8px;">ดูแนวโน้มจากรายการอาหารที่คุณบันทึกในแต่ละวัน (ค่าประมาณจากสิ่งที่บันทึกไว้ ไม่ใช่การวัดจริงทั้งหมด)</p>
@@ -915,6 +921,11 @@ function addDays(str, n){
   const d = dateFromStr(str);
   d.setDate(d.getDate()+n);
   return fmtDate(d);
+}
+function dayLabelThai(str){
+  const names = ['อาทิตย์','จันทร์','อังคาร','พุธ','พฤหัสบดี','ศุกร์','เสาร์'];
+  const d = dateFromStr(str);
+  return names[d.getDay()] + ' ที่ ' + d.getDate() + '/' + (d.getMonth()+1);
 }
 function getSodiumGoal(){
   return (state.selectedStudent && state.selectedStudent.sodiumGoal) || SODIUM_DAILY_MAX;
@@ -1068,6 +1079,7 @@ async function loadPreviewData(){
     document.getElementById('sodiumTrendChart').innerHTML = '<div class="empty-note">โหลดกราฟไม่สำเร็จ</div>';
   }
 
+  renderSodiumInsights();
   renderProgressTable(days, logByDate);
   loadLeaderboards();
 }
@@ -1195,6 +1207,66 @@ function renderEncouragement(){
   else msg = 'ครบ 21-Day Challenge แล้ว! ใช้สิ่งที่เรียนรู้ไปเลือกดูแลตัวเองต่อได้เลย 🎉';
   document.getElementById('pgEncourageText').textContent = msg;
   document.getElementById('pgSpeech').textContent = 'เก่งมากเลย! ทุกก้าวเล็ก ๆ กำลังพาคุณไปสู่เวอร์ชันที่ดีขึ้นนะ';
+}
+
+/* ---- จุดเด่นเรื่องโซเดียม — เพิ่มใหม่ตามที่คุยกัน: เติมมุมมอง "ผลลัพธ์จริง" เข้าไปคู่กับ "ความสม่ำเสมอ" ที่ section อื่นเน้นอยู่แล้ว
+   ระวังเรื่อง Data Integrity: โชว์เฉพาะตอนมีข้อมูลพอและดีขึ้นจริงเท่านั้น ไม่ตัดสิน ไม่ทำให้รู้สึกผิดถ้าตัวเลขไม่ลด ---- */
+function computeSodiumInsights(){
+  const logs = state.allDailyLogs || [];
+  // เอาเฉพาะวันที่มีการติดตามโซเดียมจริง (มีรายการตรวจฉลากหรือเมนูอาหารบันทึกไว้) กันวันที่ไม่มีข้อมูลเลยถูกนับเป็น "ต่ำสุด" ผิดๆ (0 มก. เพราะไม่มีข้อมูล ≠ 0 มก. เพราะกินเค็มน้อยจริง)
+  const trackedDays = logs
+    .filter(l => (l.sodiumChecks && l.sodiumChecks.length>0) || (l.mealSodiumEntries && l.mealSodiumEntries.length>0))
+    .map(l => ({date: l.date, total: computeDailySodiumTotal(l)}))
+    .filter(d => d.date);
+
+  let bestDay = null;
+  if(trackedDays.length > 0){
+    bestDay = trackedDays.reduce((min,d) => d.total < min.total ? d : min, trackedDays[0]);
+  }
+
+  let trendInsight = null;
+  if(trackedDays.length >= 6){ // ต้องมีข้อมูลอย่างน้อย 6 วันถึงจะแบ่งครึ่งเปรียบเทียบได้อย่างมีความหมาย (3+3)
+    const sorted = [...trackedDays].sort((a,b)=> a.date.localeCompare(b.date));
+    const mid = Math.floor(sorted.length/2);
+    const firstHalf = sorted.slice(0, mid);
+    const secondHalf = sorted.slice(mid);
+    if(firstHalf.length>=3 && secondHalf.length>=3){
+      const avgFirst = firstHalf.reduce((s,d)=>s+d.total,0)/firstHalf.length;
+      const avgSecond = secondHalf.reduce((s,d)=>s+d.total,0)/secondHalf.length;
+      if(avgSecond < avgFirst){ // โชว์เฉพาะตอนลดลงจริงเท่านั้น ไม่งั้นไม่แสดงอะไรเลย (ไม่ใช่โชว์ข้อความแง่ลบ)
+        trendInsight = { avgFirst: Math.round(avgFirst), avgSecond: Math.round(avgSecond), diff: Math.round(avgFirst-avgSecond) };
+      }
+    }
+  }
+  return { bestDay, trendInsight };
+}
+
+function renderSodiumInsights(){
+  const {bestDay, trendInsight} = computeSodiumInsights();
+  const cardEl = document.getElementById('sodiumInsightCard');
+  const bodyEl = document.getElementById('sodiumInsightBody');
+  if(!bestDay && !trendInsight){ cardEl.style.display='none'; return; } // ข้อมูลไม่พอ/ยังไม่มีอะไรน่าเล่า ไม่ต้องโชว์การ์ดเลย
+  cardEl.style.display = 'block';
+  let html = '';
+  if(bestDay){
+    html += `<div class="hl-card" style="margin-bottom:${trendInsight?'10px':'0'};">
+      <div class="hl-icon">🏅</div>
+      <div>
+        <div class="hl-title">วันที่ทำได้ดีที่สุด</div>
+        <div class="hl-value">${dayLabelThai(bestDay.date)} — บันทึกโซเดียมแค่ <b>${bestDay.total.toLocaleString('th-TH')} มก.</b></div>
+      </div>
+    </div>`;
+  }
+  if(trendInsight){
+    html += `<div class="hl-card">
+      <div class="hl-icon">📉</div>
+      <div>
+        <div class="hl-title">แนวโน้มดีขึ้น</div>
+        <div class="hl-value">ค่าเฉลี่ยช่วงหลังบันทึกไว้ <b>${trendInsight.avgSecond.toLocaleString('th-TH')} มก.</b> ต่ำกว่าช่วงแรก (${trendInsight.avgFirst.toLocaleString('th-TH')} มก.) อยู่ <b>${trendInsight.diff.toLocaleString('th-TH')} มก.</b></div>
+      </div>
+    </div>`;
+  }
+  bodyEl.innerHTML = html;
 }
 
 /* ---- 7. Progress table (ย้าย logic เดิมมาเป๊ะ ไม่เปลี่ยนสูตรคำนวณ) ---- */
