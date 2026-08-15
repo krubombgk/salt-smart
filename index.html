@@ -2787,7 +2787,7 @@ async function renderMissionBackfillChips(){
   const picker = document.getElementById('missionBackfillPicker');
   const chipsEl = document.getElementById('missionBackfillChips');
   const missed = await getMissionBackfillableDates();
-  picker.style.display = missed.length>0 ? 'block' : 'none'; // ต่างจากบันทึกวันนี้: โชว์เฉพาะตอนมีวันหยุดให้ทำย้อนหลังจริง กันรกจอตอนไม่มีอะไรให้เลือก
+  picker.style.display = 'block'; // โชว์เสมอเหมือนบันทึกวันนี้ — บั๊กเดิม: ซ่อนทั้งกล่องรวมปุ่ม "วันนี้" ไปด้วยตอนไม่มีวันพิเศษเหลือ ทำให้กดสลับกลับมาวันนี้ไม่ได้เลย
   const todayChip = `<div class="chip ${state.missionTargetDate===state.todaysDateStr?'active':''}" onclick="loadMissionForDate('${state.todaysDateStr}')">วันนี้ (${dayLabelThai(state.todaysDateStr)})</div>`;
   const missedChips = missed.map(m => `<div class="chip ${state.missionTargetDate===m.date?'active':''}" onclick="loadMissionForDate('${m.date}')">${m.isGrace?'ช่วงเปิดโครงการ':'วันหยุด'}: ${dayLabelThai(m.date)}</div>`).join('');
   chipsEl.innerHTML = todayChip + missedChips;
@@ -3009,7 +3009,7 @@ async function renderQuizBackfillChips(){
   const picker = document.getElementById('quizBackfillPicker');
   const chipsEl = document.getElementById('quizBackfillChips');
   const missed = await getQuizBackfillableDates();
-  picker.style.display = missed.length>0 ? 'block' : 'none';
+  picker.style.display = 'block'; // โชว์เสมอเหมือนบันทึกวันนี้ — บั๊กเดิม: ซ่อนทั้งกล่องรวมปุ่ม "วันนี้" ไปด้วยตอนไม่มีวันพิเศษเหลือ ทำให้กดสลับกลับมาวันนี้ไม่ได้เลย
   const todayChip = `<div class="chip ${state.quizTargetDate===state.todaysDateStr?'active':''}" onclick="selectQuizDate('${state.todaysDateStr}')">วันนี้ (${dayLabelThai(state.todaysDateStr)})</div>`;
   const missedChips = missed.map(m => `<div class="chip ${state.quizTargetDate===m.date?'active':''}" onclick="selectQuizDate('${m.date}')">${m.isGrace?'ช่วงเปิดโครงการ':'วันหยุด'}: ${dayLabelThai(m.date)}</div>`).join('');
   chipsEl.innerHTML = todayChip + missedChips;
