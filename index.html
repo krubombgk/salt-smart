@@ -790,15 +790,6 @@
     <!-- TAB: HOME (ย้ายมาจาก screen-home เดิม เพื่อรวมเป็นแท็บเดียวในระบบเดียวกับแท็บอื่น) -->
     <div class="tabpanel" id="tab-home">
       <div class="section-title" id="homeGreeting" style="font-size:16px; margin-top:0;">สวัสดี! 👋</div>
-      <div id="announceBanner" style="display:none; background:#FDF6DC; border:1.5px solid #E8C766; border-radius:14px; padding:12px 14px; margin-bottom:12px;">
-        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
-          <div>
-            <div style="font-family:'Kanit'; font-weight:700; font-size:13.5px; color:var(--deep-sea);">📢 <span id="announceBannerTitle"></span></div>
-            <div style="font-size:12.5px; color:#4c5c60; margin-top:3px; white-space:pre-wrap;" id="announceBannerMsg"></div>
-          </div>
-          <span style="cursor:pointer; font-size:16px; flex-shrink:0;" onclick="dismissAnnounceBanner()">✕</span>
-        </div>
-      </div>
       <div style="text-align:right; margin:-6px 0 8px;"><span style="color:var(--lagoon); font-family:'Kanit'; font-weight:600; font-size:12px; cursor:pointer;" onclick="openAnnounceHistory()">📋 ดูประกาศทั้งหมด</span></div>
       <div class="stat-grid" style="grid-template-columns:repeat(3,1fr);">
         <div class="mini-stat"><div class="num" id="homeStreak">0</div><div class="lbl">วันต่อเนื่อง <img class="icon-inline" src="icon-streak.png" alt=""></div></div>
@@ -1270,6 +1261,19 @@
           <span style="cursor:pointer; font-size:20px;" onclick="closeAnnounceHistory()">✕</span>
         </div>
         <div style="padding:8px 20px 20px; max-height:60vh; overflow-y:auto;" id="announceHistoryList"><div class="empty-note">กำลังโหลด…</div></div>
+      </div>
+    </div>
+
+    <div class="kcard-overlay" id="announcePopupOverlay" style="display:none;">
+      <div class="kcard-box" style="max-width:340px; text-align:center; padding-bottom:20px;">
+        <div style="padding:22px 22px 4px;">
+          <div style="font-family:'Kanit'; font-weight:800; font-size:18px; color:var(--deep-sea);" id="announcePopupTitle"></div>
+        </div>
+        <div id="announcePopupImgWrap" style="display:none; padding:10px 20px 0;">
+          <img id="announcePopupImg" src="" alt="" style="width:100%; border-radius:14px; display:block;">
+        </div>
+        <div style="padding:14px 22px 0; font-size:13.5px; color:#4c5c60; white-space:pre-wrap; line-height:1.6;" id="announcePopupMsg"></div>
+        <button class="btn btn-primary btn-block" style="margin:18px 20px 0; width:calc(100% - 40px);" onclick="dismissAnnouncePopup()">รับทราบ</button>
       </div>
     </div>
 
@@ -3587,7 +3591,7 @@ function closeRewardHistory(){
   document.getElementById('rwHistoryOverlay').style.display = 'none';
 }
 
-/* ---- ประกาศจากครู — แบนเนอร์อันล่าสุดที่ยังไม่เคยเห็น + ดูย้อนหลังทั้งหมดได้ ---- */
+/* ---- ประกาศจากครู — popup กลางจอสำหรับอันล่าสุดที่ยังไม่เคยเห็น + ดูย้อนหลังทั้งหมดได้ ---- */
 async function loadAnnouncements(){
   try{
     const snap = await db.collection('announcements').orderBy('createdAt','desc').limit(20).get();
@@ -3598,16 +3602,23 @@ async function loadAnnouncements(){
     const newestTime = newest.createdAt.toMillis ? newest.createdAt.toMillis() : new Date(newest.createdAt).getTime();
     const lastSeen = state.selectedStudent.lastSeenAnnouncementAt || 0;
     if(newestTime > lastSeen){
-      document.getElementById('announceBannerTitle').textContent = newest.title;
-      document.getElementById('announceBannerMsg').textContent = newest.message;
-      document.getElementById('announceBanner').style.display = 'block';
-      state.currentBannerAnnouncementTime = newestTime;
+      document.getElementById('announcePopupTitle').textContent = newest.title;
+      document.getElementById('announcePopupMsg').textContent = newest.message;
+      const imgWrap = document.getElementById('announcePopupImgWrap');
+      if(newest.imageUrl){
+        document.getElementById('announcePopupImg').src = newest.imageUrl;
+        imgWrap.style.display = 'block';
+      } else {
+        imgWrap.style.display = 'none';
+      }
+      document.getElementById('announcePopupOverlay').style.display = 'flex';
+      state.currentPopupAnnouncementTime = newestTime;
     }
   }catch(e){ console.error('loadAnnouncements error:', e); }
 }
-async function dismissAnnounceBanner(){
-  document.getElementById('announceBanner').style.display = 'none';
-  const t = state.currentBannerAnnouncementTime || Date.now();
+async function dismissAnnouncePopup(){
+  document.getElementById('announcePopupOverlay').style.display = 'none';
+  const t = state.currentPopupAnnouncementTime || Date.now();
   state.selectedStudent.lastSeenAnnouncementAt = t;
   try{ await db.collection('students').doc(state.selectedStudent.id).update({ lastSeenAnnouncementAt: t }); }catch(e){ console.error(e); }
 }
@@ -3618,8 +3629,10 @@ function openAnnounceHistory(){
   listEl.innerHTML = items.length>0
     ? items.map(a=>{
         const dateStr = a.createdAt ? (a.createdAt.toDate ? a.createdAt.toDate() : new Date(a.createdAt)).toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'numeric'}) : '';
+        const imgHtml = a.imageUrl ? `<img src="${a.imageUrl}" alt="" style="width:100%; border-radius:10px; margin:8px 0; display:block;" onerror="this.style.display='none'">` : '';
         return `<div class="rw-history-item" style="display:block;">
           <div class="rw-history-name">📢 ${a.title} <span style="color:#9aa8ab; font-weight:400; font-size:11px;">· ${dateStr}</span></div>
+          ${imgHtml}
           <div style="font-size:12.5px; color:#4c5c60; margin-top:3px; white-space:pre-wrap;">${a.message}</div>
         </div>`;
       }).join('')
