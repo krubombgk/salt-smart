@@ -2774,7 +2774,13 @@ async function getMissionBackfillableDates(){
   const candidates = [...new Set([...holidayDates, ...graceDates])].sort();
   if(candidates.length===0) return [];
   const snaps = await Promise.all(candidates.map(d => db.collection('missionSubmissions').doc(state.selectedStudent.id + '_' + d).get()));
-  return candidates.filter((d,i) => !snaps[i].exists).map(d => ({date:d, isGrace: graceSet.has(d)}));
+  // บั๊กเดิม: เช็คแค่ "มีเอกสารส่งอยู่ไหม" ทำให้ภารกิจที่ถูกตีกลับ (rejected) หายไปจากตัวเลือกด้วย ทั้งที่ยังต้องส่งใหม่ได้
+  // แก้ให้เก็บไว้ในตัวเลือกถ้า "ยังไม่เคยส่งเลย" หรือ "ถูกตีกลับ" — ตัด pending/approved ออกเท่านั้น (ไม่ต้องส่งซ้ำ)
+  return candidates.filter((d,i) => {
+    if(!snaps[i].exists) return true;
+    const status = snaps[i].data().status;
+    return status === 'rejected';
+  }).map(d => ({date:d, isGrace: graceSet.has(d)}));
 }
 
 async function renderMissionBackfillChips(){
