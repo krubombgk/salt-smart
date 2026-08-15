@@ -2083,6 +2083,7 @@ function logout(){
   stopMissionStatusListener();
   state.selectedStudent=null; state.todayLog=null; state.targetLog=null; state.sodiumChecks=[];
   state.quizAnswers=[]; state.quizFinished=false; state.pendingCard=null;
+  state.pendingCardQueue=[]; state.cardModalShowing=false; // เคลียร์คิวการ์ดด้วย กันค้างข้ามคนตอนใช้เครื่องส่วนรวม
   state.exerciseChecked={}; state.levels={sweet:null,fat:null,salty:null}; state.otherChecked={};
   document.getElementById('kcardOverlay').style.display = 'none';
   goScreen('screen-student');
@@ -3384,6 +3385,8 @@ async function getCollectedCardIds(){
   return snap.docs.map(d=>d.data().cardId);
 }
 
+// เปลี่ยนจากตัวแปรเดี่ยวเป็นคิว — บั๊กเดิม: ถ้าปลดล็อกการ์ดหลายใบพร้อมกัน (เช่นเช็คย้อนหลังหลายวันตอน login)
+// การ์ดใบหลังจะเขียนทับ state.pendingCard ของใบก่อนหน้าก่อนจะทันกดเก็บ ทำให้การ์ดหายไปเฉยๆ ทั้งที่ธง "ให้แล้ว" ถูกตั้งไปแล้ว
 async function showKnowledgeCard(){
   try{
     const snap = await db.collection('knowledgeCards').where('active','==',true).get();
@@ -3391,18 +3394,30 @@ async function showKnowledgeCard(){
     const regularCards = allCards.filter(c=>!c.isSpecial);
     const specialCard = allCards.find(c=>c.isSpecial);
     const collectedIds = await getCollectedCardIds();
-    const uncollectedRegular = regularCards.filter(c=>!collectedIds.includes(c.id));
+    const queuedIds = (state.pendingCardQueue||[]).map(q=>q.card.id); // กันสุ่มซ้ำใบที่รออยู่ในคิวแล้ว
+    const uncollectedRegular = regularCards.filter(c=>!collectedIds.includes(c.id) && !queuedIds.includes(c.id));
 
     let cardToShow, isSpecial=false;
     if(uncollectedRegular.length>0){
       cardToShow = uncollectedRegular[Math.floor(Math.random()*uncollectedRegular.length)];
-    } else if(specialCard && !collectedIds.includes(specialCard.id)){
+    } else if(specialCard && !collectedIds.includes(specialCard.id) && !queuedIds.includes(specialCard.id)){
       cardToShow = specialCard; isSpecial=true;
     } else {
-      return; // เก็บครบทุกใบแล้ว (รวมใบพิเศษ) ไม่มีการ์ดให้โชว์เพิ่ม
+      return; // เก็บครบทุกใบแล้ว หรือใบที่เหลืออยู่ในคิวรอโชว์อยู่แล้ว
     }
-    renderCardModal(cardToShow, isSpecial, true);
+    state.pendingCardQueue = state.pendingCardQueue || [];
+    state.pendingCardQueue.push({card: cardToShow, isSpecial});
+    processCardQueue();
   }catch(e){ console.error(e); }
+}
+
+// โชว์ป็อปอัพทีละใบจากคิว — ถ้ามี popup โชว์อยู่แล้วจะไม่แทรก รอให้กดเก็บใบปัจจุบันก่อน
+function processCardQueue(){
+  if(state.cardModalShowing) return;
+  if(!state.pendingCardQueue || state.pendingCardQueue.length===0) return;
+  const next = state.pendingCardQueue[0]; // ยังไม่เอาออกจากคิว รอ collectKnowledgeCard() เก็บสำเร็จก่อนค่อย shift
+  state.cardModalShowing = true;
+  renderCardModal(next.card, next.isSpecial, true);
 }
 
 // เปิดดูการ์ดที่เก็บไปแล้วซ้ำจากอัลบั้ม (ไม่นับเป็นการเก็บใหม่ ไม่เขียนซ้ำลง Firestore)
@@ -3445,6 +3460,9 @@ async function collectKnowledgeCard(event){
     loadAlbum();
   }
   document.getElementById('kcardOverlay').style.display = 'none';
+  state.cardModalShowing = false;
+  if(state.pendingCardQueue && state.pendingCardQueue.length>0) state.pendingCardQueue.shift(); // เก็บใบนี้แล้ว เอาออกจากคิว
+  processCardQueue(); // เด้งใบถัดไปในคิวต่ออัตโนมัติ (ถ้ามี) ให้กดเก็บได้ทีละใบจนครบ
 }
 
 /* ---- Points / streak ---- */
