@@ -1273,7 +1273,11 @@
           <img id="announcePopupImg" src="" alt="" style="width:100%; border-radius:14px; display:block;">
         </div>
         <div style="padding:14px 22px 0; font-size:13.5px; color:#4c5c60; white-space:pre-wrap; line-height:1.6;" id="announcePopupMsg"></div>
-        <button class="btn btn-primary btn-block" style="margin:18px 20px 0; width:calc(100% - 40px);" onclick="dismissAnnouncePopup()">รับทราบ</button>
+        <label style="display:flex; align-items:center; gap:8px; justify-content:center; margin:14px 22px 0; font-size:12.5px; color:#6b7c80; cursor:pointer;">
+          <input type="checkbox" id="announcePopupDontShow" style="width:16px; height:16px;">
+          ไม่แสดงประกาศนี้อีก
+        </label>
+        <button class="btn btn-primary btn-block" style="margin:14px 20px 0; width:calc(100% - 40px);" onclick="dismissAnnouncePopup()">รับทราบ</button>
       </div>
     </div>
 
@@ -3591,36 +3595,41 @@ function closeRewardHistory(){
   document.getElementById('rwHistoryOverlay').style.display = 'none';
 }
 
-/* ---- ประกาศจากครู — popup กลางจอสำหรับอันล่าสุดที่ยังไม่เคยเห็น + ดูย้อนหลังทั้งหมดได้ ---- */
+/* ---- ประกาศจากครู — popup กลางจอทุกครั้งที่ login จนกว่าจะติ๊ก "ไม่แสดงอีก" + ดูย้อนหลังทั้งหมดได้ ---- */
 async function loadAnnouncements(){
   try{
     const snap = await db.collection('announcements').orderBy('createdAt','desc').limit(20).get();
     state.announcementsCache = snap.docs.map(d=>({id:d.id, ...d.data()}));
     if(state.announcementsCache.length===0) return;
     const newest = state.announcementsCache[0];
-    if(!newest.createdAt) return; // เพิ่งโพสต์ serverTimestamp ยังไม่ resolve ข้ามไปก่อน รอบหน้าค่อยเจอ
-    const newestTime = newest.createdAt.toMillis ? newest.createdAt.toMillis() : new Date(newest.createdAt).getTime();
-    const lastSeen = state.selectedStudent.lastSeenAnnouncementAt || 0;
-    if(newestTime > lastSeen){
-      document.getElementById('announcePopupTitle').textContent = newest.title;
-      document.getElementById('announcePopupMsg').textContent = newest.message;
-      const imgWrap = document.getElementById('announcePopupImgWrap');
-      if(newest.imageUrl){
-        document.getElementById('announcePopupImg').src = newest.imageUrl;
-        imgWrap.style.display = 'block';
-      } else {
-        imgWrap.style.display = 'none';
-      }
-      document.getElementById('announcePopupOverlay').style.display = 'flex';
-      state.currentPopupAnnouncementTime = newestTime;
+    const dismissedIds = state.selectedStudent.dismissedAnnouncementIds || [];
+    if(dismissedIds.includes(newest.id)) return; // เคยติ๊ก "ไม่แสดงอีก" ไปแล้ว ไม่โชว์ซ้ำ — ถ้าไม่เคยติ๊กจะโชว์ทุกครั้งที่ login
+
+    document.getElementById('announcePopupTitle').textContent = newest.title;
+    document.getElementById('announcePopupMsg').textContent = newest.message;
+    document.getElementById('announcePopupDontShow').checked = false;
+    const imgWrap = document.getElementById('announcePopupImgWrap');
+    if(newest.imageUrl){
+      document.getElementById('announcePopupImg').src = newest.imageUrl;
+      imgWrap.style.display = 'block';
+    } else {
+      imgWrap.style.display = 'none';
     }
+    document.getElementById('announcePopupOverlay').style.display = 'flex';
+    state.currentPopupAnnouncementId = newest.id;
   }catch(e){ console.error('loadAnnouncements error:', e); }
 }
 async function dismissAnnouncePopup(){
   document.getElementById('announcePopupOverlay').style.display = 'none';
-  const t = state.currentPopupAnnouncementTime || Date.now();
-  state.selectedStudent.lastSeenAnnouncementAt = t;
-  try{ await db.collection('students').doc(state.selectedStudent.id).update({ lastSeenAnnouncementAt: t }); }catch(e){ console.error(e); }
+  const dontShowAgain = document.getElementById('announcePopupDontShow').checked;
+  if(!dontShowAgain) return; // ไม่ติ๊ก แปลว่าปิดแค่รอบนี้ รอบ login หน้าจะโชว์ซ้ำอีก ไม่บันทึกอะไรเลย
+  const id = state.currentPopupAnnouncementId;
+  const dismissedIds = state.selectedStudent.dismissedAnnouncementIds || [];
+  if(!dismissedIds.includes(id)){
+    dismissedIds.push(id);
+    state.selectedStudent.dismissedAnnouncementIds = dismissedIds;
+    try{ await db.collection('students').doc(state.selectedStudent.id).update({ dismissedAnnouncementIds: dismissedIds }); }catch(e){ console.error(e); }
+  }
 }
 function openAnnounceHistory(){
   document.getElementById('announceHistoryOverlay').style.display = 'flex';
