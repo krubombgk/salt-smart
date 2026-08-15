@@ -129,6 +129,7 @@
       <div class="navitem" data-p="p-missions" onclick="showPanel('p-missions')">🎯 ภารกิจ</div>
       <div class="navitem" data-p="p-review" onclick="showPanel('p-review')">🔍 ตรวจภารกิจ</div>
       <div class="navitem" data-p="p-announce" onclick="showPanel('p-announce')">📢 ประกาศ</div>
+      <div class="navitem" data-p="p-cardcheck" onclick="showPanel('p-cardcheck')">🔧 ตรวจสอบการ์ด</div>
       <div class="navitem" data-p="p-leaderboard" onclick="showPanel('p-leaderboard')">🏆 อันดับ/รางวัล</div>
       <div class="navitem" data-p="p-campaign" onclick="showPanel('p-campaign')">⚙️ ตั้งค่าแคมเปญ</div>
       <div class="navitem" data-p="p-assessment" onclick="showPanel('p-assessment')">📋 ผล Baseline/Pre-Post</div>
@@ -363,6 +364,25 @@
         </div>
       </div>
 
+      <!-- CARD MISMATCH CHECKER -->
+      <div class="panel" id="p-cardcheck">
+        <h2>🔧 ตรวจสอบ/ซ่อมการ์ดที่ขาดหาย</h2>
+        <p style="font-size:12.5px; color:#9aa8ab; margin-top:-8px;">
+          ตรวจสอบว่านักเรียนคนไหนมีธง "ได้รับการ์ดแล้ว" มากกว่าจำนวนการ์ดที่เก็บได้จริงในอัลบั้ม (เกิดจากบั๊กเดิมช่วงปลดล็อกการ์ดหลายวันพร้อมกัน ก่อนแก้ระบบคิว) — กดซ่อมแล้วแจ้งนักเรียนให้ล็อกอินใหม่อีกครั้งเพื่อรับการ์ดที่ขาด
+        </p>
+        <div class="card">
+          <button class="btn btn-primary" onclick="scanCardMismatches()">🔍 เริ่มสแกนทุกคน (นักเรียนเยอะอาจใช้เวลาสักครู่)</button>
+          <div class="msg" id="cardScanMsg"></div>
+        </div>
+        <div class="card" id="cardMismatchCard" style="display:none;">
+          <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+            <h3 style="margin:0;">พบปัญหา (<span id="cardMismatchCount">0</span> คน)</h3>
+            <button class="btn btn-danger" style="padding:8px 14px; font-size:12.5px;" onclick="repairAllCardMismatches()">🔧 ซ่อมทั้งหมด</button>
+          </div>
+          <table><thead><tr><th>ชื่อ</th><th>ห้อง</th><th>ควรได้</th><th>ได้จริง</th><th>ขาด</th><th></th></tr></thead><tbody id="cardMismatchTable"></tbody></table>
+        </div>
+      </div>
+
       <!-- LEADERBOARD -->
       <div class="panel" id="p-leaderboard">
         <h2>อันดับ / รางวัล</h2>
@@ -467,6 +487,7 @@ const db = firebase.firestore();
 const functions = firebase.app().functions('asia-southeast1');
 
 let classesCache = [], studentsCache = [], quizCache = [];
+let cardMismatchCache = []; // ผลลัพธ์ล่าสุดจากการสแกนหาการ์ดที่ขาดหาย ใช้ตอนกดปุ่มซ่อม
 
 let currentRole = 'admin'; // 'admin' | 'youth'
 async function checkAdminPw(){
@@ -557,6 +578,80 @@ async function deleteAnnouncement(id){
   if(!confirm('ลบประกาศนี้เลยไหม?')) return;
   await db.collection('announcements').doc(id).delete();
   loadAnnouncements();
+}
+
+/* ---- ตรวจสอบ/ซ่อมการ์ดที่ขาดหาย ---- */
+// สแกนทุกคน: เทียบจำนวนวันที่มีธง dailyCardGranted:true (ควรได้การ์ดกี่ใบ) กับจำนวนการ์ดที่เก็บจริงใน cardCollections
+// ถ้าควรได้มากกว่าได้จริง = เจอเคสที่การ์ดหายไปจากบั๊กคิวเดิม (ตั้งธงไปแล้วแต่ป็อปอัพถูกเขียนทับก่อนกดเก็บ)
+async function scanCardMismatches(){
+  setMsg('cardScanMsg', `กำลังสแกน ${studentsCache.length} คน...`);
+  document.getElementById('cardMismatchCard').style.display = 'none';
+  const mismatches = [];
+  const CONCURRENCY = 20; // ตรวจทีละชุด กันยิง query พร้อมกันเยอะเกินไป
+  for(let i=0; i<studentsCache.length; i+=CONCURRENCY){
+    const chunk = studentsCache.slice(i, i+CONCURRENCY);
+    setMsg('cardScanMsg', `กำลังสแกน... ${Math.min(i+CONCURRENCY, studentsCache.length)}/${studentsCache.length} คน`);
+    await Promise.all(chunk.map(async (student)=>{
+      const logsSnap = await db.collection('dailyLogs').where('studentId','==',student.id).get();
+      const grantedDocs = logsSnap.docs.filter(d => d.data().dailyCardGranted);
+      const expectedCards = grantedDocs.length;
+      if(expectedCards === 0) return; // ไม่เคยได้การ์ดเลย ไม่มีอะไรให้เช็ค
+      const collSnap = await db.collection('cardCollections').where('studentId','==',student.id).get();
+      const actualCards = collSnap.size;
+      if(expectedCards > actualCards){
+        mismatches.push({
+          studentId: student.id, name: student.name, className: classNameOf(student.classId),
+          expectedCards, actualCards, deficit: expectedCards - actualCards,
+          grantedDocRefs: grantedDocs.map(d=>d.ref)
+        });
+      }
+    }));
+  }
+  cardMismatchCache = mismatches;
+  setMsg('cardScanMsg', `สแกนเสร็จแล้ว — พบปัญหา ${mismatches.length} คน`);
+  renderCardMismatchResults(mismatches);
+}
+
+function renderCardMismatchResults(mismatches){
+  const cardEl = document.getElementById('cardMismatchCard');
+  if(mismatches.length===0){ cardEl.style.display='none'; return; }
+  cardEl.style.display = 'block';
+  document.getElementById('cardMismatchCount').textContent = mismatches.length;
+  document.getElementById('cardMismatchTable').innerHTML = mismatches.map((m,i)=>`
+    <tr>
+      <td>${m.name}</td><td>${m.className}</td>
+      <td>${m.expectedCards}</td><td>${m.actualCards}</td>
+      <td style="color:var(--red-high); font-weight:700;">${m.deficit}</td>
+      <td><button class="btn btn-ghost" style="padding:6px 10px; font-size:12px;" onclick="repairCardMismatch(${i})">ซ่อม</button></td>
+    </tr>
+  `).join('');
+}
+
+async function repairCardMismatch(idx){
+  const m = cardMismatchCache[idx];
+  if(!m) return;
+  if(!confirm(`รีเซ็ตธงการ์ดของ ${m.name} จำนวน ${m.deficit} วัน เพื่อให้ระบบออกการ์ดใหม่ให้ถูกต้องตอน login ครั้งถัดไป?\n\nต้องแจ้งนักเรียนคนนี้ให้ล็อกอินใหม่อีกครั้งด้วยนะ`)) return;
+  const batch = db.batch();
+  m.grantedDocRefs.slice(0, m.deficit).forEach(ref => batch.update(ref, {dailyCardGranted: false}));
+  await batch.commit();
+  alert(`ซ่อม ${m.name} เรียบร้อย — แจ้งให้ล็อกอินใหม่เพื่อรับการ์ดที่ขาดไป`);
+  scanCardMismatches();
+}
+
+async function repairAllCardMismatches(){
+  const mismatches = cardMismatchCache || [];
+  if(mismatches.length===0) return;
+  if(!confirm(`รีเซ็ตธงการ์ดให้ทุกคนที่พบปัญหา (${mismatches.length} คน) เลยไหม?\n\nต้องแจ้งนักเรียนทุกคนที่ซ่อมให้ล็อกอินใหม่อีกครั้งด้วยนะ`)) return;
+  // รวม doc ที่ต้องแก้ทั้งหมดแล้วแบ่งเป็นชุดละ 450 (จำกัดของ Firestore batch คือ 500 ต่อครั้ง)
+  const allRefs = [];
+  mismatches.forEach(m => allRefs.push(...m.grantedDocRefs.slice(0, m.deficit)));
+  for(let i=0; i<allRefs.length; i+=450){
+    const batch = db.batch();
+    allRefs.slice(i, i+450).forEach(ref => batch.update(ref, {dailyCardGranted:false}));
+    await batch.commit();
+  }
+  alert(`ซ่อมครบทุกคนแล้ว (${mismatches.length} คน) — แจ้งนักเรียนทุกคนที่ซ่อมให้ล็อกอินใหม่เพื่อรับการ์ดที่ขาด`);
+  scanCardMismatches();
 }
 
 async function boot(){
