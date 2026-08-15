@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Salt Smart | หลังบ้านครู</title>
-<link rel="icon" href="favicon.png">
+<link rel="icon" href="admin-favicon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;600;700;800&family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -124,7 +124,9 @@
       <div class="navitem" data-p="p-classes" onclick="showPanel('p-classes')">🏫 ห้องเรียน/นักเรียน</div>
       <div class="navitem" data-p="p-quiz" onclick="showPanel('p-quiz')">❓ คลังคำถาม Quiz</div>
       <div class="navitem" data-p="p-cards" onclick="showPanel('p-cards')">💡 การ์ดความรู้</div>
-      <div class="navitem" data-p="p-missions" onclick="showPanel('p-missions')">🎯 ภารกิจ/ตรวจสอบ</div>
+      <div class="navitem" data-p="p-missions" onclick="showPanel('p-missions')">🎯 ภารกิจ</div>
+      <div class="navitem" data-p="p-review" onclick="showPanel('p-review')">🔍 ตรวจภารกิจ</div>
+      <div class="navitem" data-p="p-announce" onclick="showPanel('p-announce')">📢 ประกาศ</div>
       <div class="navitem" data-p="p-leaderboard" onclick="showPanel('p-leaderboard')">🏆 อันดับ/รางวัล</div>
       <div class="navitem" data-p="p-campaign" onclick="showPanel('p-campaign')">⚙️ ตั้งค่าแคมเปญ</div>
       <div class="navitem" data-p="p-assessment" onclick="showPanel('p-assessment')">📋 ผล Baseline/Pre-Post</div>
@@ -330,10 +332,31 @@
           <div class="msg" id="deleteAllMissionMsg"></div>
           <table><thead><tr><th>วัน</th><th>เนื้อหา</th><th>หลักฐาน</th><th>คะแนน</th><th>สถานะ</th><th></th></tr></thead><tbody id="missionTable"></tbody></table>
         </div>
+      </div>
 
+      <!-- REVIEW QUEUE (แยกออกมาจากหน้าภารกิจ เพื่อไม่ต้องเลื่อนผ่านคลังภารกิจก่อนเจอส่วนตรวจ) -->
+      <div class="panel" id="p-review">
+        <h2>🔍 ตรวจภารกิจ</h2>
         <div class="card">
-          <h3 style="margin-top:0;">🔍 คิวตรวจภารกิจ (<span id="pendingCount">0</span> รอตรวจ)</h3>
+          <h3 style="margin-top:0;">คิวตรวจภารกิจ (<span id="pendingCount">0</span> รอตรวจ)</h3>
           <div id="reviewQueue"><div class="empty-note">กำลังโหลด…</div></div>
+        </div>
+      </div>
+
+      <!-- ANNOUNCEMENTS -->
+      <div class="panel" id="p-announce">
+        <h2>📢 ประกาศ</h2>
+        <p style="font-size:12.5px; color:#9aa8ab; margin-top:-8px;">นักเรียนจะเห็นประกาศล่าสุดเป็นแบนเนอร์ในหน้าหลักของแอป และดูย้อนหลังทั้งหมดได้ในแอป</p>
+        <div class="card">
+          <h3 style="margin-top:0;">โพสต์ประกาศใหม่</h3>
+          <div class="field"><label>หัวข้อ</label><input type="text" id="announceTitle" placeholder="เช่น เปิดช่วงทำย้อนหลังพิเศษ!"></div>
+          <div class="field"><label>ข้อความ</label><textarea id="announceMessage" placeholder="รายละเอียดประกาศ" style="min-height:90px;"></textarea></div>
+          <button class="btn btn-primary" onclick="postAnnouncement()">โพสต์ประกาศ</button>
+          <div class="msg" id="announceMsg"></div>
+        </div>
+        <div class="card">
+          <h3 style="margin-top:0;">ประกาศทั้งหมด</h3>
+          <div id="announceList"><div class="empty-note">กำลังโหลด…</div></div>
         </div>
       </div>
 
@@ -468,13 +491,11 @@ function enterAdminApp(){
   if(currentRole === 'youth'){
     // ยุวทูต อย.น้อย เห็นแค่คิวตรวจภารกิจ ไม่เห็นเมนูจัดการอื่น ๆ ของครู
     document.querySelectorAll('.navitem').forEach(n=>{
-      n.style.display = (n.dataset.p === 'p-missions') ? '' : 'none';
+      n.style.display = (n.dataset.p === 'p-review') ? '' : 'none';
     });
-    document.getElementById('missionBankSection').style.display = 'none';
-    document.getElementById('missionBankTableSection').style.display = 'none';
   }
   boot();
-  if(currentRole === 'youth') showPanel('p-missions');
+  if(currentRole === 'youth') showPanel('p-review');
 }
 
 function showPanel(id){
@@ -485,8 +506,50 @@ function showPanel(id){
   if(navEl) navEl.classList.add('active');
   if(id==='p-overview') loadOverview();
   if(id==='p-leaderboard') switchLbCat(currentLbCat);
-  if(id==='p-missions') loadReviewQueue();
+  if(id==='p-review') loadReviewQueue();
+  if(id==='p-announce') loadAnnouncements();
   if(id==='p-assessment') loadAssessmentResults();
+}
+
+/* ---- ประกาศ ---- */
+async function postAnnouncement(){
+  const title = document.getElementById('announceTitle').value.trim();
+  const message = document.getElementById('announceMessage').value.trim();
+  if(!title || !message){ setMsg('announceMsg','กรุณากรอกหัวข้อและข้อความ',true); return; }
+  await db.collection('announcements').add({
+    title, message,
+    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+  });
+  document.getElementById('announceTitle').value='';
+  document.getElementById('announceMessage').value='';
+  setMsg('announceMsg','โพสต์ประกาศแล้ว ✅');
+  loadAnnouncements();
+}
+async function loadAnnouncements(){
+  const listEl = document.getElementById('announceList');
+  const snap = await db.collection('announcements').orderBy('createdAt','desc').limit(30).get();
+  const docs = snap.docs;
+  if(docs.length===0){ listEl.innerHTML = '<div class="empty-note">ยังไม่มีประกาศ</div>'; return; }
+  listEl.innerHTML = docs.map(d=>{
+    const data = d.data();
+    const dateStr = data.createdAt ? data.createdAt.toDate().toLocaleDateString('th-TH', {day:'numeric', month:'short', year:'numeric'}) : '';
+    return `
+    <div class="card" style="background:var(--sand); margin-bottom:10px;">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
+        <div>
+          <div style="font-family:'Kanit'; font-weight:700;">${data.title}</div>
+          <div style="font-size:11.5px; color:#9aa8ab; margin-bottom:6px;">${dateStr}</div>
+          <div style="font-size:13.5px; white-space:pre-wrap;">${data.message}</div>
+        </div>
+        <button class="btn btn-danger" style="padding:6px 10px; font-size:12px; flex-shrink:0;" onclick="deleteAnnouncement('${d.id}')">ลบ</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+async function deleteAnnouncement(id){
+  if(!confirm('ลบประกาศนี้เลยไหม?')) return;
+  await db.collection('announcements').doc(id).delete();
+  loadAnnouncements();
 }
 
 async function boot(){

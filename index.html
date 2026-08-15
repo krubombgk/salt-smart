@@ -712,7 +712,7 @@
 <div class="screen" id="screen-class">
   <div class="brandbar">
     <div class="brand-row">
-      <div class="brand-mark"><img src="logo.png" alt="Salt Smart"></div>
+      <div class="brand-mark"><img src="user-logo.png" alt="Salt Smart"></div>
       <div>
         <div class="brand-title">Salt Smart</div>
         <div class="brand-sub">รู้เท่าทันความเค็ม เติมเต็มสุขภาพ · 21 Day Challenge</div>
@@ -732,7 +732,7 @@
 <div class="screen" id="screen-student">
   <div class="brandbar">
     <div class="brand-row">
-      <div class="brand-mark"><img src="logo.png" alt="Salt Smart"></div>
+      <div class="brand-mark"><img src="user-logo.png" alt="Salt Smart"></div>
       <div>
         <div class="brand-title">Salt Smart</div>
         <div class="brand-sub" id="studentBrandSub">เลือกชื่อของเรา</div>
@@ -790,6 +790,16 @@
     <!-- TAB: HOME (ย้ายมาจาก screen-home เดิม เพื่อรวมเป็นแท็บเดียวในระบบเดียวกับแท็บอื่น) -->
     <div class="tabpanel" id="tab-home">
       <div class="section-title" id="homeGreeting" style="font-size:16px; margin-top:0;">สวัสดี! 👋</div>
+      <div id="announceBanner" style="display:none; background:#FDF6DC; border:1.5px solid #E8C766; border-radius:14px; padding:12px 14px; margin-bottom:12px;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
+          <div>
+            <div style="font-family:'Kanit'; font-weight:700; font-size:13.5px; color:var(--deep-sea);">📢 <span id="announceBannerTitle"></span></div>
+            <div style="font-size:12.5px; color:#4c5c60; margin-top:3px; white-space:pre-wrap;" id="announceBannerMsg"></div>
+          </div>
+          <span style="cursor:pointer; font-size:16px; flex-shrink:0;" onclick="dismissAnnounceBanner()">✕</span>
+        </div>
+      </div>
+      <div style="text-align:right; margin:-6px 0 8px;"><span style="color:var(--lagoon); font-family:'Kanit'; font-weight:600; font-size:12px; cursor:pointer;" onclick="openAnnounceHistory()">📋 ดูประกาศทั้งหมด</span></div>
       <div class="stat-grid" style="grid-template-columns:repeat(3,1fr);">
         <div class="mini-stat"><div class="num" id="homeStreak">0</div><div class="lbl">วันต่อเนื่อง <img class="icon-inline" src="icon-streak.png" alt=""></div></div>
         <div class="mini-stat"><div class="num" id="homePoints">0</div><div class="lbl">คะแนนสะสม <img class="icon-inline" src="icon-score.png" alt=""></div></div>
@@ -1032,8 +1042,13 @@
 
     <!-- TAB: QUIZ -->
     <div class="tabpanel" id="tab-quiz">
+      <div class="card" id="quizBackfillPicker" style="display:none; background:var(--sand);">
+        <div style="font-family:'Kanit'; font-weight:700; font-size:14.5px; margin-bottom:8px;">📅 จะทำ Quiz ของวันไหน?</div>
+        <p style="color:#6b7c80; font-size:13px; margin-top:-4px;">ปกติทำ Quiz ของวันนี้ ถ้าพลาดวันก่อนหน้าที่เปิดให้ย้อนหลังได้ เลือกวันนั้นได้เลย</p>
+        <div class="chip-row" id="quizBackfillChips"></div>
+      </div>
       <div class="card" id="quizCard">
-        <h3 style="margin-top:0;">❓ Quiz ประจำวัน</h3>
+        <h3 style="margin-top:0;" id="quizCardTitle">❓ Quiz ประจำวัน</h3>
         <div id="quizBody"><div class="empty-note">กำลังโหลดคำถาม…</div></div>
       </div>
     </div>
@@ -1245,6 +1260,16 @@
           <span style="cursor:pointer; font-size:20px;" onclick="closeRewardHistory()">✕</span>
         </div>
         <div style="padding:8px 20px 20px; max-height:60vh; overflow-y:auto;" id="rwHistoryList"><div class="empty-note">กำลังโหลด…</div></div>
+      </div>
+    </div>
+
+    <div class="kcard-overlay" id="announceHistoryOverlay" style="display:none;" onclick="if(event.target===this) closeAnnounceHistory()">
+      <div class="kcard-box" style="max-width:360px;">
+        <div style="padding:18px 20px 8px; display:flex; align-items:center; justify-content:space-between;">
+          <h3 style="margin:0; font-family:'Kanit';">📢 ประกาศทั้งหมด</h3>
+          <span style="cursor:pointer; font-size:20px;" onclick="closeAnnounceHistory()">✕</span>
+        </div>
+        <div style="padding:8px 20px 20px; max-height:60vh; overflow-y:auto;" id="announceHistoryList"><div class="empty-note">กำลังโหลด…</div></div>
       </div>
     </div>
 
@@ -1794,7 +1819,7 @@ async function enterApp(){
 
     // โหลด "วันนี้" ก่อนเดี่ยวๆ เพราะ loadQuiz() ต้องใช้ข้อมูลจากตัวนี้ ส่วนที่เหลือไม่เกี่ยวกัน โหลดพร้อมกันได้ (เร็วขึ้นมาก + ลดช่วงเวลาที่จะค้าง)
     await withTimeout(loadTodayLog(), 15000, 'ข้อมูลวันนี้');
-    await withTimeout(Promise.all([loadQuiz(), loadMission(), loadLeaderboards(), loadAlbum()]), 15000, 'ข้อมูลแอป');
+    await withTimeout(Promise.all([loadQuiz(), loadMission(), loadLeaderboards(), loadAlbum(), loadAnnouncements()]), 15000, 'ข้อมูลแอป');
 
     renderStats();
     loadProgressTable();
@@ -2083,14 +2108,31 @@ async function loadTodayLog(){
 
 // วันที่ย้อนหลังได้: เฉพาะ "วันหยุด" ที่แอดมินกำหนดไว้ล่วงหน้าเท่านั้น (ไม่ใช่วันเรียนที่แค่ลืมบันทึก)
 // ย้อนได้ไม่เกิน 3 วันจากวันนี้ และต้องยังไม่ได้บันทึก ไม่รวมวันเมื่อวาน (recallDate) เพราะเป็นค่าเริ่มต้นอยู่แล้ว
+// ช่วงพิเศษเปิดโครงการ: ย้อนทำได้ถึงวันแรกของแคมเปญ ทั้งภารกิจ/Quiz/บันทึก ไม่ต้องรอครูตั้งวันหยุดทีละวัน
+// ปิดอัตโนมัติหลังวันที่กำหนด แล้วกลับไปใช้กติกาปกติ (เฉพาะวันหยุดที่ครูตั้งไว้) — ไม่ยุ่งกับกติกาเดิมเลย แค่เสริมชั่วคราว
+const LAUNCH_GRACE_PERIOD_END = '2026-08-17';
+function getLaunchGraceWindowDates(){
+  if(state.todaysDateStr > LAUNCH_GRACE_PERIOD_END) return [];
+  const start = state.campaign.startDate;
+  if(!start) return [];
+  const dates = [];
+  let d = start;
+  while(d < state.todaysDateStr){
+    dates.push(d);
+    d = addDays(d, 1);
+  }
+  return dates;
+}
+
 async function getBackfillableDates(){
   const holidays = state.campaign.holidays || [];
   const cutoff = addDays(state.todaysDateStr, -3);
-  const candidates = holidays.filter(d => d >= cutoff && d < state.todaysDateStr && d !== state.recallDate);
+  const holidayDates = holidays.filter(d => d >= cutoff && d < state.todaysDateStr && d !== state.recallDate);
+  const graceDates = getLaunchGraceWindowDates().filter(d => d !== state.recallDate);
+  const candidates = [...new Set([...holidayDates, ...graceDates])].sort();
   if(candidates.length===0) return [];
-  const sorted = candidates.sort();
-  const snaps = await Promise.all(sorted.map(d => db.collection('dailyLogs').doc(docIdFor(d)).get()));
-  return sorted.filter((d,i) => !(snaps[i].exists && snaps[i].data().submitted));
+  const snaps = await Promise.all(candidates.map(d => db.collection('dailyLogs').doc(docIdFor(d)).get()));
+  return candidates.filter((d,i) => !(snaps[i].exists && snaps[i].data().submitted));
 }
 
 async function renderBackfillChips(){
@@ -2709,11 +2751,12 @@ function dayNumberForDate(dateStr){
 async function getMissionBackfillableDates(){
   const holidays = state.campaign.holidays || [];
   const cutoff = addDays(state.todaysDateStr, -3);
-  const candidates = holidays.filter(d => d >= cutoff && d < state.todaysDateStr);
+  const holidayDates = holidays.filter(d => d >= cutoff && d < state.todaysDateStr);
+  const graceDates = getLaunchGraceWindowDates();
+  const candidates = [...new Set([...holidayDates, ...graceDates])].sort();
   if(candidates.length===0) return [];
-  const sorted = candidates.sort();
-  const snaps = await Promise.all(sorted.map(d => db.collection('missionSubmissions').doc(state.selectedStudent.id + '_' + d).get()));
-  return sorted.filter((d,i) => !snaps[i].exists);
+  const snaps = await Promise.all(candidates.map(d => db.collection('missionSubmissions').doc(state.selectedStudent.id + '_' + d).get()));
+  return candidates.filter((d,i) => !snaps[i].exists);
 }
 
 async function renderMissionBackfillChips(){
@@ -2857,11 +2900,24 @@ async function submitMission(){
 }
 
 async function loadQuiz(){
-  if(state.todayLog && state.todayLog.quizAnswers && state.todayLog.quizAnswers.length>0){
-    state.quizAnswers = state.todayLog.quizAnswers;
+  if(!state.quizTargetDate) state.quizTargetDate = state.todaysDateStr;
+  const targetDate = state.quizTargetDate;
+  document.getElementById('quizCardTitle').textContent =
+    targetDate===state.todaysDateStr ? '❓ Quiz ประจำวัน' : '❓ Quiz ย้อนหลัง: ' + dayLabelThai(targetDate);
+
+  let data;
+  if(targetDate === state.todaysDateStr && state.todayLog){
+    data = state.todayLog; // ใช้ข้อมูลที่โหลดไว้แล้วจาก loadTodayLog() กันยิง query ซ้ำในเคสปกติ (ทำของวันนี้ ซึ่งเป็นกรณีส่วนใหญ่)
+  } else {
+    const docSnap = await db.collection('dailyLogs').doc(docIdFor(targetDate)).get();
+    data = docSnap.exists ? docSnap.data() : {};
+  }
+  if(data.quizAnswers && data.quizAnswers.length>0){
+    state.quizAnswers = data.quizAnswers;
     state.quizFinished = true;
-    state.todaysQuiz = state.todayLog.quizQuestions || [];
+    state.todaysQuiz = data.quizQuestions || [];
     renderQuizDone();
+    await renderQuizBackfillChips();
     return;
   }
   const bankSnap = await db.collection('quizBank').where('active','==',true).get();
@@ -2870,11 +2926,38 @@ async function loadQuiz(){
     document.getElementById('quizBody').innerHTML = '<div class="empty-note">ยังไม่มีคำถามในคลัง กรุณารอครูเพิ่มคำถาม</div>';
     return;
   }
-  const seed = seedFromString(state.selectedStudent.id + state.todaysDateStr);
+  const seed = seedFromString(state.selectedStudent.id + targetDate);
   const picked = seededShuffle(bank, seed).slice(0,3);
   state.todaysQuiz = picked;
   state.quizIndex = 0; state.quizAnswers=[]; state.quizFinished=false;
   renderQuizQuestion();
+  await renderQuizBackfillChips();
+}
+
+// วันย้อนหลังที่ทำ Quiz ได้ (วันหยุดที่ครูเปิด + ช่วงพิเศษเปิดโครงการถ้ายังไม่หมดอายุ) — ยังไม่เคยทำ Quiz ของวันนั้นเท่านั้นถึงจะเลือกได้
+async function getQuizBackfillableDates(){
+  const holidays = state.campaign.holidays || [];
+  const cutoff = addDays(state.todaysDateStr, -3);
+  const holidayDates = holidays.filter(d => d >= cutoff && d < state.todaysDateStr);
+  const graceDates = getLaunchGraceWindowDates();
+  const candidates = [...new Set([...holidayDates, ...graceDates])].sort();
+  if(candidates.length===0) return [];
+  const snaps = await Promise.all(candidates.map(d => db.collection('dailyLogs').doc(docIdFor(d)).get()));
+  return candidates.filter((d,i) => !(snaps[i].exists && snaps[i].data().quizAnswers && snaps[i].data().quizAnswers.length>0));
+}
+
+async function renderQuizBackfillChips(){
+  const picker = document.getElementById('quizBackfillPicker');
+  const chipsEl = document.getElementById('quizBackfillChips');
+  const missed = await getQuizBackfillableDates();
+  picker.style.display = missed.length>0 ? 'block' : 'none';
+  const todayChip = `<div class="chip ${state.quizTargetDate===state.todaysDateStr?'active':''}" onclick="selectQuizDate('${state.todaysDateStr}')">วันนี้ (${dayLabelThai(state.todaysDateStr)})</div>`;
+  const missedChips = missed.map(d => `<div class="chip ${state.quizTargetDate===d?'active':''}" onclick="selectQuizDate('${d}')">${dayLabelThai(d)}</div>`).join('');
+  chipsEl.innerHTML = todayChip + missedChips;
+}
+function selectQuizDate(dateStr){
+  state.quizTargetDate = dateStr;
+  loadQuiz();
 }
 
 function renderQuizQuestion(){
@@ -2927,19 +3010,23 @@ async function finishQuiz(){
   state.quizFinished = true;
   const correctCount = state.quizAnswers.filter(a=>a.correct).length;
   const points = correctCount * 5;
-  await db.collection('dailyLogs').doc(logDocId()).set({
+  const targetDate = state.quizTargetDate || state.todaysDateStr;
+  await db.collection('dailyLogs').doc(docIdFor(targetDate)).set({
     studentId: state.selectedStudent.id,
     classId: state.selectedClassId,
-    date: state.todaysDateStr,
-    dayNumber: state.dayNumber,
+    date: targetDate,
+    dayNumber: dayNumberForDate(targetDate),
     quizAnswers: state.quizAnswers,
     quizQuestions: state.todaysQuiz,
     quizScore: correctCount
   }, {merge:true});
   await addPoints(points, 'quiz');
   renderQuizDone();
-  refreshMissionHub(); refreshHomeTab(); // อัปเดตสถานะ Quiz ในแท็บฮับภารกิจ+Home ทันทีหลังทำเสร็จ
-  checkAndGrantDailyCard(); // เช็คว่าครบ 3 กิจกรรมของวันนี้หรือยัง (ภารกิจ+Quiz+บันทึก) ถึงจะปลดล็อกการ์ด
+  if(targetDate === state.todaysDateStr){
+    refreshMissionHub(); refreshHomeTab(); // อัปเดตสถานะ Quiz ในแท็บฮับภารกิจ+Home ทันทีหลังทำเสร็จ (เฉพาะตอนทำของวันนี้ ย้อนหลังไม่กระทบสถานะวันนี้)
+    checkAndGrantDailyCard(); // เช็คว่าครบ 3 กิจกรรมของวันนี้หรือยัง (ภารกิจ+Quiz+บันทึก) ถึงจะปลดล็อกการ์ด
+  }
+  await renderQuizBackfillChips();
 }
 
 function renderQuizDone(){
@@ -3176,12 +3263,17 @@ async function checkAndGrantDailyCard(){
   // ซึ่งค่า default คือ state.recallDate (เมื่อวาน) — เป็นคนละเอกสารกับ "วันนี้" เกือบตลอดเวลา ทำให้ logDone เป็น false เสมอ การ์ดเลยไม่เคยออก
   // แก้โดยอ่านจาก state.targetLog (in-memory) แทน ซึ่งอัปเดตถูกต้องอยู่แล้วไม่ว่าจะบันทึกของวันไหน (ใช้ pattern เดียวกับ refreshMissionHub/refreshHomeTab)
   const logDone = !!(state.targetLog && state.targetLog.submitted);
-  const quizDone = !!state.quizFinished;
-  if(!(logDone && quizDone)) return; // เช็คเร็วๆ ก่อน กันยิง query มิชชั่นถ้ายังไม่ครบ 2 อย่างแรก
+  if(!logDone) return; // เช็คเร็วๆ ก่อน กันยิง query ถ้ายังไม่บันทึก
 
   const todayLogRef = db.collection('dailyLogs').doc(logDocId()); // flag กันซ้ำยังเก็บที่ doc ของ "วันนี้" เสมอ (คนละเรื่องกับตัว log ที่อาจบันทึกไว้คนละวัน)
   const todaySnap = await todayLogRef.get();
-  if(todaySnap.exists && todaySnap.data().dailyCardGranted) return; // ให้ไปแล้ววันนี้ กันซ้ำ
+  const todayData = todaySnap.exists ? todaySnap.data() : {};
+  if(todayData.dailyCardGranted) return; // ให้ไปแล้ววันนี้ กันซ้ำ
+
+  // เช็ค Quiz จาก doc ของ "วันนี้" ตรงๆ (ไม่ใช้ state.quizFinished เพราะตอนนี้มี Quiz ย้อนหลังแล้ว
+  // ถ้าเพิ่งทำ Quiz ของวันอื่น state.quizFinished จะเป็น true ทั้งที่ Quiz ของวันนี้อาจยังไม่ได้ทำ)
+  const quizDone = !!(todayData.quizAnswers && todayData.quizAnswers.length > 0);
+  if(!quizDone) return;
 
   const missionSnap = await db.collection('missionSubmissions').doc(state.selectedStudent.id + '_' + state.todaysDateStr).get();
   const missionStatus = missionSnap.exists ? missionSnap.data().status : null;
@@ -3493,6 +3585,48 @@ async function openRewardHistory(){
 }
 function closeRewardHistory(){
   document.getElementById('rwHistoryOverlay').style.display = 'none';
+}
+
+/* ---- ประกาศจากครู — แบนเนอร์อันล่าสุดที่ยังไม่เคยเห็น + ดูย้อนหลังทั้งหมดได้ ---- */
+async function loadAnnouncements(){
+  try{
+    const snap = await db.collection('announcements').orderBy('createdAt','desc').limit(20).get();
+    state.announcementsCache = snap.docs.map(d=>({id:d.id, ...d.data()}));
+    if(state.announcementsCache.length===0) return;
+    const newest = state.announcementsCache[0];
+    if(!newest.createdAt) return; // เพิ่งโพสต์ serverTimestamp ยังไม่ resolve ข้ามไปก่อน รอบหน้าค่อยเจอ
+    const newestTime = newest.createdAt.toMillis ? newest.createdAt.toMillis() : new Date(newest.createdAt).getTime();
+    const lastSeen = state.selectedStudent.lastSeenAnnouncementAt || 0;
+    if(newestTime > lastSeen){
+      document.getElementById('announceBannerTitle').textContent = newest.title;
+      document.getElementById('announceBannerMsg').textContent = newest.message;
+      document.getElementById('announceBanner').style.display = 'block';
+      state.currentBannerAnnouncementTime = newestTime;
+    }
+  }catch(e){ console.error('loadAnnouncements error:', e); }
+}
+async function dismissAnnounceBanner(){
+  document.getElementById('announceBanner').style.display = 'none';
+  const t = state.currentBannerAnnouncementTime || Date.now();
+  state.selectedStudent.lastSeenAnnouncementAt = t;
+  try{ await db.collection('students').doc(state.selectedStudent.id).update({ lastSeenAnnouncementAt: t }); }catch(e){ console.error(e); }
+}
+function openAnnounceHistory(){
+  document.getElementById('announceHistoryOverlay').style.display = 'flex';
+  const listEl = document.getElementById('announceHistoryList');
+  const items = state.announcementsCache || [];
+  listEl.innerHTML = items.length>0
+    ? items.map(a=>{
+        const dateStr = a.createdAt ? (a.createdAt.toDate ? a.createdAt.toDate() : new Date(a.createdAt)).toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'numeric'}) : '';
+        return `<div class="rw-history-item" style="display:block;">
+          <div class="rw-history-name">📢 ${a.title} <span style="color:#9aa8ab; font-weight:400; font-size:11px;">· ${dateStr}</span></div>
+          <div style="font-size:12.5px; color:#4c5c60; margin-top:3px; white-space:pre-wrap;">${a.message}</div>
+        </div>`;
+      }).join('')
+    : '<div class="empty-note">ยังไม่มีประกาศ</div>';
+}
+function closeAnnounceHistory(){
+  document.getElementById('announceHistoryOverlay').style.display = 'none';
 }
 
 /* ---- กราฟแนวโน้มโซเดียมรายวัน (SVG ธรรมดา ไม่ใช้ library ภายนอก) ---- */
