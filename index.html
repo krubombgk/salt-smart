@@ -2925,7 +2925,7 @@ async function submitMission(){
 
 async function loadQuiz(){
   if(!state.quizTargetDate) state.quizTargetDate = state.todaysDateStr;
-  const targetDate = state.quizTargetDate;
+  const targetDate = state.quizTargetDate; // ผูกไว้กับตัวแปรนี้ตลอดฟังก์ชัน เทียบกับ state.quizTargetDate ตอนจบ await แต่ละจุด กันผลลัพธ์เก่าทับของใหม่เวลาสลับวันเร็วๆ (race condition)
   document.getElementById('quizCardTitle').textContent =
     targetDate===state.todaysDateStr ? '❓ Quiz ประจำวัน' : '❓ Quiz ย้อนหลัง: ' + dayLabelThai(targetDate);
 
@@ -2936,15 +2936,36 @@ async function loadQuiz(){
     const docSnap = await db.collection('dailyLogs').doc(docIdFor(targetDate)).get();
     data = docSnap.exists ? docSnap.data() : {};
   }
-  if(data.quizAnswers && data.quizAnswers.length>0){
-    state.quizAnswers = data.quizAnswers;
+  if(state.quizTargetDate !== targetDate) return; // ผู้ใช้สลับไปดูวันอื่นระหว่างรอโหลดแล้ว ทิ้งผลลัพธ์นี้ไปเลย ไม่ต้อง render ทับของใหม่
+
+  const savedQuestions = data.quizQuestions || [];
+  const savedAnswers = data.quizAnswers || [];
+
+  if(savedQuestions.length>0 && savedAnswers.length >= savedQuestions.length){
+    // ตอบครบทุกข้อแล้วจริงๆ → โชว์หน้าผลคะแนน
+    state.quizAnswers = savedAnswers;
     state.quizFinished = true;
-    state.todaysQuiz = data.quizQuestions || [];
+    state.todaysQuiz = savedQuestions;
     renderQuizDone();
     await renderQuizBackfillChips();
     return;
   }
+
+  if(savedQuestions.length>0 && savedAnswers.length>0){
+    // ทำค้างไว้กลางคัน (ตอบไปบางข้อ ยังไม่ครบ) → resume ต่อจากข้อถัดไปด้วยชุดคำถามเดิม
+    // ห้ามเริ่มที่ข้อ 1 ใหม่ด้วยชุดคำถามเดิม เพราะจะเปิดช่องให้แกล้งตอบผิดดูเฉลยแล้วออกไปเริ่มใหม่เอาคะแนนเต็มได้
+    state.todaysQuiz = savedQuestions;
+    state.quizAnswers = savedAnswers;
+    state.quizIndex = savedAnswers.length;
+    state.quizFinished = false;
+    renderQuizQuestion();
+    await renderQuizBackfillChips();
+    return;
+  }
+
+  // ยังไม่เคยเริ่มทำเลย → สุ่มชุดคำถามใหม่ตามปกติ
   const bankSnap = await db.collection('quizBank').where('active','==',true).get();
+  if(state.quizTargetDate !== targetDate) return; // เช็คซ้ำอีกจุด เผื่อสลับวันระหว่างโหลดคลังคำถาม
   const bank = bankSnap.docs.map(d=>({id:d.id, ...d.data()}));
   if(bank.length===0){
     document.getElementById('quizBody').innerHTML = '<div class="empty-note">ยังไม่มีคำถามในคลัง กรุณารอครูเพิ่มคำถาม</div>';
@@ -3006,7 +3027,7 @@ function renderQuizQuestion(){
   document.getElementById('quizBody').innerHTML = html;
 }
 
-function answerQuiz(idx){
+async function answerQuiz(idx){
   const q = state.todaysQuiz[state.quizIndex];
   const correct = idx===q.correctIndex;
   document.querySelectorAll('.choice').forEach((b,i)=>{
@@ -3015,6 +3036,20 @@ function answerQuiz(idx){
     else if(i===idx) b.classList.add('wrong');
   });
   state.quizAnswers.push({questionId:q.id, selectedIndex:idx, correct});
+
+  // บันทึกความคืบหน้าลง Firestore ทันทีทุกข้อ (ไม่รอให้ครบ 3 ข้อ) — กันช่องโหว่: ตอบมั่ว ดูเฉลย แล้วสลับหน้าหนีก่อนจบ
+  // พอกลับมาจะได้ resume ต่อจากข้อถัดไปด้วยชุดคำถามเดิม ไม่ใช่เริ่มข้อ 1 ใหม่ (ซึ่งจะทำให้รู้เฉลยล่วงหน้าแล้วได้เต็มทุกครั้ง)
+  const targetDate = state.quizTargetDate || state.todaysDateStr;
+  try{
+    await db.collection('dailyLogs').doc(docIdFor(targetDate)).set({
+      studentId: state.selectedStudent.id,
+      classId: state.selectedClassId,
+      date: targetDate,
+      dayNumber: dayNumberForDate(targetDate),
+      quizAnswers: state.quizAnswers,
+      quizQuestions: state.todaysQuiz
+    }, {merge:true});
+  }catch(e){ console.error('answerQuiz progress save error:', e); }
 
   // โชว์คำอธิบายค้างไว้ ให้เวลานักเรียนอ่านก่อน ไม่เลื่อนข้อถัดไปอัตโนมัติ ต้องกดปุ่ม "ถัดไป" เอง
   const resultLine = correct ? '✅ ถูกต้อง!' : `❌ ยังไม่ถูก คำตอบที่ถูกคือ "${q.choices[q.correctIndex]}"`;
@@ -3060,6 +3095,7 @@ async function finishQuiz(){
     checkAndGrantDailyCard(); // เช็คว่าครบ 3 กิจกรรมของวันนี้หรือยัง (ภารกิจ+Quiz+บันทึก) ถึงจะปลดล็อกการ์ด
   }
   await renderQuizBackfillChips();
+  loadProgressTable(); // อัปเดตแท็บ "ความก้าวหน้า" ให้ตรงทันที กันต้อง refresh หน้าถึงจะเห็นผล Quiz ที่เพิ่งทำ (ฟังก์ชันนี้เรียก renderStats() ในตัวอยู่แล้ว)
 }
 
 function renderQuizDone(){
@@ -3283,7 +3319,7 @@ async function submitDailyLog(){
   state.targetLog.submitted = true;
   applyLogLockState();
   showToast(targetDate===state.recallDate ? `เยี่ยม! ได้ ${points} คะแนน 🎉` : `บันทึกย้อนหลังสำเร็จ! ได้ ${points} คะแนน 🎉`);
-  renderStats();
+  loadProgressTable(); // อัปเดตแท็บ "ความก้าวหน้า" ให้ตรงทันที กันต้อง refresh หน้าถึงจะเห็นผลบันทึกที่เพิ่งทำ (ฟังก์ชันนี้เรียก renderStats() ในตัวอยู่แล้ว)
   await renderBackfillChips();
   refreshMissionHub(); refreshHomeTab(); // อัปเดตสถานะบันทึกวันนี้ในแท็บฮับภารกิจ+Home ทันทีหลังบันทึกสำเร็จ
   checkAndGrantDailyCard(); // เปลี่ยนจากเดิม (บันทึกอย่างเดียวก็ได้การ์ด) เป็นต้องครบ 3 กิจกรรมของวันนี้ก่อน
@@ -4123,6 +4159,7 @@ function startMissionStatusListener(dateStr){
     if(dateStr === state.todaysDateStr){
       state.todaysMissionStatus = newStatus; // อัปเดตตัวแปรกลางเฉพาะตอนวันที่ฟังคือ "วันนี้" เท่านั้น (กันบั๊กสถานะปนกันแบบเดิม)
       refreshMissionHub(); refreshHomeTab(); checkAndGrantDailyCard();
+      loadProgressTable(); // อัปเดตแท็บ "ความก้าวหน้า" ด้วย เผื่อครูเพิ่งตรวจภารกิจผ่าน/ไม่ผ่าน ระหว่างที่ยังเปิดแอปอยู่
     }
     if(state.todaysMission) renderMissionUI(state.todaysMission, sub); // re-render ฟอร์ม/ป้ายสถานะที่กำลังดูอยู่ให้ตรงทันที ไม่ต้อง fetch มิชชั่นใหม่เพราะเนื้อหาไม่เปลี่ยน
     // แจ้งเตือนเฉพาะตอนสถานะเปลี่ยนจริงๆ (ไม่ใช่ครั้งแรกที่เริ่มฟัง ซึ่งเป็นแค่ค่าปัจจุบัน ไม่ใช่การเปลี่ยนแปลง)
