@@ -2146,10 +2146,11 @@ async function getBackfillableDates(){
   const cutoff = addDays(state.todaysDateStr, -3);
   const holidayDates = holidays.filter(d => d >= cutoff && d < state.todaysDateStr && d !== state.recallDate);
   const graceDates = getLaunchGraceWindowDates().filter(d => d !== state.recallDate);
+  const graceSet = new Set(graceDates);
   const candidates = [...new Set([...holidayDates, ...graceDates])].sort();
   if(candidates.length===0) return [];
   const snaps = await Promise.all(candidates.map(d => db.collection('dailyLogs').doc(docIdFor(d)).get()));
-  return candidates.filter((d,i) => !(snaps[i].exists && snaps[i].data().submitted));
+  return candidates.filter((d,i) => !(snaps[i].exists && snaps[i].data().submitted)).map(d => ({date:d, isGrace: graceSet.has(d)}));
 }
 
 async function renderBackfillChips(){
@@ -2158,7 +2159,7 @@ async function renderBackfillChips(){
   const missed = await getBackfillableDates();
   const recallChip = `<div class="chip ${state.targetDate===state.recallDate?'active':''}" onclick="selectLogDate('${state.recallDate}')">เมื่อวาน (${dayLabelThai(state.recallDate)})</div>`;
   const todayChip = `<div class="chip ${state.targetDate===state.todaysDateStr?'active':''}" onclick="selectLogDate('${state.todaysDateStr}')">วันนี้ (${dayLabelThai(state.todaysDateStr)})</div>`;
-  const missedChips = missed.map(d => `<div class="chip ${state.targetDate===d?'active':''}" onclick="selectLogDate('${d}')">วันหยุด: ${dayLabelThai(d)}</div>`).join('');
+  const missedChips = missed.map(m => `<div class="chip ${state.targetDate===m.date?'active':''}" onclick="selectLogDate('${m.date}')">${m.isGrace?'ช่วงเปิดโครงการ':'วันหยุด'}: ${dayLabelThai(m.date)}</div>`).join('');
   chipsEl.innerHTML = recallChip + todayChip + missedChips;
 }
 
@@ -2770,10 +2771,11 @@ async function getMissionBackfillableDates(){
   const cutoff = addDays(state.todaysDateStr, -3);
   const holidayDates = holidays.filter(d => d >= cutoff && d < state.todaysDateStr);
   const graceDates = getLaunchGraceWindowDates();
+  const graceSet = new Set(graceDates);
   const candidates = [...new Set([...holidayDates, ...graceDates])].sort();
   if(candidates.length===0) return [];
   const snaps = await Promise.all(candidates.map(d => db.collection('missionSubmissions').doc(state.selectedStudent.id + '_' + d).get()));
-  return candidates.filter((d,i) => !snaps[i].exists);
+  return candidates.filter((d,i) => !snaps[i].exists).map(d => ({date:d, isGrace: graceSet.has(d)}));
 }
 
 async function renderMissionBackfillChips(){
@@ -2782,7 +2784,7 @@ async function renderMissionBackfillChips(){
   const missed = await getMissionBackfillableDates();
   picker.style.display = missed.length>0 ? 'block' : 'none'; // ต่างจากบันทึกวันนี้: โชว์เฉพาะตอนมีวันหยุดให้ทำย้อนหลังจริง กันรกจอตอนไม่มีอะไรให้เลือก
   const todayChip = `<div class="chip ${state.missionTargetDate===state.todaysDateStr?'active':''}" onclick="loadMissionForDate('${state.todaysDateStr}')">วันนี้ (${dayLabelThai(state.todaysDateStr)})</div>`;
-  const missedChips = missed.map(d => `<div class="chip ${state.missionTargetDate===d?'active':''}" onclick="loadMissionForDate('${d}')">วันหยุด: ${dayLabelThai(d)}</div>`).join('');
+  const missedChips = missed.map(m => `<div class="chip ${state.missionTargetDate===m.date?'active':''}" onclick="loadMissionForDate('${m.date}')">${m.isGrace?'ช่วงเปิดโครงการ':'วันหยุด'}: ${dayLabelThai(m.date)}</div>`).join('');
   chipsEl.innerHTML = todayChip + missedChips;
 }
 
@@ -2957,10 +2959,11 @@ async function getQuizBackfillableDates(){
   const cutoff = addDays(state.todaysDateStr, -3);
   const holidayDates = holidays.filter(d => d >= cutoff && d < state.todaysDateStr);
   const graceDates = getLaunchGraceWindowDates();
+  const graceSet = new Set(graceDates);
   const candidates = [...new Set([...holidayDates, ...graceDates])].sort();
   if(candidates.length===0) return [];
   const snaps = await Promise.all(candidates.map(d => db.collection('dailyLogs').doc(docIdFor(d)).get()));
-  return candidates.filter((d,i) => !(snaps[i].exists && snaps[i].data().quizAnswers && snaps[i].data().quizAnswers.length>0));
+  return candidates.filter((d,i) => !(snaps[i].exists && snaps[i].data().quizAnswers && snaps[i].data().quizAnswers.length>0)).map(d => ({date:d, isGrace: graceSet.has(d)}));
 }
 
 async function renderQuizBackfillChips(){
@@ -2969,7 +2972,7 @@ async function renderQuizBackfillChips(){
   const missed = await getQuizBackfillableDates();
   picker.style.display = missed.length>0 ? 'block' : 'none';
   const todayChip = `<div class="chip ${state.quizTargetDate===state.todaysDateStr?'active':''}" onclick="selectQuizDate('${state.todaysDateStr}')">วันนี้ (${dayLabelThai(state.todaysDateStr)})</div>`;
-  const missedChips = missed.map(d => `<div class="chip ${state.quizTargetDate===d?'active':''}" onclick="selectQuizDate('${d}')">${dayLabelThai(d)}</div>`).join('');
+  const missedChips = missed.map(m => `<div class="chip ${state.quizTargetDate===m.date?'active':''}" onclick="selectQuizDate('${m.date}')">${m.isGrace?'ช่วงเปิดโครงการ':'วันหยุด'}: ${dayLabelThai(m.date)}</div>`).join('');
   chipsEl.innerHTML = todayChip + missedChips;
 }
 function selectQuizDate(dateStr){
