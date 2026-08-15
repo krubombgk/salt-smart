@@ -1843,7 +1843,6 @@ async function enterApp(){
     hideLoadingOverlay();
     saveSession();
     startIdleTimer();
-    startMissionStatusListener();
   }catch(e){
     console.error('enterApp error:', e);
     hideLoadingOverlay();
@@ -2812,10 +2811,16 @@ async function loadMission(){
 
     const subSnap = await db.collection('missionSubmissions').doc(state.selectedStudent.id + '_' + state.missionTargetDate).get();
     const sub = subSnap.exists ? subSnap.data() : null;
-    state.todaysMissionStatus = sub ? sub.status : 'not_submitted';
+    const viewedStatus = sub ? sub.status : 'not_submitted';
+    // อัปเดตตัวแปรกลาง state.todaysMissionStatus เฉพาะตอนดู "วันนี้" เท่านั้น — บั๊กเดิมคือเขียนทับตัวแปรนี้เสมอ
+    // ไม่ว่าจะกำลังดูภารกิจของวันไหน ทำให้สถานะของ "วันนี้" ที่โชว์ในหน้า Home/ฮับภารกิจเพี้ยนไปตามวันที่ backfill ที่เพิ่งเปิดดู
+    if(state.missionTargetDate === state.todaysDateStr){
+      state.todaysMissionStatus = viewedStatus;
+    }
     renderMissionUI(mission, sub);
     if(state.missionTargetDate === state.todaysDateStr){ refreshMissionHub(); refreshHomeTab(); } // อัปเดตสถานะย่อในแท็บฮับภารกิจ+Home เฉพาะตอนดูของวันนี้ (ย้อนหลังไม่กระทบสถานะวันนี้)
     await renderMissionBackfillChips();
+    startMissionStatusListener(state.missionTargetDate); // ฟัง realtime ของวันที่กำลังดูอยู่เสมอ (ครูตรวจปุ๊บเห็นทันที ไม่ว่าจะเป็นวันนี้หรือวันที่ backfill)
   }catch(e){
     console.error(e);
     bodyEl.innerHTML = '<div class="empty-note">โหลดภารกิจไม่สำเร็จ</div>';
@@ -3040,6 +3045,14 @@ async function finishQuiz(){
     quizQuestions: state.todaysQuiz,
     quizScore: correctCount
   }, {merge:true});
+  // อัปเดต cache ในเครื่อง (state.todayLog) ให้ตรงด้วย — บั๊กเดิม: loadQuiz() ใช้ state.todayLog เป็น cache ตอนดู "วันนี้"
+  // แต่ไม่เคยอัปเดตหลังทำ Quiz เสร็จ พอกลับมาเลือก "วันนี้" ซ้ำ เลยอ่านค่าเก่าที่ยังไม่มีคำตอบ ต้อง refresh ถึงจะหาย
+  if(targetDate === state.todaysDateStr){
+    state.todayLog = state.todayLog || {};
+    state.todayLog.quizAnswers = state.quizAnswers;
+    state.todayLog.quizQuestions = state.todaysQuiz;
+    state.todayLog.quizScore = correctCount;
+  }
   await addPoints(points, 'quiz');
   renderQuizDone();
   if(targetDate === state.todaysDateStr){
@@ -3395,48 +3408,62 @@ async function addPoints(points, category){
   document.getElementById('hbPoints').textContent = state.selectedStudent.totalPoints;
 }
 
+// คำนวณ streak ใหม่จากประวัติการบันทึกทั้งหมด (แทนการเทียบแค่ "วันล่าสุดเดิม") กันปัญหาบันทึกย้อนหลังข้ามลำดับแล้ว streak ไม่ขยับ
+// โบนัสหลักไมล์ (3/7/14/21 วัน) เปลี่ยนมาเช็คจาก list "เคยได้ไปหรือยัง" กันได้ซ้ำตอน streak กระโดดข้ามหลายหลักไมล์พร้อมกันจากการ backfill
 async function updateStreakAndPoints(points, targetDate){
   const ref = db.collection('students').doc(state.selectedStudent.id);
-  const expectedPrev = addDays(targetDate, -1);
+
+  // ดึงบันทึกทั้งหมดที่ "บันทึกสำเร็จแล้ว" ของนักเรียนคนนี้ มาคำนวณ streak ใหม่จากศูนย์
+  const snap = await db.collection('dailyLogs').where('studentId','==', state.selectedStudent.id).get();
+  const submittedDates = snap.docs
+    .map(d=>d.data())
+    .filter(d=>d.submitted && d.date)
+    .map(d=>d.date)
+    .sort();
+
+  let currentStreak = 0, longestStreak = 0;
+  if(submittedDates.length > 0){
+    let run = 1, longest = 1;
+    for(let i=1;i<submittedDates.length;i++){
+      run = (addDays(submittedDates[i-1],1) === submittedDates[i]) ? run+1 : 1;
+      longest = Math.max(longest, run);
+    }
+    currentStreak = run; // ต่อเนื่องจากวันที่บันทึกล่าสุดในประวัติย้อนกลับไป (ไม่สนว่าบันทึกตามลำดับปฏิทินจริงหรือ backfill ทีหลัง)
+    longestStreak = Math.max(longest, currentStreak);
+  }
+  const daysCompleted = submittedDates.length;
+
   const milestones = [3, 7, Math.min(14, state.totalDays-1), state.totalDays];
   await db.runTransaction(async (tx)=>{
     const doc = await tx.get(ref);
     const cur = doc.data();
-    const last = cur.lastCheckinDate || '';
-    let streak = cur.currentStreak || 0;
-    let newLast = last;
-    let advances = false;
-
-    if(targetDate > last){
-      advances = true;
-      streak = (last===expectedPrev) ? streak+1 : 1;
-      newLast = targetDate;
-    }
-    // ถ้า targetDate เก่ากว่าหรือเท่ากับวันที่บันทึกล่าสุดที่มีอยู่แล้ว (กรอกย้อนหลังข้ามลำดับ)
-    // จะยังนับคะแนน/จำนวนวันที่ทำสำเร็จให้ แต่จะไม่แก้ไข streak/lastCheckinDate ย้อนหลัง
-
+    const awarded = cur.streakMilestonesAwarded || [];
     let bonus = 0;
-    if(advances){
-      if(streak===milestones[0]) bonus=5;
-      else if(streak===milestones[1]) bonus=10;
-      else if(streak===milestones[2]) bonus=20;
-      else if(streak>=milestones[3]) bonus=30;
-    }
+    const newlyAwarded = [];
+    milestones.forEach(m=>{
+      if(longestStreak >= m && !awarded.includes(m)){
+        if(m===milestones[0]) bonus += 5;
+        else if(m===milestones[1]) bonus += 10;
+        else if(m===milestones[2]) bonus += 20;
+        else if(m===milestones[3]) bonus += 30;
+        newlyAwarded.push(m);
+      }
+    });
 
     const totalPts = (cur.totalPoints||0) + points + bonus;
-    const daysCompleted = (cur.daysCompleted||0) + 1;
-    const longest = Math.max(cur.longestStreak||0, streak);
     const catTotal = (cur.pointsByCategory && cur.pointsByCategory.dailyLog || 0) + points + bonus;
 
     tx.update(ref, {
-      currentStreak: streak, longestStreak: longest, totalPoints: totalPts,
-      lastCheckinDate: newLast, daysCompleted: daysCompleted,
+      currentStreak, longestStreak, totalPoints: totalPts,
+      lastCheckinDate: submittedDates[submittedDates.length-1] || '',
+      daysCompleted, streakMilestonesAwarded: [...awarded, ...newlyAwarded],
       'pointsByCategory.dailyLog': catTotal
     });
-    state.selectedStudent.currentStreak = streak;
+    state.selectedStudent.currentStreak = currentStreak;
+    state.selectedStudent.longestStreak = longestStreak;
     state.selectedStudent.totalPoints = totalPts;
     state.selectedStudent.daysCompleted = daysCompleted;
-    state.selectedStudent.longestStreak = longest;
+    state.selectedStudent.streakMilestonesAwarded = [...awarded, ...newlyAwarded];
     state.selectedStudent.pointsByCategory = state.selectedStudent.pointsByCategory || {};
     state.selectedStudent.pointsByCategory.dailyLog = catTotal;
   });
@@ -4077,28 +4104,39 @@ function stopIdleTimer(){
   if(idleCheckHandle){ clearInterval(idleCheckHandle); idleCheckHandle = null; }
 }
 
-/* ---- Realtime: สถานะภารกิจของวันนี้ — ครูตรวจปุ๊บ นักเรียนเห็นทันทีไม่ต้อง login ใหม่ ---- */
+/* ---- Realtime: สถานะภารกิจ — ฟังของ "วันที่กำลังดูอยู่" เสมอ (ไม่ใช่แค่วันนี้) ครูตรวจปุ๊บเห็นทันทีไม่ต้อง refresh
+   ไม่ว่าจะเป็นภารกิจวันนี้หรือภารกิจย้อนหลังที่เปิดผ่าน backfill ก็ตาม ---- */
 let missionStatusUnsubscribe = null;
-function startMissionStatusListener(){
+let missionStatusListenerDate = null;
+function startMissionStatusListener(dateStr){
+  if(missionStatusListenerDate === dateStr && missionStatusUnsubscribe) return; // ฟังวันเดียวกันอยู่แล้ว ไม่ต้อง resubscribe ซ้ำ
   stopMissionStatusListener();
-  const missionLabels = {pending:'⏳ ส่งแล้ว รอตรวจ', approved:'✅ ผ่านแล้ว', rejected:'⚠️ ต้องแก้ไข/ส่งใหม่'};
+  missionStatusListenerDate = dateStr;
   let isFirstSnapshot = true;
-  const docId = state.selectedStudent.id + '_' + state.todaysDateStr;
+  let lastKnownStatus = null;
+  const docId = state.selectedStudent.id + '_' + dateStr;
   missionStatusUnsubscribe = db.collection('missionSubmissions').doc(docId).onSnapshot(doc => {
-    const newStatus = doc.exists ? doc.data().status : 'not_submitted';
-    const oldStatus = state.todaysMissionStatus;
-    state.todaysMissionStatus = newStatus;
-    refreshMissionHub(); refreshHomeTab(); checkAndGrantDailyCard();
+    if(state.missionTargetDate !== dateStr) return; // สลับไปดูวันอื่นแล้ว ไม่ต้องอัปเดตอะไร (listener นี้จะถูกแทนที่ในไม่ช้า)
+    const sub = doc.exists ? doc.data() : null;
+    const newStatus = sub ? sub.status : 'not_submitted';
+    const oldStatus = lastKnownStatus;
+    if(dateStr === state.todaysDateStr){
+      state.todaysMissionStatus = newStatus; // อัปเดตตัวแปรกลางเฉพาะตอนวันที่ฟังคือ "วันนี้" เท่านั้น (กันบั๊กสถานะปนกันแบบเดิม)
+      refreshMissionHub(); refreshHomeTab(); checkAndGrantDailyCard();
+    }
+    if(state.todaysMission) renderMissionUI(state.todaysMission, sub); // re-render ฟอร์ม/ป้ายสถานะที่กำลังดูอยู่ให้ตรงทันที ไม่ต้อง fetch มิชชั่นใหม่เพราะเนื้อหาไม่เปลี่ยน
     // แจ้งเตือนเฉพาะตอนสถานะเปลี่ยนจริงๆ (ไม่ใช่ครั้งแรกที่เริ่มฟัง ซึ่งเป็นแค่ค่าปัจจุบัน ไม่ใช่การเปลี่ยนแปลง)
     if(!isFirstSnapshot && newStatus !== oldStatus){
       if(newStatus === 'approved') showToast(`🎉 ครูตรวจภารกิจของคุณผ่านแล้ว!`);
       else if(newStatus === 'rejected') showToast(`⚠️ ภารกิจของคุณต้องแก้ไข ลองส่งใหม่อีกครั้งนะ`);
     }
     isFirstSnapshot = false;
+    lastKnownStatus = newStatus;
   }, err => console.error('missionStatusListener error:', err));
 }
 function stopMissionStatusListener(){
   if(missionStatusUnsubscribe){ missionStatusUnsubscribe(); missionStatusUnsubscribe = null; }
+  missionStatusListenerDate = null;
 }
 
 // จับกิจกรรมผู้ใช้ทั่วแอปครั้งเดียวตอนโหลดสคริปต์ (touchSession จะ no-op เองถ้ายังไม่ได้ login ไม่ต้องผูก/ถอดซ้ำตอน login-logout)
