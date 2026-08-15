@@ -781,7 +781,7 @@
       <div class="stat-pill"><img class="icon-inline" src="icon-streak.png" alt=""> <span id="hbStreak">0</span></div>
       <div class="stat-pill"><img class="icon-inline" src="icon-score.png" alt=""> <span id="hbPoints">0</span></div>
       <div class="health-icon-btn" onclick="openHealthScreen()" title="สุขภาพของฉัน"><img src="icon-health.png" alt=""></div>
-      <div class="backlink" style="margin:0;" onclick="logout()">ออก</div>
+      <div class="backlink" style="margin:0; color:var(--clay);" onclick="logout()">🚪 ออกจากระบบ</div>
     </div>
   </div>
 
@@ -1660,7 +1660,10 @@ async function init(){
     state.classes = classSnap.docs.map(d=>({id:d.id, ...d.data()}));
     renderClassGrid();
     document.getElementById('loadingScreen').style.display='none';
-    goScreen('screen-class');
+    const restored = await tryRestoreSession(); // ลอง login ต่อจากที่ค้างไว้ในแท็บนี้ก่อน (sessionStorage) กัน refresh แล้วต้อง login ใหม่
+    if(!restored){
+      goScreen('screen-class');
+    }
   }catch(e){
     document.getElementById('loadingScreen').innerHTML = 'เชื่อมต่อไม่สำเร็จ กรุณาตรวจสอบอินเทอร์เน็ต<br><small style="color:#999">'+e.message+'</small>';
     console.error(e);
@@ -1838,6 +1841,9 @@ async function enterApp(){
     switchTab('tab-home', true); // ตั้งค่าแท็บเริ่มต้น ไม่ push history ตรงนี้ ให้ goScreen ด้านล่าง push รวมทีเดียว
     goScreen('screen-main');
     hideLoadingOverlay();
+    saveSession();
+    startIdleTimer();
+    startMissionStatusListener();
   }catch(e){
     console.error('enterApp error:', e);
     hideLoadingOverlay();
@@ -2070,6 +2076,9 @@ function goHomeShortcut(tabId){
 }
 
 function logout(){
+  clearSession();
+  stopIdleTimer();
+  stopMissionStatusListener();
   state.selectedStudent=null; state.todayLog=null; state.targetLog=null; state.sodiumChecks=[];
   state.quizAnswers=[]; state.quizFinished=false; state.pendingCard=null;
   state.exerciseChecked={}; state.levels={sweet:null,fat:null,salty:null}; state.otherChecked={};
@@ -3995,6 +4004,104 @@ async function loadAlbum(){
     gridEl.innerHTML = '<div class="empty-note">โหลดอัลบั้มไม่สำเร็จ</div>';
   }
 }
+
+/* =========================================================
+   SESSION (sessionStorage) — กด refresh ไม่ต้อง login ใหม่ในแท็บเดียวกัน
+   แต่ปิดแท็บ/เบราว์เซอร์แล้วหายไปเองอัตโนมัติ ปลอดภัยกว่า localStorage สำหรับเครื่องคอมพิวเตอร์ส่วนรวมที่โรงเรียน
+   ========================================================= */
+const SESSION_KEY = 'saltSmartSession';
+const IDLE_TIMEOUT_MS = 15 * 60 * 1000; // ออกจากระบบอัตโนมัติถ้าไม่มีการใช้งาน 15 นาที (ช่วยเรื่องเครื่องส่วนรวมที่โรงเรียน)
+let idleCheckHandle = null;
+
+function saveSession(){
+  try{
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify({
+      classId: state.selectedClassId,
+      className: state.selectedClassName,
+      studentId: state.selectedStudent.id,
+      lastActivity: Date.now()
+    }));
+  }catch(e){ console.error('saveSession error:', e); }
+}
+function clearSession(){
+  try{ sessionStorage.removeItem(SESSION_KEY); }catch(e){}
+}
+function touchSession(){
+  // อัปเดตเวลากิจกรรมล่าสุดเฉยๆ กันหมดเวลาทั้งที่ยังนั่งใช้งานอยู่จริง (no-op ถ้ายังไม่ได้ login)
+  try{
+    const raw = sessionStorage.getItem(SESSION_KEY);
+    if(!raw) return;
+    const data = JSON.parse(raw);
+    data.lastActivity = Date.now();
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify(data));
+  }catch(e){}
+}
+async function tryRestoreSession(){
+  try{
+    const raw = sessionStorage.getItem(SESSION_KEY);
+    if(!raw) return false;
+    const data = JSON.parse(raw);
+    if(Date.now() - data.lastActivity > IDLE_TIMEOUT_MS){
+      clearSession();
+      return false; // ไม่มีการใช้งานนานเกินไป ถือว่าหมดอายุ ต้อง login ใหม่
+    }
+    const studentSnap = await db.collection('students').doc(data.studentId).get();
+    if(!studentSnap.exists){ clearSession(); return false; }
+    state.selectedClassId = data.classId;
+    state.selectedClassName = data.className;
+    state.selectedStudent = {id: studentSnap.id, ...studentSnap.data()};
+    await enterApp();
+    return true;
+  }catch(e){
+    console.error('tryRestoreSession error:', e);
+    return false;
+  }
+}
+function startIdleTimer(){
+  stopIdleTimer();
+  idleCheckHandle = setInterval(()=>{
+    const raw = sessionStorage.getItem(SESSION_KEY);
+    if(!raw){ stopIdleTimer(); return; }
+    const data = JSON.parse(raw);
+    if(Date.now() - data.lastActivity > IDLE_TIMEOUT_MS){
+      stopIdleTimer();
+      alert('ไม่มีการใช้งานนานเกินไป ระบบออกจากระบบให้อัตโนมัติเพื่อความปลอดภัย (เผื่อใช้เครื่องส่วนรวม)');
+      logout();
+    }
+  }, 30000); // เช็คทุก 30 วิ พอ ไม่ต้องถี่มาก
+}
+function stopIdleTimer(){
+  if(idleCheckHandle){ clearInterval(idleCheckHandle); idleCheckHandle = null; }
+}
+
+/* ---- Realtime: สถานะภารกิจของวันนี้ — ครูตรวจปุ๊บ นักเรียนเห็นทันทีไม่ต้อง login ใหม่ ---- */
+let missionStatusUnsubscribe = null;
+function startMissionStatusListener(){
+  stopMissionStatusListener();
+  const missionLabels = {pending:'⏳ ส่งแล้ว รอตรวจ', approved:'✅ ผ่านแล้ว', rejected:'⚠️ ต้องแก้ไข/ส่งใหม่'};
+  let isFirstSnapshot = true;
+  const docId = state.selectedStudent.id + '_' + state.todaysDateStr;
+  missionStatusUnsubscribe = db.collection('missionSubmissions').doc(docId).onSnapshot(doc => {
+    const newStatus = doc.exists ? doc.data().status : 'not_submitted';
+    const oldStatus = state.todaysMissionStatus;
+    state.todaysMissionStatus = newStatus;
+    refreshMissionHub(); refreshHomeTab(); checkAndGrantDailyCard();
+    // แจ้งเตือนเฉพาะตอนสถานะเปลี่ยนจริงๆ (ไม่ใช่ครั้งแรกที่เริ่มฟัง ซึ่งเป็นแค่ค่าปัจจุบัน ไม่ใช่การเปลี่ยนแปลง)
+    if(!isFirstSnapshot && newStatus !== oldStatus){
+      if(newStatus === 'approved') showToast(`🎉 ครูตรวจภารกิจของคุณผ่านแล้ว!`);
+      else if(newStatus === 'rejected') showToast(`⚠️ ภารกิจของคุณต้องแก้ไข ลองส่งใหม่อีกครั้งนะ`);
+    }
+    isFirstSnapshot = false;
+  }, err => console.error('missionStatusListener error:', err));
+}
+function stopMissionStatusListener(){
+  if(missionStatusUnsubscribe){ missionStatusUnsubscribe(); missionStatusUnsubscribe = null; }
+}
+
+// จับกิจกรรมผู้ใช้ทั่วแอปครั้งเดียวตอนโหลดสคริปต์ (touchSession จะ no-op เองถ้ายังไม่ได้ login ไม่ต้องผูก/ถอดซ้ำตอน login-logout)
+['click','touchstart','keydown'].forEach(evt=>{
+  document.addEventListener(evt, touchSession, {passive:true});
+});
 
 async function loadLeaderboards(){
   try{
