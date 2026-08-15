@@ -2898,10 +2898,10 @@ async function submitMission(){
     if (photoFile) {
       const path = `missionEvidence/${state.selectedStudent.id}/${state.missionTargetDate}_${Date.now()}.jpg`;
       const ref = storage.ref().child(path);
-      await ref.put(photoFile);
-      photoUrl = await ref.getDownloadURL();
+      await withTimeout(ref.put(photoFile), 25000, 'อัปโหลดรูป'); // เผื่อรูปใหญ่/เน็ตช้า ให้เวลานานกว่าปกติหน่อย แต่ต้องไม่ค้างตลอดไปแบบไม่มี timeout เหมือนเดิม
+      photoUrl = await withTimeout(ref.getDownloadURL(), 15000, 'ดึงลิงก์รูป');
     }
-    await db.collection('missionSubmissions').doc(state.selectedStudent.id + '_' + state.missionTargetDate).set({
+    await withTimeout(db.collection('missionSubmissions').doc(state.selectedStudent.id + '_' + state.missionTargetDate).set({
       studentId: state.selectedStudent.id,
       classId: state.selectedClassId,
       missionId: mission.id,
@@ -2912,14 +2912,14 @@ async function submitMission(){
       status: 'pending',
       pointsValue: mission.points || 15,
       submittedAt: new Date().toISOString()
-    });
+    }), 15000, 'บันทึกข้อมูล');
     showToast('ส่งภารกิจแล้ว รอครูตรวจนะ 🎉');
     loadMission();
     checkAndGrantDailyCard(); // เช็คว่าครบ 3 กิจกรรมของวันนี้หรือยัง (ภารกิจ+Quiz+บันทึก) ถึงจะปลดล็อกการ์ด
   }catch(e){
-    console.error(e);
+    console.error('submitMission error:', e);
     msgEl.style.color = 'var(--red-high)';
-    msgEl.textContent = 'ส่งไม่สำเร็จ ลองใหม่อีกครั้ง';
+    msgEl.textContent = '⚠️ ส่งไม่สำเร็จ: ' + e.message + ' — ลองใหม่อีกครั้ง';
   }
 }
 
@@ -2989,7 +2989,14 @@ async function getQuizBackfillableDates(){
   const candidates = [...new Set([...holidayDates, ...graceDates])].sort();
   if(candidates.length===0) return [];
   const snaps = await Promise.all(candidates.map(d => db.collection('dailyLogs').doc(docIdFor(d)).get()));
-  return candidates.filter((d,i) => !(snaps[i].exists && snaps[i].data().quizAnswers && snaps[i].data().quizAnswers.length>0)).map(d => ({date:d, isGrace: graceSet.has(d)}));
+  // เช็คว่า "ทำครบทุกข้อจริง" (ตอบ >= จำนวนคำถามทั้งหมด) ไม่ใช่แค่ "มีคำตอบอยู่บ้าง" — กันวันที่ทำค้างไว้กลางคัน (ตอบไปไม่กี่ข้อ) ถูกกรองออกผิดๆ ทั้งที่ยังไม่เสร็จ
+  return candidates.filter((d,i) => {
+    if(!snaps[i].exists) return true;
+    const data = snaps[i].data();
+    const qLen = (data.quizQuestions||[]).length;
+    const aLen = (data.quizAnswers||[]).length;
+    return !(qLen>0 && aLen >= qLen);
+  }).map(d => ({date:d, isGrace: graceSet.has(d)}));
 }
 
 async function renderQuizBackfillChips(){
@@ -3049,6 +3056,13 @@ async function answerQuiz(idx){
       quizAnswers: state.quizAnswers,
       quizQuestions: state.todaysQuiz
     }, {merge:true});
+    // อัปเดต cache ในเครื่อง (state.todayLog) ให้ตรงด้วยทันที — จุดเดิมที่พลาดไปตอนแก้ finishQuiz() รอบก่อน
+    // ลืมทำจุดนี้ด้วย ทำให้กลับมาดู "วันนี้" ซ้ำหลังตอบแค่บางข้อ ยังอ่าน cache เก่าอยู่ นึกว่ายังไม่เริ่มเลย
+    if(targetDate === state.todaysDateStr){
+      state.todayLog = state.todayLog || {};
+      state.todayLog.quizAnswers = state.quizAnswers;
+      state.todayLog.quizQuestions = state.todaysQuiz;
+    }
   }catch(e){ console.error('answerQuiz progress save error:', e); }
 
   // โชว์คำอธิบายค้างไว้ ให้เวลานักเรียนอ่านก่อน ไม่เลื่อนข้อถัดไปอัตโนมัติ ต้องกดปุ่ม "ถัดไป" เอง
