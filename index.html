@@ -1838,6 +1838,9 @@ async function enterApp(){
     refreshMissionHub();
     refreshSodiumHub();
     checkAndGrantDailyCard(); // เผื่อครบ 3 กิจกรรมไปแล้วตั้งแต่ก่อนรีเฟรชหน้า แต่ยังไม่เคยได้การ์ด (มี flag กันซ้ำอยู่แล้ว ปลอดภัย)
+    // ไล่เช็คย้อนหลังทุกวันในช่วงเปิดโครงการพิเศษด้วย เผื่อมีใครทำครบ 3 อย่างของหลายวันไปแล้วตอนที่ยังมีบั๊กเดิม (ได้การ์ดไม่ครบ)
+    // ธงกันซ้ำ (dailyCardGranted) เก็บแยกรายวันอยู่แล้ว จึงเช็คซ้ำได้อย่างปลอดภัย ไม่มีทางได้การ์ดซ้ำวันที่เคยได้ไปแล้ว
+    getLaunchGraceWindowDates().forEach(d => checkAndGrantDailyCard(d));
     switchTab('tab-home', true); // ตั้งค่าแท็บเริ่มต้น ไม่ push history ตรงนี้ ให้ goScreen ด้านล่าง push รวมทีเดียว
     goScreen('screen-main');
     hideLoadingOverlay();
@@ -2921,7 +2924,7 @@ async function submitMission(){
     }), 15000, 'บันทึกข้อมูล');
     showToast('ส่งภารกิจแล้ว รอครูตรวจนะ 🎉');
     loadMission();
-    checkAndGrantDailyCard(); // เช็คว่าครบ 3 กิจกรรมของวันนี้หรือยัง (ภารกิจ+Quiz+บันทึก) ถึงจะปลดล็อกการ์ด
+    checkAndGrantDailyCard(state.missionTargetDate); // เช็คว่าครบ 3 กิจกรรมของวันนี้ (วันที่ส่งภารกิจนี้) หรือยัง ถึงจะปลดล็อกการ์ด
   }catch(e){
     console.error('submitMission error:', e);
     msgEl.style.color = 'var(--red-high)';
@@ -3112,8 +3115,8 @@ async function finishQuiz(){
   renderQuizDone();
   if(targetDate === state.todaysDateStr){
     refreshMissionHub(); refreshHomeTab(); // อัปเดตสถานะ Quiz ในแท็บฮับภารกิจ+Home ทันทีหลังทำเสร็จ (เฉพาะตอนทำของวันนี้ ย้อนหลังไม่กระทบสถานะวันนี้)
-    checkAndGrantDailyCard(); // เช็คว่าครบ 3 กิจกรรมของวันนี้หรือยัง (ภารกิจ+Quiz+บันทึก) ถึงจะปลดล็อกการ์ด
   }
+  checkAndGrantDailyCard(targetDate); // เช็คว่าครบ 3 กิจกรรมของวันนี้ (วันที่ทำ Quiz นี้) หรือยัง — เอาออกมานอก if แล้ว เพราะย้อนหลังก็ต้องเช็คให้การ์ดของวันนั้นด้วย
   await renderQuizBackfillChips();
   loadProgressTable(); // อัปเดตแท็บ "ความก้าวหน้า" ให้ตรงทันที กันต้อง refresh หน้าถึงจะเห็นผล Quiz ที่เพิ่งทำ (ฟังก์ชันนี้เรียก renderStats() ในตัวอยู่แล้ว)
 }
@@ -3342,35 +3345,36 @@ async function submitDailyLog(){
   loadProgressTable(); // อัปเดตแท็บ "ความก้าวหน้า" ให้ตรงทันที กันต้อง refresh หน้าถึงจะเห็นผลบันทึกที่เพิ่งทำ (ฟังก์ชันนี้เรียก renderStats() ในตัวอยู่แล้ว)
   await renderBackfillChips();
   refreshMissionHub(); refreshHomeTab(); // อัปเดตสถานะบันทึกวันนี้ในแท็บฮับภารกิจ+Home ทันทีหลังบันทึกสำเร็จ
-  checkAndGrantDailyCard(); // เปลี่ยนจากเดิม (บันทึกอย่างเดียวก็ได้การ์ด) เป็นต้องครบ 3 กิจกรรมของวันนี้ก่อน
+  checkAndGrantDailyCard(targetDate); // เช็คให้การ์ดของวันนี้ (วันที่บันทึกนี้) หรือยัง — ไม่ได้ผูกกับ "วันนี้" ตายตัวแบบเดิม เพราะย้อนหลังก็ต้องได้การ์ดของวันนั้นเองด้วย
 }
 
 // การ์ดความรู้จะปลดล็อกก็ต่อเมื่อทำครบ 3 กิจกรรมของ "วันนี้" (ภารกิจ+Quiz+บันทึก) เท่านั้น ไม่ใช่แค่บันทึกอย่างเดียวเหมือนเดิม
 // เช็คจาก Firestore สดๆ ทุกครั้ง (ไม่พึ่ง state ที่อาจกำลังแสดงข้อมูลวันอื่นที่ย้อนหลังอยู่) กันให้การ์ดซ้ำด้วย flag dailyCardGranted
-async function checkAndGrantDailyCard(){
-  // บั๊กเดิม: เช็ค submitted จาก doc ของ "วันนี้" (todaysDateStr) ตรงๆ แต่บันทึกวันนี้ (24-hour recall) เขียนลง docIdFor(targetDate)
-  // ซึ่งค่า default คือ state.recallDate (เมื่อวาน) — เป็นคนละเอกสารกับ "วันนี้" เกือบตลอดเวลา ทำให้ logDone เป็น false เสมอ การ์ดเลยไม่เคยออก
-  // แก้โดยอ่านจาก state.targetLog (in-memory) แทน ซึ่งอัปเดตถูกต้องอยู่แล้วไม่ว่าจะบันทึกของวันไหน (ใช้ pattern เดียวกับ refreshMissionHub/refreshHomeTab)
-  const logDone = !!(state.targetLog && state.targetLog.submitted);
+// เช็คและให้การ์ดแยกเป็นรายวัน — บั๊กเดิม: ผูกไว้กับ "วันนี้" จุดเดียวเท่านั้น พอทำครบ 3 อย่างของหลายวันพร้อมกัน (ผ่านฟีเจอร์ย้อนหลัง) เลยได้การ์ดแค่ใบเดียว
+// ตอนนี้รับ dateStr เข้ามาระบุว่ากำลังเช็ค "วันไหน" โดยเฉพาะ แต่ละวันมีธงกันซ้ำ (dailyCardGranted) เป็นของตัวเอง ไม่ปนกัน
+async function checkAndGrantDailyCard(dateStr){
+  dateStr = dateStr || state.todaysDateStr;
+  const logRef = db.collection('dailyLogs').doc(docIdFor(dateStr));
+  const logSnap = await logRef.get();
+  const logData = logSnap.exists ? logSnap.data() : {};
+  if(logData.dailyCardGranted) return; // ให้การ์ดของวันนี้ (dateStr) ไปแล้ว กันซ้ำ
+
+  const logDone = !!logData.submitted;
   if(!logDone) return; // เช็คเร็วๆ ก่อน กันยิง query ถ้ายังไม่บันทึก
 
-  const todayLogRef = db.collection('dailyLogs').doc(logDocId()); // flag กันซ้ำยังเก็บที่ doc ของ "วันนี้" เสมอ (คนละเรื่องกับตัว log ที่อาจบันทึกไว้คนละวัน)
-  const todaySnap = await todayLogRef.get();
-  const todayData = todaySnap.exists ? todaySnap.data() : {};
-  if(todayData.dailyCardGranted) return; // ให้ไปแล้ววันนี้ กันซ้ำ
-
-  // เช็ค Quiz จาก doc ของ "วันนี้" ตรงๆ (ไม่ใช้ state.quizFinished เพราะตอนนี้มี Quiz ย้อนหลังแล้ว
-  // ถ้าเพิ่งทำ Quiz ของวันอื่น state.quizFinished จะเป็น true ทั้งที่ Quiz ของวันนี้อาจยังไม่ได้ทำ)
-  const quizDone = !!(todayData.quizAnswers && todayData.quizAnswers.length > 0);
+  // เช็คว่า Quiz ของวันนี้ (dateStr) ทำครบทุกข้อจริง ไม่ใช่แค่ตอบไปบางข้อ
+  const qLen = (logData.quizQuestions||[]).length;
+  const aLen = (logData.quizAnswers||[]).length;
+  const quizDone = qLen>0 && aLen >= qLen;
   if(!quizDone) return;
 
-  const missionSnap = await db.collection('missionSubmissions').doc(state.selectedStudent.id + '_' + state.todaysDateStr).get();
+  const missionSnap = await db.collection('missionSubmissions').doc(state.selectedStudent.id + '_' + dateStr).get();
   const missionStatus = missionSnap.exists ? missionSnap.data().status : null;
   const missionDone = missionStatus === 'pending' || missionStatus === 'approved'; // ส่งแล้ว/ผ่านแล้วนับเป็นทำสำเร็จ ส่วน rejected ยังไม่นับ
 
   if(!missionDone) return;
 
-  await todayLogRef.set({ dailyCardGranted: true }, {merge:true});
+  await logRef.set({ dailyCardGranted: true }, {merge:true});
   await showKnowledgeCard();
 }
 
@@ -4178,9 +4182,10 @@ function startMissionStatusListener(dateStr){
     const oldStatus = lastKnownStatus;
     if(dateStr === state.todaysDateStr){
       state.todaysMissionStatus = newStatus; // อัปเดตตัวแปรกลางเฉพาะตอนวันที่ฟังคือ "วันนี้" เท่านั้น (กันบั๊กสถานะปนกันแบบเดิม)
-      refreshMissionHub(); refreshHomeTab(); checkAndGrantDailyCard();
+      refreshMissionHub(); refreshHomeTab();
       loadProgressTable(); // อัปเดตแท็บ "ความก้าวหน้า" ด้วย เผื่อครูเพิ่งตรวจภารกิจผ่าน/ไม่ผ่าน ระหว่างที่ยังเปิดแอปอยู่
     }
+    checkAndGrantDailyCard(dateStr); // เช็คให้การ์ดของวันนี้ (dateStr) — เอาออกมานอก if แล้ว เพราะครูอาจตรวจภารกิจย้อนหลังผ่าน ก็ต้องเช็คให้การ์ดของวันนั้นด้วย ไม่ใช่แค่วันนี้
     if(state.todaysMission) renderMissionUI(state.todaysMission, sub); // re-render ฟอร์ม/ป้ายสถานะที่กำลังดูอยู่ให้ตรงทันที ไม่ต้อง fetch มิชชั่นใหม่เพราะเนื้อหาไม่เปลี่ยน
     // แจ้งเตือนเฉพาะตอนสถานะเปลี่ยนจริงๆ (ไม่ใช่ครั้งแรกที่เริ่มฟัง ซึ่งเป็นแค่ค่าปัจจุบัน ไม่ใช่การเปลี่ยนแปลง)
     if(!isFirstSnapshot && newStatus !== oldStatus){
