@@ -65,6 +65,33 @@
     position:relative;
     overflow:hidden;
   }
+
+  /* ---- Welcome / splash screen ---- */
+  .welcome-screen{
+    background:linear-gradient(160deg, var(--deep-sea) 0%, var(--deep-sea-2) 55%, var(--lagoon) 140%);
+    justify-content:center; align-items:center; text-align:center; padding:40px 24px; position:relative; overflow:hidden;
+  }
+  .welcome-screen:before, .welcome-screen:after{
+    content:''; position:absolute; border-radius:50%; background:rgba(255,255,255,0.06);
+  }
+  .welcome-screen:before{ width:260px; height:260px; top:-80px; right:-70px; }
+  .welcome-screen:after{ width:200px; height:200px; bottom:-60px; left:-60px; }
+  .welcome-mascot{width:150px; height:150px; object-fit:contain; margin-bottom:18px; position:relative; z-index:1;
+    filter:drop-shadow(0 8px 20px rgba(0,0,0,0.15));}
+  .welcome-title{font-family:'Kanit'; font-weight:800; font-size:32px; color:#fff; margin-bottom:6px; position:relative; z-index:1;}
+  .welcome-tagline{font-family:'Kanit'; font-weight:500; font-size:15px; color:#DCF3EF; margin-bottom:4px; position:relative; z-index:1;}
+  .welcome-sub{font-size:13px; color:#B8DEDA; margin-bottom:36px; max-width:280px; line-height:1.6; position:relative; z-index:1;}
+  .welcome-btn{
+    background:#fff; color:var(--deep-sea); font-family:'Kanit'; font-weight:700; font-size:16px;
+    border:none; border-radius:30px; padding:15px 44px; cursor:pointer; box-shadow:0 8px 20px rgba(0,0,0,0.15);
+    position:relative; z-index:1;
+  }
+  .welcome-btn:active{transform:scale(0.97);}
+  .welcome-btn:disabled{opacity:0.7;}
+  .welcome-badge{
+    display:inline-block; background:rgba(255,255,255,0.15); color:#fff; font-family:'Kanit'; font-weight:600;
+    font-size:11.5px; padding:6px 16px; border-radius:20px; margin-bottom:20px; position:relative; z-index:1;
+  }
   .brandbar::after{
     content:"";
     position:absolute; right:-40px; top:-40px; width:180px; height:180px;
@@ -707,6 +734,16 @@
 <body>
 
 <div id="loadingScreen" class="loading">กำลังโหลด Salt Smart…</div>
+
+<!-- ================= SCREEN: WELCOME ================= -->
+<div class="screen welcome-screen" id="screen-welcome">
+  <div class="welcome-badge">21-Day Challenge</div>
+  <img src="mascot-complete.png" alt="" class="welcome-mascot">
+  <div class="welcome-title">Salt Smart</div>
+  <div class="welcome-tagline">รู้เท่าทันความเค็ม เติมเต็มสุขภาพ</div>
+  <div class="welcome-sub">แอปติดตามพฤติกรรมลดเค็ม สำหรับนักเรียน อย.น้อย<br>มาเริ่มดูแลตัวเองไปด้วยกันนะ ✨</div>
+  <button class="welcome-btn" id="welcomeBtn" onclick="enterFromWelcome()">เริ่มต้นใช้งาน</button>
+</div>
 
 <!-- ================= SCREEN: CLASS SELECT ================= -->
 <div class="screen" id="screen-class">
@@ -1644,6 +1681,8 @@ async function init(){
   state.recallDate = addDays(state.todaysDateStr, -1); // บันทึกของ "เมื่อวาน" ตามหลัก 24-Hour Recall
   state.targetDate = state.recallDate;
   setupVoiceInput();
+  document.getElementById('loadingScreen').style.display='none';
+  goScreen('screen-welcome'); // โชว์หน้าต้อนรับทันทีก่อนเลย ไม่ต้องรอโหลดข้อมูลเสร็จ (โหลดข้อมูลต่อแบบเงียบๆ อยู่เบื้องหลัง)
   try{
     const campSnap = await db.collection('settings').doc('campaign').get();
     if(campSnap.exists) state.campaign = campSnap.data();
@@ -1659,15 +1698,36 @@ async function init(){
     const classSnap = await db.collection('classes').orderBy('order').get();
     state.classes = classSnap.docs.map(d=>({id:d.id, ...d.data()}));
     renderClassGrid();
-    document.getElementById('loadingScreen').style.display='none';
-    const restored = await tryRestoreSession(); // ลอง login ต่อจากที่ค้างไว้ในแท็บนี้ก่อน (sessionStorage) กัน refresh แล้วต้อง login ใหม่
-    if(!restored){
-      goScreen('screen-class');
-    }
+    state.dataReady = true;
+    await tryRestoreSession(); // ลอง login ต่อจากที่ค้างไว้ในแท็บนี้ก่อน (sessionStorage) — ถ้าสำเร็จจะข้ามหน้าต้อนรับเข้าแอปให้เองอัตโนมัติ ไม่ต้องกดปุ่มซ้ำ
   }catch(e){
-    document.getElementById('loadingScreen').innerHTML = 'เชื่อมต่อไม่สำเร็จ กรุณาตรวจสอบอินเทอร์เน็ต<br><small style="color:#999">'+e.message+'</small>';
+    state.dataLoadError = e.message;
     console.error(e);
   }
+}
+
+function enterFromWelcome(){
+  if(state.dataLoadError){
+    alert('เชื่อมต่อไม่สำเร็จ กรุณาตรวจสอบอินเทอร์เน็ตแล้วลองใหม่\n' + state.dataLoadError);
+    return;
+  }
+  if(!state.dataReady){
+    // ข้อมูลยังโหลดไม่เสร็จ (พบน้อยมาก เพราะปกติโหลดเสร็จก่อนคนอ่านข้อความบนหน้าต้อนรับจบด้วยซ้ำ) โชว์สถานะบนปุ่มแล้วรอสักครู่
+    const btn = document.getElementById('welcomeBtn');
+    btn.textContent = 'กำลังโหลด...'; btn.disabled = true;
+    const checkReady = setInterval(()=>{
+      if(state.dataReady){
+        clearInterval(checkReady);
+        goScreen('screen-class');
+      } else if(state.dataLoadError){
+        clearInterval(checkReady);
+        btn.textContent = 'เริ่มต้นใช้งาน'; btn.disabled = false;
+        alert('เชื่อมต่อไม่สำเร็จ: ' + state.dataLoadError);
+      }
+    }, 300);
+    return;
+  }
+  goScreen('screen-class');
 }
 
 function renderClassGrid(){
