@@ -436,6 +436,22 @@
       <div class="panel" id="p-audit">
         <h2>🔎 ตรวจสอบคะแนนรายคน</h2>
         <p style="font-size:12.5px; color:#9aa8ab; margin-top:-8px;">เช็คว่าคะแนนของนักเรียนคนหนึ่งมาจากไหนบ้าง แยกเป็นรายวัน ใช้ตอนเจอคะแนนที่ดูผิดปกติ</p>
+
+        <div class="card" style="border-color:var(--red-high);">
+          <h3 style="margin-top:0;">🩹 สแกน+ซ่อมคะแนนที่คลาดเคลื่อนทั้งโรงเรียน</h3>
+          <p style="font-size:12.5px; color:#9aa8ab; margin-top:-6px;">คำนวณคะแนนใหม่จากประวัติกิจกรรมจริงของทุกคน เทียบกับคะแนนสะสมที่เก็บไว้จริงในระบบ แล้วแสดงเฉพาะคนที่ตัวเลขไม่ตรงกัน (นักเรียนเยอะอาจใช้เวลาสักครู่ อย่าเพิ่งปิดหน้าระหว่างสแกน)</p>
+          <button class="btn btn-primary" onclick="scanAllPointMismatches()">🔍 เริ่มสแกนทุกคน</button>
+          <div class="msg" id="bulkAuditScanMsg"></div>
+        </div>
+
+        <div class="card" id="bulkAuditResultCard" style="display:none;">
+          <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+            <h3 style="margin:0;">พบคะแนนคลาดเคลื่อน (<span id="bulkAuditCount">0</span> คน)</h3>
+            <button class="btn btn-danger" style="padding:8px 14px; font-size:12.5px;" onclick="repairAllPointMismatches()">🔧 ซ่อมทั้งหมดที่พบ</button>
+          </div>
+          <table><thead><tr><th>ชื่อ</th><th>ห้อง</th><th>คะแนนในระบบ</th><th>คะแนนที่ควรเป็น</th><th>ต่างกัน</th><th></th></tr></thead><tbody id="bulkAuditTable"></tbody></table>
+        </div>
+
         <div class="card" style="max-width:420px;">
           <div class="field"><label>ค้นหาชื่อนักเรียน</label><input type="text" id="auditSearchInput" placeholder="พิมพ์ชื่อ..." oninput="renderAuditSearchResults()"></div>
           <div id="auditSearchResults" style="max-height:220px; overflow-y:auto;"></div>
@@ -761,6 +777,55 @@ async function boot(){
 const AUDIT_LABEL_CHECK_POINTS = 3; // addPoints(3, 'labelCheck')
 const AUDIT_QUIZ_POINTS_PER_Q = 5;  // correctCount * 5
 
+async function getCampaignDateInfo(){
+  const campSnap = await db.collection('settings').doc('campaign').get();
+  let startDate = null, totalDays = null;
+  if(campSnap.exists && campSnap.data().startDate && campSnap.data().endDate){
+    startDate = dateFromStr(campSnap.data().startDate);
+    const endDate = dateFromStr(campSnap.data().endDate);
+    totalDays = Math.round((endDate-startDate)/(1000*60*60*24))+1;
+  }
+  return { startDate, totalDays };
+}
+
+// คำนวณคะแนนที่ "ควรจะเป็น" จากประวัติกิจกรรมจริงล้วนๆ ของนักเรียนคนหนึ่ง — ใช้ร่วมกันทั้งหน้าค้นหารายคนและหน้าสแกนทั้งโรงเรียน
+// เพื่อกันไม่ให้ตัวเลขสองหน้านี้คำนวณคนละแบบแล้วขัดแย้งกันเอง
+function computePointsFromRaw(logs, missions, student, startDate, totalDays){
+  const missionByDate = {};
+  missions.forEach(m=>{ missionByDate[m.date] = (missionByDate[m.date]||0) + (m.pointsAwarded||0); });
+
+  const dayRows = logs
+    .filter(d=>d.submitted || (d.sodiumChecks && d.sodiumChecks.length>0) || d.quizScore!=null)
+    .sort((a,b)=> a.date < b.date ? -1 : 1)
+    .map(d=>{
+      const labelPts = (d.sodiumChecks||[]).filter(c=>c.pointsAwarded).length * AUDIT_LABEL_CHECK_POINTS;
+      const quizPts = (d.quizScore||0) * AUDIT_QUIZ_POINTS_PER_Q;
+      const dailyLogPts = d.pointsEarned || 0;
+      const missionPts = missionByDate[d.date] || 0;
+      const dayTotal = labelPts + quizPts + dailyLogPts + missionPts;
+      const dayNum = startDate ? Math.round((dateFromStr(d.date)-startDate)/(1000*60*60*24))+1 : (d.dayNumber||'-');
+      return { date:d.date, dayNum, labelPts, quizPts, dailyLogPts, missionPts, dayTotal };
+    });
+
+  // คำนวณโบนัสหลักไมล์ Streak รวม จากรายการที่เคยได้ไปแล้ว (ไม่แยกว่าได้วันไหนเป๊ะๆ เพราะขึ้นกับลำดับ streak จริง ไม่ใช่แค่จำนวนวันสะสม)
+  const bonusMap = {}; // milestone value -> bonus points
+  if(totalDays){
+    const milestones = [3, 7, Math.min(14, totalDays-1), totalDays];
+    const bonusValues = [5, 10, 20, 30];
+    milestones.forEach((m,i)=>{ bonusMap[m] = bonusValues[i]; });
+  }
+  const awarded = student.streakMilestonesAwarded || [];
+  const milestoneBonusTotal = awarded.reduce((sum,m)=> sum + (bonusMap[m]||0), 0);
+
+  const sumLabel = dayRows.reduce((s,r)=>s+r.labelPts,0);
+  const sumQuiz = dayRows.reduce((s,r)=>s+r.quizPts,0);
+  const sumDailyLogRaw = dayRows.reduce((s,r)=>s+r.dailyLogPts,0);
+  const sumMission = dayRows.reduce((s,r)=>s+r.missionPts,0);
+  const computedTotal = sumLabel + sumQuiz + sumDailyLogRaw + sumMission + milestoneBonusTotal;
+
+  return { dayRows, bonusMap, sumLabel, sumQuiz, sumDailyLogRaw, sumMission, milestoneBonusTotal, computedTotal };
+}
+
 function renderAuditSearchResults(){
   const q = document.getElementById('auditSearchInput').value.trim().toLowerCase();
   const wrap = document.getElementById('auditSearchResults');
@@ -784,55 +849,16 @@ async function selectAuditStudent(studentId){
   document.getElementById('auditDayTable').innerHTML = '<tr><td colspan="8">กำลังโหลด…</td></tr>';
 
   try{
-    const [logsSnap, missionsSnap, campSnap] = await Promise.all([
+    const [logsSnap, missionsSnap, campInfo] = await Promise.all([
       db.collection('dailyLogs').where('studentId','==',studentId).get(),
       db.collection('missionSubmissions').where('studentId','==',studentId).get(),
-      db.collection('settings').doc('campaign').get(),
+      getCampaignDateInfo(),
     ]);
-
-    let startDate = null, totalDays = null;
-    if(campSnap.exists && campSnap.data().startDate && campSnap.data().endDate){
-      startDate = dateFromStr(campSnap.data().startDate);
-      const endDate = dateFromStr(campSnap.data().endDate);
-      totalDays = Math.round((endDate-startDate)/(1000*60*60*24))+1;
-    }
-
-    // จับคู่ภารกิจแต่ละวันด้วย field date ตรงๆ (missionSubmissions เก็บ date ไว้ในตัวเองอยู่แล้ว)
-    const missionByDate = {};
-    missionsSnap.docs.forEach(d=>{
-      const m = d.data();
-      missionByDate[m.date] = (missionByDate[m.date]||0) + (m.pointsAwarded||0);
-    });
-
-    const dayRows = logsSnap.docs
-      .map(d=>d.data())
-      .filter(d=>d.submitted || (d.sodiumChecks && d.sodiumChecks.length>0) || d.quizScore!=null)
-      .sort((a,b)=> a.date < b.date ? -1 : 1)
-      .map(d=>{
-        const labelPts = (d.sodiumChecks||[]).filter(c=>c.pointsAwarded).length * AUDIT_LABEL_CHECK_POINTS;
-        const quizPts = (d.quizScore||0) * AUDIT_QUIZ_POINTS_PER_Q;
-        const dailyLogPts = d.pointsEarned || 0;
-        const missionPts = missionByDate[d.date] || 0;
-        const dayTotal = labelPts + quizPts + dailyLogPts + missionPts;
-        const dayNum = startDate ? Math.round((dateFromStr(d.date)-startDate)/(1000*60*60*24))+1 : (d.dayNumber||'-');
-        return { date:d.date, dayNum, labelPts, quizPts, dailyLogPts, missionPts, dayTotal };
-      });
-
-    // คำนวณโบนัสหลักไมล์ Streak รวม จากรายการที่เคยได้ไปแล้ว (ไม่แยกว่าได้วันไหนเป๊ะๆ เพราะขึ้นกับลำดับ streak จริง ไม่ใช่แค่จำนวนวันสะสม)
-    const bonusMap = {}; // milestone value -> bonus points
-    if(totalDays){
-      const milestones = [3, 7, Math.min(14, totalDays-1), totalDays];
-      const bonusValues = [5, 10, 20, 30];
-      milestones.forEach((m,i)=>{ bonusMap[m] = bonusValues[i]; });
-    }
-    const awarded = student.streakMilestonesAwarded || [];
-    const milestoneBonusTotal = awarded.reduce((sum,m)=> sum + (bonusMap[m]||0), 0);
-
-    const sumLabel = dayRows.reduce((s,r)=>s+r.labelPts,0);
-    const sumQuiz = dayRows.reduce((s,r)=>s+r.quizPts,0);
-    const sumDailyLogRaw = dayRows.reduce((s,r)=>s+r.dailyLogPts,0);
-    const sumMission = dayRows.reduce((s,r)=>s+r.missionPts,0);
-    const computedTotal = sumLabel + sumQuiz + sumDailyLogRaw + sumMission + milestoneBonusTotal;
+    const { startDate, totalDays } = campInfo;
+    const logs = logsSnap.docs.map(d=>d.data());
+    const missions = missionsSnap.docs.map(d=>d.data());
+    const { dayRows, bonusMap, sumLabel, sumQuiz, sumDailyLogRaw, sumMission, milestoneBonusTotal, computedTotal } =
+      computePointsFromRaw(logs, missions, student, startDate, totalDays);
     const storedTotal = student.totalPoints || 0;
 
     document.getElementById('auditTotalPoints').textContent = storedTotal;
@@ -871,6 +897,145 @@ async function selectAuditStudent(studentId){
     console.error(e);
     document.getElementById('auditDayTable').innerHTML = '<tr><td colspan="8" class="empty-note">โหลดข้อมูลไม่สำเร็จ</td></tr>';
   }
+}
+
+/* ---- สแกน+ซ่อมคะแนนคลาดเคลื่อนทั้งโรงเรียน ---- */
+let bulkAuditMismatches = []; // เก็บผลสแกนล่าสุดไว้ใช้ตอนกด "ซ่อมทั้งหมด"
+
+async function scanAllPointMismatches(){
+  const msgEl = document.getElementById('bulkAuditScanMsg');
+  const resultCard = document.getElementById('bulkAuditResultCard');
+  resultCard.style.display = 'none';
+  msgEl.style.color = 'var(--lagoon)';
+  msgEl.textContent = `กำลังสแกน... (0/${studentsCache.length} คน)`;
+
+  try{
+    const { startDate, totalDays } = await getCampaignDateInfo();
+    if(!totalDays){
+      msgEl.style.color = 'var(--red-high)';
+      msgEl.textContent = 'ยังไม่ได้ตั้งวันเริ่ม/สิ้นสุดแคมเปญ — ต้องตั้งก่อนถึงจะสแกนโบนัส Streak ได้ถูกต้อง';
+      return;
+    }
+    // ดึง dailyLogs และ missionSubmissions ของทุกคนมาทีเดียว แล้วจัดกลุ่มเองฝั่ง client (เร็วกว่าไล่ query ทีละคนมาก)
+    const [allLogsSnap, allMissionsSnap] = await Promise.all([
+      db.collection('dailyLogs').get(),
+      db.collection('missionSubmissions').get(),
+    ]);
+    const logsByStudent = {}, missionsByStudent = {};
+    allLogsSnap.docs.forEach(d=>{
+      const data = d.data();
+      (logsByStudent[data.studentId] = logsByStudent[data.studentId] || []).push(data);
+    });
+    allMissionsSnap.docs.forEach(d=>{
+      const data = d.data();
+      (missionsByStudent[data.studentId] = missionsByStudent[data.studentId] || []).push(data);
+    });
+
+    const mismatches = [];
+    studentsCache.forEach(student=>{
+      const logs = logsByStudent[student.id] || [];
+      const missions = missionsByStudent[student.id] || [];
+      const { computedTotal } = computePointsFromRaw(logs, missions, student, startDate, totalDays);
+      const storedTotal = student.totalPoints || 0;
+      if(storedTotal !== computedTotal){
+        mismatches.push({ studentId: student.id, name: student.name, classId: student.classId, storedTotal, computedTotal, diff: storedTotal - computedTotal });
+      }
+    });
+    mismatches.sort((a,b)=> Math.abs(b.diff) - Math.abs(a.diff));
+    bulkAuditMismatches = mismatches;
+
+    msgEl.style.color = mismatches.length ? 'var(--red-high)' : 'var(--lagoon)';
+    msgEl.textContent = mismatches.length
+      ? `สแกนครบ ${studentsCache.length} คน พบคะแนนคลาดเคลื่อน ${mismatches.length} คน`
+      : `สแกนครบ ${studentsCache.length} คน — คะแนนทุกคนตรงกับประวัติจริง ✅ ไม่พบความผิดปกติ`;
+
+    if(mismatches.length){
+      document.getElementById('bulkAuditCount').textContent = mismatches.length;
+      document.getElementById('bulkAuditTable').innerHTML = mismatches.map(m=>`
+        <tr>
+          <td>${m.name}</td><td>${classNameOf(m.classId)}</td>
+          <td>${m.storedTotal}</td><td>${m.computedTotal}</td>
+          <td style="color:var(--red-high); font-weight:700;">${m.diff>0?'+':''}${m.diff}</td>
+          <td><button class="btn btn-ghost" style="padding:6px 12px; font-size:12px;" onclick="repairOnePointMismatch('${m.studentId}')">ซ่อมคนนี้</button></td>
+        </tr>`).join('');
+      resultCard.style.display = 'block';
+    }
+  }catch(e){
+    console.error(e);
+    msgEl.style.color = 'var(--red-high)';
+    msgEl.textContent = 'สแกนไม่สำเร็จ: ' + e.message;
+  }
+}
+
+// เขียนคะแนนที่ "ควรจะเป็น" ทับคะแนนเดิมของนักเรียนคนหนึ่ง + ปักธง credited บน dailyLogs ทุกวันของคนนั้น กันบั๊กเดิมย้อนกลับมาบวกซ้ำอีกในอนาคต
+async function repairStudentPoints(studentId){
+  const student = studentsCache.find(s=>s.id===studentId);
+  if(!student) throw new Error('ไม่พบนักเรียนคนนี้ในระบบ');
+  const { startDate, totalDays } = await getCampaignDateInfo();
+  const [logsSnap, missionsSnap] = await Promise.all([
+    db.collection('dailyLogs').where('studentId','==',studentId).get(),
+    db.collection('missionSubmissions').where('studentId','==',studentId).get(),
+  ]);
+  const logs = logsSnap.docs.map(d=>({ref:d.ref, data:d.data()}));
+  const missions = missionsSnap.docs.map(d=>d.data());
+  const { sumLabel, sumQuiz, sumDailyLogRaw, sumMission, milestoneBonusTotal, computedTotal } =
+    computePointsFromRaw(logs.map(l=>l.data), missions, student, startDate, totalDays);
+
+  await db.collection('students').doc(studentId).update({
+    totalPoints: computedTotal,
+    'pointsByCategory.labelCheck': sumLabel,
+    'pointsByCategory.quiz': sumQuiz,
+    'pointsByCategory.dailyLog': sumDailyLogRaw + milestoneBonusTotal,
+    'pointsByCategory.mission': sumMission,
+  });
+
+  // ปักธง credited ย้อนหลังบนทุกวันที่มีบันทึก กันฟังก์ชันบวกคะแนน (ที่แก้ไปแล้ว) มาบวกซ้ำอีกในอนาคตหากมีการเรียกซ้ำแบบเดิม
+  const batchChunks = [];
+  for(let i=0;i<logs.length;i+=450) batchChunks.push(logs.slice(i,i+450)); // เผื่อ margin จากลิมิต 500 ops/batch ของ Firestore
+  for(const chunk of batchChunks){
+    const batch = db.batch();
+    chunk.forEach(({ref,data})=>{
+      const update = {};
+      if(data.submitted) update.dailyLogPointsCredited = true;
+      if(data.quizScore != null) update.quizPointsCredited = true;
+      if(Object.keys(update).length) batch.set(ref, update, {merge:true});
+    });
+    await batch.commit();
+  }
+
+  student.totalPoints = computedTotal; // อัปเดต cache ในเครื่องด้วย กันต้องรีโหลดหน้าถึงจะเห็นค่าล่าสุด
+}
+
+async function repairOnePointMismatch(studentId){
+  if(!confirm('ยืนยันซ่อมคะแนนของคนนี้? จะเขียนคะแนนสะสมใหม่ทับของเดิมทันที (ย้อนกลับไม่ได้)')) return;
+  try{
+    await repairStudentPoints(studentId);
+    await scanAllPointMismatches(); // สแกนใหม่ให้เห็นผลอัปเดตทันที
+  }catch(e){
+    console.error(e);
+    alert('ซ่อมไม่สำเร็จ: ' + e.message);
+  }
+}
+
+async function repairAllPointMismatches(){
+  if(bulkAuditMismatches.length === 0) return;
+  if(!confirm(`ยืนยันซ่อมคะแนนของนักเรียนทั้งหมด ${bulkAuditMismatches.length} คนที่พบ? จะเขียนคะแนนสะสมใหม่ทับของเดิมทันที (ย้อนกลับไม่ได้) — แนะนำให้ตรวจดูรายชื่อในตารางก่อนกดยืนยัน`)) return;
+  const msgEl = document.getElementById('bulkAuditScanMsg');
+  let done = 0, failed = 0;
+  for(const m of bulkAuditMismatches){
+    try{
+      await repairStudentPoints(m.studentId);
+      done++;
+    }catch(e){
+      console.error('ซ่อมไม่สำเร็จสำหรับ', m.name, e);
+      failed++;
+    }
+    msgEl.style.color = 'var(--lagoon)';
+    msgEl.textContent = `กำลังซ่อม... (${done+failed}/${bulkAuditMismatches.length})`;
+  }
+  msgEl.style.color = failed ? 'var(--red-high)' : 'var(--lagoon)';
+  msgEl.textContent = `ซ่อมเสร็จแล้ว ${done} คน${failed ? ` (ล้มเหลว ${failed} คน ลองกดสแกนใหม่แล้วซ่อมทีละคนที่เหลือ)` : ''}`;
+  await scanAllPointMismatches();
 }
 
 async function loadOverview(){
@@ -1398,6 +1563,7 @@ async function reviewMission(subId, decision){
   const subSnap = await subRef.get();
   if(!subSnap.exists) return;
   const sub = subSnap.data();
+  if(sub.status !== 'pending') return; // กันกดซ้ำ (เช่น ดับเบิลคลิกก่อนคิวรีเฟรช) ไม่ให้ตรวจซ้ำ/ให้คะแนนซ้ำรายการที่ตัดสินไปแล้ว
   let reviewNote = '';
   if(decision === 'rejected'){
     reviewNote = prompt('เหตุผลที่ไม่ผ่าน (ไม่บังคับ)') || '';

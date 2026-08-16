@@ -3338,6 +3338,7 @@ function goNextQuizQuestion(){
 }
 
 async function finishQuiz(){
+  if(state.quizFinished) return; // กันเรียกซ้ำ (เผื่อ renderQuizQuestion ถูกเรียกซ้ำด้วยเหตุผลอะไรก็ตามหลังจบไปแล้ว)
   state.quizFinished = true;
   const correctCount = state.quizAnswers.filter(a=>a.correct).length;
   const points = correctCount * 5;
@@ -3359,7 +3360,7 @@ async function finishQuiz(){
     state.todayLog.quizQuestions = state.todaysQuiz;
     state.todayLog.quizScore = correctCount;
   }
-  await addPoints(points, 'quiz');
+  await awardQuizPointsOnce(points, targetDate);
   renderQuizDone();
   if(targetDate === state.todaysDateStr){
     refreshMissionHub(); refreshHomeTab(); // อัปเดตสถานะ Quiz ในแท็บฮับภารกิจ+Home ทันทีหลังทำเสร็จ (เฉพาะตอนทำของวันนี้ ย้อนหลังไม่กระทบสถานะวันนี้)
@@ -3543,6 +3544,11 @@ function renderOtherBehaviorList(){
 }
 
 async function submitDailyLog(){
+  if(state.targetLog && state.targetLog.submitted) return; // กันเรียกซ้ำถ้าบันทึกของวันนี้ไปแล้ว (เผื่อกดซ้ำก่อน UI ทันอัปเดต)
+  const btn = document.getElementById('submitLogBtn');
+  if(btn.disabled) return; // กันกดซ้ำระหว่างกำลังบันทึกอยู่ (เน็ตช้าอาจกดซ้ำโดยไม่ตั้งใจ)
+  btn.disabled = true; btn.textContent = 'กำลังบันทึก...';
+
   const mealNote = document.getElementById('mealNote').value.trim();
   const reflection = document.getElementById('reflectionText').value.trim();
   const improveNote = document.getElementById('improveText').value.trim();
@@ -3569,31 +3575,37 @@ async function submitDailyLog(){
     + (improveAnswered ? 3 : 0);
   const targetDate = state.targetDate;
 
-  await db.collection('dailyLogs').doc(docIdFor(targetDate)).set({
-    studentId: state.selectedStudent.id,
-    classId: state.selectedClassId,
-    date: targetDate,
-    exercise: state.exerciseChecked,
-    levels: state.levels,
-    tastePref: state.tastePref,
-    condiments: state.condiments,
-    otherBehaviors: state.otherChecked,
-    mealNote: mealNote,
-    reflection: reflection,
-    improveNote: improveNote,
-    submitted: true,
-    pointsEarned: points
-  }, {merge:true});
+  try{
+    await db.collection('dailyLogs').doc(docIdFor(targetDate)).set({
+      studentId: state.selectedStudent.id,
+      classId: state.selectedClassId,
+      date: targetDate,
+      exercise: state.exerciseChecked,
+      levels: state.levels,
+      tastePref: state.tastePref,
+      condiments: state.condiments,
+      otherBehaviors: state.otherChecked,
+      mealNote: mealNote,
+      reflection: reflection,
+      improveNote: improveNote,
+      submitted: true,
+      pointsEarned: points
+    }, {merge:true});
 
-  await updateStreakAndPoints(points, targetDate);
+    await updateStreakAndPoints(points, targetDate);
 
-  state.targetLog.submitted = true;
-  applyLogLockState();
-  showToast(targetDate===state.recallDate ? `เยี่ยม! ได้ ${points} คะแนน 🎉` : `บันทึกย้อนหลังสำเร็จ! ได้ ${points} คะแนน 🎉`);
-  loadProgressTable(); // อัปเดตแท็บ "ความก้าวหน้า" ให้ตรงทันที กันต้อง refresh หน้าถึงจะเห็นผลบันทึกที่เพิ่งทำ (ฟังก์ชันนี้เรียก renderStats() ในตัวอยู่แล้ว)
-  await renderBackfillChips();
-  refreshMissionHub(); refreshHomeTab(); // อัปเดตสถานะบันทึกวันนี้ในแท็บฮับภารกิจ+Home ทันทีหลังบันทึกสำเร็จ
-  checkAndGrantDailyCard(targetDate); // เช็คให้การ์ดของวันนี้ (วันที่บันทึกนี้) หรือยัง — ไม่ได้ผูกกับ "วันนี้" ตายตัวแบบเดิม เพราะย้อนหลังก็ต้องได้การ์ดของวันนั้นเองด้วย
+    state.targetLog.submitted = true;
+    applyLogLockState();
+    showToast(targetDate===state.recallDate ? `เยี่ยม! ได้ ${points} คะแนน 🎉` : `บันทึกย้อนหลังสำเร็จ! ได้ ${points} คะแนน 🎉`);
+    loadProgressTable(); // อัปเดตแท็บ "ความก้าวหน้า" ให้ตรงทันที กันต้อง refresh หน้าถึงจะเห็นผลบันทึกที่เพิ่งทำ (ฟังก์ชันนี้เรียก renderStats() ในตัวอยู่แล้ว)
+    await renderBackfillChips();
+    refreshMissionHub(); refreshHomeTab(); // อัปเดตสถานะบันทึกวันนี้ในแท็บฮับภารกิจ+Home ทันทีหลังบันทึกสำเร็จ
+    checkAndGrantDailyCard(targetDate); // เช็คให้การ์ดของวันนี้ (วันที่บันทึกนี้) หรือยัง — ไม่ได้ผูกกับ "วันนี้" ตายตัวแบบเดิม เพราะย้อนหลังก็ต้องได้การ์ดของวันนั้นเองด้วย
+  }catch(e){
+    console.error('submitDailyLog error:', e);
+    showToast('⚠️ บันทึกไม่สำเร็จ: ' + e.message + ' — ลองใหม่อีกครั้ง');
+    btn.disabled = false; btn.textContent = 'บันทึก'; // คืนปุ่มให้กดใหม่ได้ เฉพาะตอนบันทึกไม่สำเร็จจริง
+  }
 }
 
 // การ์ดความรู้จะปลดล็อกก็ต่อเมื่อทำครบ 3 กิจกรรมของ "วันนี้" (ภารกิจ+Quiz+บันทึก) เท่านั้น ไม่ใช่แค่บันทึกอย่างเดียวเหมือนเดิม
@@ -3735,8 +3747,11 @@ async function addPoints(points, category){
 
 // คำนวณ streak ใหม่จากประวัติการบันทึกทั้งหมด (แทนการเทียบแค่ "วันล่าสุดเดิม") กันปัญหาบันทึกย้อนหลังข้ามลำดับแล้ว streak ไม่ขยับ
 // โบนัสหลักไมล์ (3/7/14/21 วัน) เปลี่ยนมาเช็คจาก list "เคยได้ไปหรือยัง" กันได้ซ้ำตอน streak กระโดดข้ามหลายหลักไมล์พร้อมกันจากการ backfill
+// กันคะแนนบวกซ้ำ (แก้บั๊กเดิม): เช็ค/ตั้งค่า flag "dailyLogPointsCredited" บนเอกสาร dailyLogs ของวันนั้นๆ ภายใน transaction เดียวกับที่บวกคะแนน
+// ถ้าฟังก์ชันนี้ถูกเรียกซ้ำด้วยเหตุผลอะไรก็ตาม (กดซ้ำ, เน็ตรีทราย, ฯลฯ) คะแนนพื้นฐานของวันนั้นจะบวกแค่ครั้งแรกครั้งเดียวเท่านั้น
 async function updateStreakAndPoints(points, targetDate){
   const ref = db.collection('students').doc(state.selectedStudent.id);
+  const logRef = db.collection('dailyLogs').doc(docIdFor(targetDate));
 
   // ดึงบันทึกทั้งหมดที่ "บันทึกสำเร็จแล้ว" ของนักเรียนคนนี้ มาคำนวณ streak ใหม่จากศูนย์
   const snap = await db.collection('dailyLogs').where('studentId','==', state.selectedStudent.id).get();
@@ -3760,8 +3775,12 @@ async function updateStreakAndPoints(points, targetDate){
 
   const milestones = [3, 7, Math.min(14, state.totalDays-1), state.totalDays];
   await db.runTransaction(async (tx)=>{
-    const doc = await tx.get(ref);
+    const [doc, logDoc] = await Promise.all([tx.get(ref), tx.get(logRef)]);
     const cur = doc.data();
+    const logData = logDoc.exists ? logDoc.data() : {};
+    const alreadyCredited = logData.dailyLogPointsCredited === true; // เคยบวกคะแนนพื้นฐานของวันนี้ไปแล้ว ไม่บวกซ้ำ
+    const pointsToAdd = alreadyCredited ? 0 : points;
+
     const awarded = cur.streakMilestonesAwarded || [];
     let bonus = 0;
     const newlyAwarded = [];
@@ -3775,8 +3794,8 @@ async function updateStreakAndPoints(points, targetDate){
       }
     });
 
-    const totalPts = (cur.totalPoints||0) + points + bonus;
-    const catTotal = (cur.pointsByCategory && cur.pointsByCategory.dailyLog || 0) + points + bonus;
+    const totalPts = (cur.totalPoints||0) + pointsToAdd + bonus;
+    const catTotal = (cur.pointsByCategory && cur.pointsByCategory.dailyLog || 0) + pointsToAdd + bonus;
 
     tx.update(ref, {
       currentStreak, longestStreak, totalPoints: totalPts,
@@ -3784,6 +3803,9 @@ async function updateStreakAndPoints(points, targetDate){
       daysCompleted, streakMilestonesAwarded: [...awarded, ...newlyAwarded],
       'pointsByCategory.dailyLog': catTotal
     });
+    if(!alreadyCredited){
+      tx.set(logRef, { dailyLogPointsCredited: true }, {merge:true});
+    }
     state.selectedStudent.currentStreak = currentStreak;
     state.selectedStudent.longestStreak = longestStreak;
     state.selectedStudent.totalPoints = totalPts;
@@ -3793,6 +3815,27 @@ async function updateStreakAndPoints(points, targetDate){
     state.selectedStudent.pointsByCategory.dailyLog = catTotal;
   });
   document.getElementById('hbStreak').textContent = state.selectedStudent.currentStreak;
+  document.getElementById('hbPoints').textContent = state.selectedStudent.totalPoints;
+}
+
+// เหมือน addPoints() แต่กันบวกซ้ำ: เช็ค/ตั้งค่า flag "quizPointsCredited" บนเอกสาร dailyLogs ของวันนั้นๆ ภายใน transaction เดียวกัน
+// กันเคส finishQuiz() ถูกเรียกซ้ำ (เน็ตรีทราย/บั๊กอื่นในอนาคต) แล้วคะแนน Quiz บวกทบซ้ำแบบเดียวกับที่เคยเกิดกับคะแนนบันทึกประจำวัน
+async function awardQuizPointsOnce(points, targetDate){
+  const studentRef = db.collection('students').doc(state.selectedStudent.id);
+  const logRef = db.collection('dailyLogs').doc(docIdFor(targetDate));
+  await db.runTransaction(async (tx)=>{
+    const [studentDoc, logDoc] = await Promise.all([tx.get(studentRef), tx.get(logRef)]);
+    const logData = logDoc.exists ? logDoc.data() : {};
+    if(logData.quizPointsCredited === true) return; // เคยให้คะแนน Quiz ของวันนี้ไปแล้ว ไม่บวกซ้ำ
+    const cur = studentDoc.data();
+    const newPoints = (cur.totalPoints||0) + points;
+    const catTotal = (cur.pointsByCategory && cur.pointsByCategory.quiz || 0) + points;
+    tx.update(studentRef, { totalPoints: newPoints, 'pointsByCategory.quiz': catTotal });
+    tx.set(logRef, { quizPointsCredited: true }, {merge:true});
+    state.selectedStudent.totalPoints = newPoints;
+    state.selectedStudent.pointsByCategory = state.selectedStudent.pointsByCategory || {};
+    state.selectedStudent.pointsByCategory.quiz = catTotal;
+  });
   document.getElementById('hbPoints').textContent = state.selectedStudent.totalPoints;
 }
 
