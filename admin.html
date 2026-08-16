@@ -132,6 +132,7 @@
       <div class="navitem" data-p="p-announce" onclick="showPanel('p-announce')">📢 ประกาศ</div>
       <div class="navitem" data-p="p-cardcheck" onclick="showPanel('p-cardcheck')">🔧 ตรวจสอบการ์ด</div>
       <div class="navitem" data-p="p-leaderboard" onclick="showPanel('p-leaderboard')">🏆 อันดับ/รางวัล</div>
+      <div class="navitem" data-p="p-audit" onclick="showPanel('p-audit')">🔎 ตรวจสอบคะแนนรายคน</div>
       <div class="navitem" data-p="p-campaign" onclick="showPanel('p-campaign')">⚙️ ตั้งค่าแคมเปญ</div>
       <div class="navitem" data-p="p-assessment" onclick="showPanel('p-assessment')">📋 ผล Baseline/Pre-Post</div>
     </div>
@@ -431,6 +432,43 @@
         </div>
       </div>
 
+      <!-- POINT AUDIT -->
+      <div class="panel" id="p-audit">
+        <h2>🔎 ตรวจสอบคะแนนรายคน</h2>
+        <p style="font-size:12.5px; color:#9aa8ab; margin-top:-8px;">เช็คว่าคะแนนของนักเรียนคนหนึ่งมาจากไหนบ้าง แยกเป็นรายวัน ใช้ตอนเจอคะแนนที่ดูผิดปกติ</p>
+        <div class="card" style="max-width:420px;">
+          <div class="field"><label>ค้นหาชื่อนักเรียน</label><input type="text" id="auditSearchInput" placeholder="พิมพ์ชื่อ..." oninput="renderAuditSearchResults()"></div>
+          <div id="auditSearchResults" style="max-height:220px; overflow-y:auto;"></div>
+        </div>
+
+        <div id="auditResultWrap" style="display:none;">
+          <div class="card">
+            <h3 style="margin-top:0;" id="auditStudentName">-</h3>
+            <div class="row">
+              <div class="kpi"><div class="n" id="auditTotalPoints">0</div><div class="l">คะแนนรวม</div></div>
+              <div class="kpi"><div class="n" id="auditDaysActive">0</div><div class="l">วันที่มีกิจกรรม</div></div>
+              <div class="kpi"><div class="n" id="auditAvgPerDay">0</div><div class="l">เฉลี่ย/วันที่ทำ</div></div>
+            </div>
+            <div class="row" style="margin-top:12px;">
+              <div class="kpi"><div class="n" id="auditCatLabel">0</div><div class="l">🏷️ ตรวจฉลาก</div></div>
+              <div class="kpi"><div class="n" id="auditCatQuiz">0</div><div class="l">❓ Quiz</div></div>
+              <div class="kpi"><div class="n" id="auditCatDailyLog">0</div><div class="l">📝 บันทึก+โบนัส Streak</div></div>
+              <div class="kpi"><div class="n" id="auditCatMission">0</div><div class="l">🎯 ภารกิจ</div></div>
+            </div>
+            <div class="msg" id="auditCatCheckMsg" style="margin-top:8px;"></div>
+          </div>
+
+          <div class="card">
+            <h3 style="margin-top:0;">รายละเอียดคะแนนตามวัน</h3>
+            <p style="font-size:12px; color:#9aa8ab; margin-top:-6px;">คอลัมน์ "หลักไมล์" ขึ้น ⭐ ประมาณวันที่น่าจะได้โบนัส Streak ครบรอบ (นับจากจำนวนวันสะสม อาจคลาดเคลื่อน 1-2 วันถ้ามีวันขาดช่วง — ตัวเลขโบนัสรวมจริงบวกอยู่ในช่อง "บันทึก+โบนัส Streak" ด้านบนแล้ว ไม่ได้บวกซ้ำในคอลัมน์ "บันทึก" ต่อวันด้านล่าง)</p>
+            <table>
+              <thead><tr><th>วันที่</th><th>Day</th><th>ตรวจฉลาก</th><th>Quiz</th><th>บันทึก</th><th>หลักไมล์</th><th>ภารกิจ</th><th>รวมวันนี้</th></tr></thead>
+              <tbody id="auditDayTable"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
       <!-- CAMPAIGN -->
       <div class="panel" id="p-campaign">
         <h2>ตั้งค่าแคมเปญ 21 วัน</h2>
@@ -454,6 +492,13 @@
           </div>
           <div class="msg" id="holidayMsg"></div>
           <div id="holidayList" style="margin-top:12px;"></div>
+        </div>
+
+        <div class="card" style="max-width:420px;">
+          <h3 style="margin-top:0;">🔔 ทดสอบส่งแจ้งเตือนภารกิจรายวัน</h3>
+          <p style="font-size:12.5px; color:#9aa8ab; margin-top:-6px;">ปกติระบบส่งอัตโนมัติทุกวัน 19:00 น. หาเฉพาะนักเรียนที่ยังไม่ส่งภารกิจของวันนั้น — ปุ่มนี้ใช้ทดสอบยิงได้ทันทีโดยไม่ต้องรอถึงเวลา (ต้องยืนยันรหัสผ่านผู้ดูแลก่อนทุกครั้ง กันคนอื่นมากดเล่น)</p>
+          <button class="btn btn-primary" onclick="testSendPushReminder()">🔔 ทดสอบส่งเลยตอนนี้</button>
+          <div class="msg" id="testPushMsg"></div>
         </div>
 
         <div class="card" style="max-width:420px; border-color:var(--red-high); background:#FBE6E2;">
@@ -711,6 +756,123 @@ async function boot(){
 }
 
 /* ---- OVERVIEW ---- */
+/* ---- ตรวจสอบคะแนนรายคน ---- */
+// ค่าคะแนนต่อครั้งเหล่านี้ต้องตรงกับที่ฝั่ง index.html ใช้จริงเสมอ (แก้จุดเดียวใน index.html แล้วอย่าลืมแก้ตรงนี้ด้วย)
+const AUDIT_LABEL_CHECK_POINTS = 3; // addPoints(3, 'labelCheck')
+const AUDIT_QUIZ_POINTS_PER_Q = 5;  // correctCount * 5
+
+function renderAuditSearchResults(){
+  const q = document.getElementById('auditSearchInput').value.trim().toLowerCase();
+  const wrap = document.getElementById('auditSearchResults');
+  document.getElementById('auditResultWrap').style.display = 'none';
+  if(!q){ wrap.innerHTML=''; return; }
+  const matches = studentsCache.filter(s=>(s.name||'').toLowerCase().includes(q)).slice(0,15);
+  if(matches.length===0){ wrap.innerHTML = '<div class="empty-note">ไม่พบชื่อนี้</div>'; return; }
+  wrap.innerHTML = matches.map(s=>`
+    <div style="padding:8px; border-bottom:1px solid #eee; cursor:pointer;" onclick="selectAuditStudent('${s.id}')">
+      <b>${s.name}</b> <span style="color:#9aa8ab; font-size:12px;">(${classNameOf(s.classId)}) — ${s.totalPoints||0} คะแนน</span>
+    </div>`).join('');
+}
+
+async function selectAuditStudent(studentId){
+  const student = studentsCache.find(s=>s.id===studentId);
+  if(!student) return;
+  document.getElementById('auditSearchResults').innerHTML = '';
+  document.getElementById('auditSearchInput').value = student.name;
+  document.getElementById('auditResultWrap').style.display = 'block';
+  document.getElementById('auditStudentName').textContent = `${student.name} (${classNameOf(student.classId)})`;
+  document.getElementById('auditDayTable').innerHTML = '<tr><td colspan="8">กำลังโหลด…</td></tr>';
+
+  try{
+    const [logsSnap, missionsSnap, campSnap] = await Promise.all([
+      db.collection('dailyLogs').where('studentId','==',studentId).get(),
+      db.collection('missionSubmissions').where('studentId','==',studentId).get(),
+      db.collection('settings').doc('campaign').get(),
+    ]);
+
+    let startDate = null, totalDays = null;
+    if(campSnap.exists && campSnap.data().startDate && campSnap.data().endDate){
+      startDate = dateFromStr(campSnap.data().startDate);
+      const endDate = dateFromStr(campSnap.data().endDate);
+      totalDays = Math.round((endDate-startDate)/(1000*60*60*24))+1;
+    }
+
+    // จับคู่ภารกิจแต่ละวันด้วย field date ตรงๆ (missionSubmissions เก็บ date ไว้ในตัวเองอยู่แล้ว)
+    const missionByDate = {};
+    missionsSnap.docs.forEach(d=>{
+      const m = d.data();
+      missionByDate[m.date] = (missionByDate[m.date]||0) + (m.pointsAwarded||0);
+    });
+
+    const dayRows = logsSnap.docs
+      .map(d=>d.data())
+      .filter(d=>d.submitted || (d.sodiumChecks && d.sodiumChecks.length>0) || d.quizScore!=null)
+      .sort((a,b)=> a.date < b.date ? -1 : 1)
+      .map(d=>{
+        const labelPts = (d.sodiumChecks||[]).filter(c=>c.pointsAwarded).length * AUDIT_LABEL_CHECK_POINTS;
+        const quizPts = (d.quizScore||0) * AUDIT_QUIZ_POINTS_PER_Q;
+        const dailyLogPts = d.pointsEarned || 0;
+        const missionPts = missionByDate[d.date] || 0;
+        const dayTotal = labelPts + quizPts + dailyLogPts + missionPts;
+        const dayNum = startDate ? Math.round((dateFromStr(d.date)-startDate)/(1000*60*60*24))+1 : (d.dayNumber||'-');
+        return { date:d.date, dayNum, labelPts, quizPts, dailyLogPts, missionPts, dayTotal };
+      });
+
+    // คำนวณโบนัสหลักไมล์ Streak รวม จากรายการที่เคยได้ไปแล้ว (ไม่แยกว่าได้วันไหนเป๊ะๆ เพราะขึ้นกับลำดับ streak จริง ไม่ใช่แค่จำนวนวันสะสม)
+    const bonusMap = {}; // milestone value -> bonus points
+    if(totalDays){
+      const milestones = [3, 7, Math.min(14, totalDays-1), totalDays];
+      const bonusValues = [5, 10, 20, 30];
+      milestones.forEach((m,i)=>{ bonusMap[m] = bonusValues[i]; });
+    }
+    const awarded = student.streakMilestonesAwarded || [];
+    const milestoneBonusTotal = awarded.reduce((sum,m)=> sum + (bonusMap[m]||0), 0);
+
+    const sumLabel = dayRows.reduce((s,r)=>s+r.labelPts,0);
+    const sumQuiz = dayRows.reduce((s,r)=>s+r.quizPts,0);
+    const sumDailyLogRaw = dayRows.reduce((s,r)=>s+r.dailyLogPts,0);
+    const sumMission = dayRows.reduce((s,r)=>s+r.missionPts,0);
+    const computedTotal = sumLabel + sumQuiz + sumDailyLogRaw + sumMission + milestoneBonusTotal;
+    const storedTotal = student.totalPoints || 0;
+
+    document.getElementById('auditTotalPoints').textContent = storedTotal;
+    document.getElementById('auditDaysActive').textContent = dayRows.length;
+    document.getElementById('auditAvgPerDay').textContent = dayRows.length ? Math.round(storedTotal/dayRows.length) : 0;
+    document.getElementById('auditCatLabel').textContent = sumLabel;
+    document.getElementById('auditCatQuiz').textContent = sumQuiz;
+    document.getElementById('auditCatDailyLog').textContent = sumDailyLogRaw + milestoneBonusTotal;
+    document.getElementById('auditCatMission').textContent = sumMission;
+
+    const checkEl = document.getElementById('auditCatCheckMsg');
+    const diff = storedTotal - computedTotal;
+    if(!totalDays){
+      checkEl.style.color = '#9aa8ab';
+      checkEl.textContent = 'ยังไม่ได้ตั้งวันเริ่ม/สิ้นสุดแคมเปญ — เช็คโบนัส Streak ให้ไม่ได้ครบ (ตัวเลขด้านบนอาจไม่นิ่ง)';
+    } else if(diff === 0){
+      checkEl.style.color = 'var(--lagoon)';
+      checkEl.textContent = `✅ คะแนนที่คำนวณจากประวัติจริง (${computedTotal}) ตรงกับคะแนนสะสมในระบบ (${storedTotal}) พอดี`;
+    } else {
+      checkEl.style.color = 'var(--red-high)';
+      checkEl.textContent = `⚠️ คะแนนสะสมในระบบ (${storedTotal}) ไม่ตรงกับที่คำนวณได้จากประวัติจริง (${computedTotal}) ต่างกัน ${diff>0?'+':''}${diff} คะแนน — น่าจะมีบั๊ก/ความผิดปกติ ควรเช็คละเอียดในตารางรายวันด้านล่าง`;
+    }
+
+    document.getElementById('auditDayTable').innerHTML = dayRows.length===0
+      ? '<tr><td colspan="8" class="empty-note">ยังไม่มีข้อมูลกิจกรรม</td></tr>'
+      : dayRows.map(r=>{
+          const milestoneMark = totalDays && bonusMap[dayRows.filter(x=>x.date<=r.date).length] ? '⭐' : '';
+          return `<tr>
+            <td>${r.date}</td><td>${r.dayNum}</td>
+            <td>${r.labelPts||'-'}</td><td>${r.quizPts||'-'}</td><td>${r.dailyLogPts||'-'}</td>
+            <td>${milestoneMark}</td><td>${r.missionPts||'-'}</td>
+            <td><b>${r.dayTotal}</b></td>
+          </tr>`;
+        }).join('');
+  }catch(e){
+    console.error(e);
+    document.getElementById('auditDayTable').innerHTML = '<tr><td colspan="8" class="empty-note">โหลดข้อมูลไม่สำเร็จ</td></tr>';
+  }
+}
+
 async function loadOverview(){
   document.getElementById('kpiStudents').textContent = studentsCache.length;
   document.getElementById('kpiClasses').textContent = classesCache.length;
@@ -1532,6 +1694,30 @@ function setMsg(id, text, isErr){
 }
 
 /* ---- ผล Baseline Survey / Pre-Post Test (จาก assessment.html แยกระบบ) ---- */
+async function testSendPushReminder(){
+  const msgEl = document.getElementById('testPushMsg');
+  const pw = prompt('ใส่รหัสผ่านผู้ดูแลเพื่อยืนยันการทดสอบส่ง');
+  if(!pw) return;
+  msgEl.style.color = 'var(--lagoon)';
+  msgEl.textContent = 'กำลังส่ง... (อาจใช้เวลาสักครู่ถ้ามีนักเรียนเยอะ)';
+  try{
+    const testSendMissionReminder = functions.httpsCallable('testSendMissionReminder');
+    const result = await testSendMissionReminder({ password: pw });
+    const { sent, failed, skippedNoToken } = result.data;
+    if(skippedNoToken){
+      msgEl.style.color = '#9aa8ab';
+      msgEl.textContent = 'ไม่มีนักเรียนที่ต้องส่ง (ทำภารกิจครบแล้วทุกคน หรือยังไม่มีใครกดเปิดแจ้งเตือนเลย)';
+    }else{
+      msgEl.style.color = 'var(--lagoon)';
+      msgEl.textContent = `ส่งสำเร็จ ${sent} เครื่อง${failed>0 ? ` (ล้มเหลว/token หมดอายุ ${failed} เครื่อง — ลบออกจากระบบให้แล้ว)` : ''}`;
+    }
+  }catch(e){
+    console.error(e);
+    msgEl.style.color = 'var(--red-high)';
+    msgEl.textContent = 'ส่งไม่สำเร็จ: ' + e.message;
+  }
+}
+
 /* ---- สวิตช์เปิด/ปิด Post-test (settings/campaign.postTestEnabled) ---- */
 async function loadPostTestSwitchState(){
   try{

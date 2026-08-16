@@ -21,6 +21,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-functions-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
 <script src="who-bmi-data.js"></script>
 <style>
   :root{
@@ -887,6 +888,18 @@
     <div class="tabpanel" id="tab-home">
       <div class="section-title" id="homeGreeting" style="font-size:16px; margin-top:0;">สวัสดี! 👋</div>
       <div style="text-align:right; margin:-6px 0 8px;"><span style="color:var(--lagoon); font-family:'Kanit'; font-weight:600; font-size:12px; cursor:pointer;" onclick="openAnnounceHistory()">📋 ดูประกาศทั้งหมด</span></div>
+
+      <!-- แจ้งเตือนภารกิจรายวัน: โผล่เฉพาะตอนยังไม่เคยเปิด/ยังไม่เคยตอบปฏิเสธ -->
+      <div class="card" id="notifyOptInCard" style="display:none; background:#FFF7E0; border-color:#E8C468;">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <div style="font-size:24px;">🔔</div>
+          <div style="flex:1;">
+            <div style="font-family:'Kanit'; font-weight:700; font-size:13.5px;">เปิดแจ้งเตือนภารกิจ</div>
+            <div style="font-size:12px; color:#6b7c80;" id="notifyOptInDesc">รับแจ้งเตือนถ้ายังไม่ได้ทำภารกิจของวันนั้น จะได้ไม่ลืม</div>
+          </div>
+          <button class="btn btn-primary" style="width:auto; padding:8px 14px; font-size:12.5px;" id="notifyOptInBtn" onclick="enablePushNotifications()">เปิด</button>
+        </div>
+      </div>
       <div class="stat-grid" style="grid-template-columns:repeat(3,1fr);">
         <div class="mini-stat"><div class="num" id="homeStreak">0</div><div class="lbl">วันต่อเนื่อง <img class="icon-inline" src="icon-streak.png" alt=""></div></div>
         <div class="mini-stat"><div class="num" id="homePoints">0</div><div class="lbl">คะแนนสะสม <img class="icon-inline" src="icon-score.png" alt=""></div></div>
@@ -1550,6 +1563,10 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const storage = firebase.storage();
 
+// TODO: ครูบอมบ์ต้องไปสร้างเองที่ Firebase Console → Project Settings → Cloud Messaging
+// → Web configuration → กด "Generate key pair" แล้วเอาค่าที่ได้มาแปะแทนตรงนี้ ก่อนใช้งานแจ้งเตือนจริง
+const FCM_VAPID_KEY = "BLHG24wlFlpYHIYoG9OnQAYs1FHHO1h4u-QwzuY8TQilFpIvkpzaaxd6AmarqhCcUscN5-uC1-RM-YJ3k7V165E";
+
 /* =========================================================
    CONSTANTS
    ========================================================= */
@@ -2020,11 +2037,58 @@ async function enterApp(){
     hideLoadingOverlay();
     saveSession();
     startIdleTimer();
+    initNotifyOptIn(); // เช็คว่าควรโชว์การ์ดชวนเปิดแจ้งเตือนไหม (ไม่บล็อกอะไร ทำหลังเข้าแอปสำเร็จแล้วเงียบๆ)
   }catch(e){
     console.error('enterApp error:', e);
     hideLoadingOverlay();
     state.pinBuffer=''; updatePinDots(); // เคลียร์ PIN ที่กรอกไว้ ให้พิมพ์ใหม่ได้สะดวก
     document.getElementById('pinError').textContent = '⚠️ เข้าสู่ระบบไม่สำเร็จ: ' + e.message + ' — ลองใหม่อีกครั้ง';
+  }
+}
+
+/* ---- Push Notification opt-in (เตือนภารกิจรายวัน) ---- */
+function initNotifyOptIn(){
+  const card = document.getElementById('notifyOptInCard');
+  const desc = document.getElementById('notifyOptInDesc');
+  const btn = document.getElementById('notifyOptInBtn');
+  if(!('Notification' in window) || !('serviceWorker' in navigator)){ return; } // เบราว์เซอร์รุ่นเก่า/ไม่รองรับเลย ไม่ต้องรบกวน
+  if(Notification.permission === 'granted' || Notification.permission === 'denied'){ return; } // เปิดแล้ว หรือเคยปฏิเสธไปแล้ว (เบราว์เซอร์ไม่ให้ขอซ้ำเองอยู่แล้ว)
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+  if(isIOS && !isStandalone){
+    // iPhone/iPad ต้องกด "เพิ่มไปยังหน้าจอโฮม" ก่อน ถึงจะขอ permission แจ้งเตือนได้ (ข้อจำกัดของ Safari)
+    desc.textContent = 'ใช้ iPhone/iPad อยู่ใช่ไหม? กด แชร์ 📤 → เพิ่มไปยังหน้าจอโฮม ก่อน แล้วเปิดแอปจากหน้าจอโฮมอีกครั้งถึงจะเปิดแจ้งเตือนได้';
+    btn.style.display = 'none';
+  }
+  card.style.display = 'block';
+}
+
+async function enablePushNotifications(){
+  const btn = document.getElementById('notifyOptInBtn');
+  const card = document.getElementById('notifyOptInCard');
+  btn.disabled = true; btn.textContent = 'กำลังเปิด...';
+  try{
+    const perm = await Notification.requestPermission();
+    if(perm !== 'granted'){
+      showToast('ไม่ได้เปิดแจ้งเตือน ลองเปิดใหม่ได้ทีหลังนะ');
+      card.style.display = 'none';
+      return;
+    }
+    const reg = await navigator.serviceWorker.register('firebase-messaging-sw.js');
+    const messaging = firebase.messaging();
+    const token = await messaging.getToken({ vapidKey: FCM_VAPID_KEY, serviceWorkerRegistration: reg });
+    if(token && state.selectedStudent){
+      await db.collection('students').doc(state.selectedStudent.id).update({
+        fcmTokens: firebase.firestore.FieldValue.arrayUnion(token)
+      });
+    }
+    card.style.display = 'none';
+    showToast('เปิดแจ้งเตือนแล้ว 🔔');
+  }catch(e){
+    console.error('เปิดแจ้งเตือนไม่สำเร็จ:', e);
+    showToast('เปิดแจ้งเตือนไม่สำเร็จ ลองใหม่อีกครั้ง');
+  }finally{
+    btn.disabled = false; btn.textContent = 'เปิด';
   }
 }
 
