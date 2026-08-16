@@ -395,6 +395,65 @@
   .rw-history-name{font-family:'Kanit'; font-weight:600; font-size:13px; color:var(--deep-sea);}
   .rw-history-date{font-size:11px; color:#9aa8ab;}
 
+  /* ---- Progress page (tab-stats) redesign — journey/highlights/plant story ---- */
+  .pg-header{
+    background:linear-gradient(135deg,#E4F5F3,#D7F0EA); border-radius:22px; padding:22px 20px;
+    margin-bottom:14px; position:relative;
+  }
+  .pg-header-top{display:flex; align-items:flex-start; justify-content:space-between; gap:10px;}
+  .pg-header-title{font-family:'Kanit'; font-weight:800; font-size:22px; color:var(--deep-sea); margin-bottom:4px;}
+  .pg-header-sub{font-size:12.5px; color:#4c5c60;}
+  .pg-header-mascot-wrap{position:relative; flex-shrink:0;}
+  .pg-header-mascot{width:70px; height:70px; object-fit:contain;}
+  .pg-speech{
+    position:absolute; top:-6px; right:78px; background:#fff; border-radius:14px; padding:8px 12px;
+    font-size:11px; color:var(--deep-sea); width:150px; box-shadow:0 3px 10px rgba(11,61,76,0.12); line-height:1.4;
+  }
+  .pg-speech:after{content:''; position:absolute; right:-6px; top:16px; border:6px solid transparent; border-left-color:#fff;}
+  .pg-section-title{font-family:'Kanit'; font-weight:700; font-size:17px; color:var(--deep-sea); margin:0 0 2px;}
+  .pg-section-sub{font-size:12px; color:#8b979a; margin:0 0 14px;}
+  .pg-card-icon-row{display:flex; align-items:center; gap:8px; margin-bottom:2px;}
+
+  .journey-badge{
+    display:inline-block; background:#FDEEDB; color:var(--coral); font-family:'Kanit'; font-weight:600;
+    font-size:12px; padding:5px 12px; border-radius:20px; margin-bottom:14px;
+  }
+  .journey-track{position:relative; padding:10px 4px 0;}
+  .journey-line{position:absolute; top:29px; left:6%; right:6%; height:3px; background:#EFE9D9; border-radius:2px; z-index:0;}
+  .journey-line-fill{position:absolute; top:29px; left:6%; height:3px; background:var(--lagoon); border-radius:2px; z-index:1; transition:width .4s ease;}
+  .journey-points{display:flex; justify-content:space-between; position:relative; z-index:2;}
+  .journey-point{display:flex; flex-direction:column; align-items:center; width:25%; text-align:center;}
+  .journey-circle{
+    width:52px; height:52px; border-radius:50%; background:#F3EFE4; border:2.5px solid #EFE9D9;
+    display:flex; align-items:center; justify-content:center; font-size:22px; margin-bottom:8px;
+  }
+  .journey-point.done .journey-circle{background:#E4F5F3; border-color:var(--lagoon);}
+  .journey-label{font-family:'Kanit'; font-weight:600; font-size:10.5px; color:#6b7c80; line-height:1.3;}
+  .journey-point.done .journey-label{color:var(--deep-sea);}
+
+  .hl-grid{display:grid; grid-template-columns:1fr; gap:10px;}
+  .hl-card{background:#fff; border-radius:16px; padding:14px; box-shadow:0 2px 8px rgba(11,61,76,0.06); display:flex; align-items:center; gap:12px;}
+  .hl-icon{font-size:26px; flex-shrink:0;}
+  .hl-title{font-family:'Kanit'; font-weight:700; font-size:13.5px; color:var(--deep-sea);}
+  .hl-value{font-size:12.5px; color:#6b7c80; margin-top:2px;}
+  .hl-value b{color:var(--lagoon); font-family:'Kanit';}
+
+  .plant-row{display:flex; justify-content:space-between; align-items:flex-end; padding:6px 2px 0;}
+  .plant-stage{display:flex; flex-direction:column; align-items:center; width:22%; text-align:center; opacity:0.45;}
+  .plant-stage.active{opacity:1;}
+  .plant-emoji{font-size:30px; margin-bottom:6px;}
+  .plant-name{font-family:'Kanit'; font-weight:700; font-size:11.5px; color:var(--deep-sea);}
+  .plant-sub{font-size:9.5px; color:#8b979a; margin-top:1px;}
+  .plant-arrow{font-size:16px; color:#c9c2ae; margin:0 2px 22px;}
+
+  .pg-encourage-card{background:#FDEEDB; border-radius:18px; padding:16px; display:flex; gap:12px; align-items:flex-start;}
+  .pg-encourage-icon{font-size:20px; flex-shrink:0;}
+  .pg-encourage-text{font-size:13px; color:#5a4632; line-height:1.6;}
+
+  .pg-collapse-btn{display:flex; align-items:center; justify-content:space-between; cursor:pointer; padding:2px 0;}
+  .pg-collapse-icon{transition:transform .2s ease;}
+  .pg-collapse-icon.open{transform:rotate(180deg);}
+
   /* ---- Daily Log (tab-log) redesign ---- */
   .log-header{
     background:linear-gradient(135deg,#E4F5F3,#D7F0EA); border-radius:22px; padding:20px;
@@ -1181,41 +1240,96 @@
 
     <!-- TAB: PROGRESS (เดิมชื่อ สถิติ) -->
     <div class="tabpanel" id="tab-stats">
+      <div class="pg-header">
+        <div class="pg-header-top">
+          <div>
+            <div class="pg-header-title">ความก้าวหน้าของฉัน</div>
+            <div class="pg-header-sub">เรื่องราวการดูแลตัวเองในแบบของคุณ ✨</div>
+          </div>
+          <div class="pg-header-mascot-wrap">
+            <div class="pg-speech" id="pgSpeech"></div>
+            <img src="mascot-complete.png" alt="" class="pg-header-mascot">
+          </div>
+        </div>
+      </div>
+
+      <!-- การเดินทางของฉัน -->
       <div class="card">
-        <h3 style="margin-top:0;">📈 ความก้าวหน้าของฉัน</h3>
-        <div class="stat-grid">
+        <div class="pg-card-icon-row"><span style="font-size:18px;">🗺️</span><div class="pg-section-title">การเดินทางของฉัน</div></div>
+        <div class="pg-section-sub">เส้นทางเล็ก ๆ ที่เราทำด้วยกัน</div>
+        <div class="journey-badge" id="journeyBadge"></div>
+        <div class="journey-track">
+          <div class="journey-line"></div>
+          <div class="journey-line-fill" id="journeyLineFill" style="width:0%;"></div>
+          <div class="journey-points" id="journeyPoints"></div>
+        </div>
+      </div>
+
+      <!-- Compact stats (ID เดิมทั้งหมด) -->
+      <div class="card">
+        <div class="stat-grid" style="grid-template-columns:repeat(4,1fr);">
           <div class="mini-stat"><div class="num" id="stStreak">0</div><div class="lbl">วันต่อเนื่อง <img class="icon-inline" src="icon-streak.png" alt=""></div></div>
           <div class="mini-stat"><div class="num" id="stPoints">0</div><div class="lbl">คะแนนสะสม <img class="icon-inline" src="icon-score.png" alt=""></div></div>
           <div class="mini-stat"><div class="num" id="stDays">0/21</div><div class="lbl">วันที่ทำสำเร็จ</div></div>
           <div class="mini-stat"><div class="num" id="stQuiz">0%</div><div class="lbl">ความแม่นยำ Quiz</div></div>
         </div>
       </div>
-
-      <div class="section-title">🧩 คะแนนแยกตามหมวด</div>
-      <div class="card">
-        <div class="stat-grid">
-          <div class="mini-stat"><div class="num" id="catLabelCheck">0</div><div class="lbl">🔍 ตรวจฉลาก</div></div>
-          <div class="mini-stat"><div class="num" id="catQuiz">0</div><div class="lbl">❓ Quiz</div></div>
-          <div class="mini-stat"><div class="num" id="catDailyLog">0</div><div class="lbl">📝 นักบันทึกพฤติกรรม</div></div>
-          <div class="mini-stat"><div class="num" id="catMission">0</div><div class="lbl">🎯 นักทำภารกิจ</div></div>
-        </div>
+      <!-- คะแนนแยกตามหมวด: เดิมเคยโชว์เป็นกริดแยก ตอนนี้ยุบไปรวมอยู่ใน "ไฮไลต์ของฉัน" ด้านล่างแทน (เลือกเฉพาะจุดที่โดดเด่นจริง)
+           ซ่อน element ไว้เฉยๆ ไม่ลบ เพราะ renderStats() ยังเขียนค่าใส่ element พวกนี้อยู่ (ใช้ร่วมกับการคำนวณ badge/รางวัล) ลบออกจะพัง -->
+      <div style="display:none;">
+        <div class="num" id="catLabelCheck">0</div>
+        <div class="num" id="catQuiz">0</div>
+        <div class="num" id="catDailyLog">0</div>
+        <div class="num" id="catMission">0</div>
       </div>
 
-      <div class="section-title">📉 แนวโน้มโซเดียมรายวัน</div>
+      <!-- ไฮไลต์ของฉัน -->
+      <div class="card">
+        <div class="pg-card-icon-row"><span style="font-size:18px;">✨</span><div class="pg-section-title">ไฮไลต์ของฉัน</div></div>
+        <div class="pg-section-sub">ความสำเร็จเล็ก ๆ ที่น่าภูมิใจ</div>
+        <div class="hl-grid" id="hlGrid"></div>
+      </div>
+
+      <!-- พฤติกรรมดี ๆ ที่กำลังเติบโต -->
+      <div class="card">
+        <div class="pg-card-icon-row"><span style="font-size:18px;">🌱</span><div class="pg-section-title">พฤติกรรมดี ๆ ที่กำลังเติบโต</div></div>
+        <div class="pg-section-sub">เราค่อย ๆ ฝึกและพัฒนาไปด้วยกันนะ</div>
+        <div class="plant-row" id="plantRow"></div>
+      </div>
+
+      <!-- ข้อความให้กำลังใจ -->
+      <div class="pg-encourage-card">
+        <div class="pg-encourage-icon">💬</div>
+        <div class="pg-encourage-text" id="pgEncourageText"></div>
+      </div>
+
+      <!-- จุดเด่นเรื่องโซเดียม -->
+      <div class="card" id="sodiumInsightCard" style="display:none; margin-top:16px;">
+        <div class="pg-card-icon-row"><span style="font-size:18px;">🌟</span><div class="pg-section-title">จุดเด่นเรื่องโซเดียม</div></div>
+        <div id="sodiumInsightBody"></div>
+      </div>
+
+      <div class="section-title" style="margin-top:20px;">📉 แนวโน้มโซเดียมของฉัน</div>
+      <p style="color:#8b979a; font-size:12px; margin-top:-8px;">ดูแนวโน้มจากรายการอาหารที่คุณบันทึกในแต่ละวัน (ค่าประมาณจากสิ่งที่บันทึกไว้ ไม่ใช่การวัดจริงทั้งหมด)</p>
       <div class="card">
         <div id="sodiumTrendChart"><div class="empty-note">กำลังโหลด…</div></div>
       </div>
 
-      <div class="section-title">📅 ตารางความก้าวหน้า</div>
       <div class="card">
-        <p style="color:#6b7c80; font-size:12.5px; margin-top:-4px;">คำนวณอัตโนมัติจากสิ่งที่บันทึกไว้แล้ว — ยิ่งมีจุดสีฟ้าเยอะ ยิ่งเก่ง! ไม่ต้องกังวลถ้ามีวันที่เป็นสีอื่นบ้าง</p>
-        <div id="progressTableWrap"><div class="empty-note">กำลังโหลด…</div></div>
+        <div class="pg-collapse-btn" onclick="toggleTableCollapse()">
+          <div class="pg-section-title" style="margin:0;">📅 รายละเอียด 21 วัน</div>
+          <span class="pg-collapse-icon" id="pgCollapseIcon">▾</span>
+        </div>
+        <div id="pgTableCollapseArea" style="display:none; margin-top:12px;">
+          <p style="color:#6b7c80; font-size:12.5px; margin-top:-4px;">คำนวณอัตโนมัติจากสิ่งที่บันทึกไว้แล้ว — ยิ่งมีจุดสีฟ้าเยอะ ยิ่งเก่ง! ไม่ต้องกังวลถ้ามีวันที่เป็นสีอื่นบ้าง</p>
+          <div id="progressTableWrap"><div class="empty-note">กำลังโหลด…</div></div>
+        </div>
       </div>
 
-      <div class="section-title">อันดับในห้อง</div>
+      <div class="section-title">🏆 อันดับของฉัน</div>
+      <div class="section-title" style="font-size:14px; margin-top:14px;">ในห้องเรียน</div>
       <div class="card" id="classLeaderboard"><div class="empty-note">กำลังโหลด…</div></div>
-
-      <div class="section-title">อันดับรวมทั้งโรงเรียน</div>
+      <div class="section-title" style="font-size:14px;">ทั้งโรงเรียน</div>
       <div class="card" id="schoolLeaderboard"><div class="empty-note">กำลังโหลด…</div></div>
     </div>
 
@@ -3610,6 +3724,160 @@ async function updateStreakAndPoints(points, targetDate){
 }
 
 /* ---- Stats tab ---- */
+/* ---- การเดินทางของฉัน — milestone อิงจาก "วันที่ทำกิจกรรมจริง" (daysCompleted) ไม่ใช่วันปฏิทิน ----
+   เพราะแค่ปฏิทินเดินไปถึงวันที่ 7 ไม่ได้แปลว่านักเรียนได้ทำอะไรจริง ใช้ daysCompleted ให้ตรงกับความพยายามจริง ---- */
+function renderJourney(){
+  const daysCompleted = state.selectedStudent.daysCompleted || 0;
+  const milestones = [
+    {threshold:1, icon:'🌱', label:'เริ่มต้นวันแรก'},
+    {threshold:7, icon:'🔍', label:'เริ่มสังเกตและเรียนรู้'},
+    {threshold:14, icon:'❤️', label:'ลองปรับพฤติกรรม'},
+    {threshold:21, icon:'⭐', label:'เป็นตัวเราที่ดีที่สุด'}
+  ];
+  const scaled = milestones.map(m => ({...m, threshold: Math.min(m.threshold, state.totalDays)}));
+  let currentStage = 0;
+  scaled.forEach((m,i)=>{ if(daysCompleted >= m.threshold) currentStage = i+1; });
+
+  document.getElementById('journeyBadge').textContent =
+    currentStage>=4 ? '🎉 ครบ 21-Day Challenge แล้ว!' : `คุณมาถึงขั้นที่ ${currentStage||0} แล้ว!`;
+  document.getElementById('journeyPoints').innerHTML = scaled.map(m=>{
+    const done = daysCompleted >= m.threshold;
+    return `<div class="journey-point ${done?'done':''}">
+      <div class="journey-circle">${done?'✅':m.icon}</div>
+      <div class="journey-label">${m.label}</div>
+    </div>`;
+  }).join('');
+  document.getElementById('journeyLineFill').style.width = (scaled.length>0 ? (currentStage/scaled.length)*100 : 0) + '%';
+}
+
+/* ---- ไฮไลต์ของฉัน — เลือก 3 ตัวที่ meaningful ที่สุดจากข้อมูลจริง ไม่สร้างค่าที่ไม่มี ---- */
+function renderHighlights(){
+  const logs = state.allDailyLogs || [];
+  const readLabelCount = logs.filter(l=>l.otherBehaviors && l.otherBehaviors.readLabel).length;
+  const readGDACount = logs.filter(l=>l.otherBehaviors && l.otherBehaviors.readGDA).length;
+  const healthyChoiceCount = logs.filter(l=>l.otherBehaviors && l.otherBehaviors.healthyChoice).length;
+  const drinkWaterCount = logs.filter(l=>l.otherBehaviors && l.otherBehaviors.drinkWater).length;
+  const sodiumCheckCount = state.selectedStudent.sodiumCheckCount || 0;
+  const approvedMissionCount = state.approvedMissionCount || 0;
+  const streak = state.selectedStudent.currentStreak || 0;
+  let quizCorrectSum=0, quizTotalSum=0;
+  logs.forEach(l=>{ if(l.quizAnswers && l.quizAnswers.length){ quizTotalSum+=l.quizAnswers.length; quizCorrectSum+=l.quizAnswers.filter(a=>a.correct).length; } });
+  const quizPct = quizTotalSum>0 ? Math.round(quizCorrectSum/quizTotalSum*100) : null;
+
+  const candidates = [
+    { icon:'🔥', title:'ทำต่อเนื่อง', value: streak, text: v=>`บันทึกต่อเนื่อง <b>${v} วัน</b>` },
+    { icon:'🔍', title:'อ่านฉลากบ่อยขึ้น', value: sodiumCheckCount, text: v=>`ตรวจฉลากแล้ว <b>${v} ครั้ง</b>` },
+    { icon:'❓', title:'ความรู้เพิ่มขึ้น', value: quizPct, text: v=>`Quiz ถูกสะสม <b>${v}%</b>` },
+    { icon:'🎯', title:'ทำภารกิจสำเร็จ', value: approvedMissionCount, text: v=>`ผ่านภารกิจแล้ว <b>${v} ครั้ง</b>` },
+    { icon:'🥗', title:'เลือกทางเลือกสุขภาพ', value: healthyChoiceCount, text: v=>`บันทึกการเลือกแล้ว <b>${v} วัน</b>` },
+    { icon:'📋', title:'อ่านฉลาก GDA', value: readGDACount, text: v=>`อ่านฉลาก GDA แล้ว <b>${v} วัน</b>` },
+    { icon:'💧', title:'ดื่มน้ำสม่ำเสมอ', value: drinkWaterCount, text: v=>`บันทึกดื่มน้ำแล้ว <b>${v} วัน</b>` },
+    { icon:'🏷️', title:'อ่านฉลากโภชนาการ', value: readLabelCount, text: v=>`อ่านฉลากก่อนกินแล้ว <b>${v} วัน</b>` }
+  ].filter(c => c.value !== null && c.value > 0);
+  candidates.sort((a,b)=>b.value-a.value);
+  const top3 = candidates.slice(0,3);
+
+  const gridEl = document.getElementById('hlGrid');
+  if(top3.length===0){
+    gridEl.innerHTML = '<div class="empty-note">ยังไม่มีข้อมูลมากพอให้แสดงไฮไลต์ ลองทำกิจกรรมสักหน่อยแล้วกลับมาดูนะ</div>';
+    return;
+  }
+  gridEl.innerHTML = top3.map(c=>`
+    <div class="hl-card">
+      <div class="hl-icon">${c.icon}</div>
+      <div><div class="hl-title">${c.title}</div><div class="hl-value">${c.text(c.value)}</div></div>
+    </div>
+  `).join('');
+}
+
+/* ---- พฤติกรรมดี ๆ ที่กำลังเติบโต — ใช้วันปฏิทิน (state.dayNumber) เป็น metaphor การฝึกฝนเท่านั้น
+   ย้ำ: ไม่ได้สื่อว่า 21 วัน = นิสัยถาวร ตามหลักที่กำชับไว้ ---- */
+function renderPlantStory(){
+  const dayNum = state.dayNumber || 1;
+  const stages = [
+    {emoji:'🌱', name:'เริ่มต้น', sub:'วันที่ 1', active: dayNum>=1},
+    {emoji:'🌿', name:'เริ่มสังเกต', sub:'สัปดาห์แรก', active: dayNum>=2},
+    {emoji:'🌼', name:'กำลังฝึก', sub:'สัปดาห์ที่ 2-3', active: dayNum>=8},
+    {emoji:'🌳', name:'ทำต่อเนื่อง', sub:'หลังจบ Challenge', active: dayNum>=15}
+  ];
+  document.getElementById('plantRow').innerHTML = stages.map((s,i)=>
+    `<div class="plant-stage ${s.active?'active':''}">
+      <div class="plant-emoji">${s.emoji}</div>
+      <div class="plant-name">${s.name}</div>
+      <div class="plant-sub">${s.sub}</div>
+    </div>${i<stages.length-1 ? '<div class="plant-arrow">→</div>' : ''}`
+  ).join('');
+}
+
+/* ---- ข้อความให้กำลังใจ — static text ตามช่วงวัน ไม่ใช้ AI ไม่มี Firebase เพิ่ม ---- */
+function renderEncouragement(){
+  const dayNum = state.dayNumber || 1;
+  let msg;
+  if(dayNum < 7) msg = 'เริ่มต้นได้ดีเลย ลองค่อย ๆ สังเกตพฤติกรรมของตัวเองต่อไปนะ 🌱';
+  else if(dayNum < 14) msg = 'ผ่านสัปดาห์แรกมาแล้ว! สิ่งเล็ก ๆ ที่ทำซ้ำกำลังช่วยให้เราเข้าใจตัวเองมากขึ้น 💪';
+  else if(dayNum < 21) msg = 'มาไกลมากแล้ว ลองสังเกตว่าสิ่งไหนที่เราทำได้ง่ายขึ้นกว่าเดิม ✨';
+  else msg = 'ครบ 21-Day Challenge แล้ว! ใช้สิ่งที่เรียนรู้ไปเลือกดูแลตัวเองต่อได้เลย 🎉';
+  document.getElementById('pgEncourageText').textContent = msg;
+  document.getElementById('pgSpeech').textContent = 'เก่งมากเลย! ทุกก้าวเล็ก ๆ กำลังพาคุณไปสู่เวอร์ชันที่ดีขึ้นนะ';
+}
+
+/* ---- จุดเด่นเรื่องโซเดียม — เติมมุมมอง "ผลลัพธ์จริง" คู่กับ "ความสม่ำเสมอ" ที่ section อื่นเน้นอยู่แล้ว
+   ระวัง Data Integrity: โชว์เฉพาะตอนมีข้อมูลพอและดีขึ้นจริงเท่านั้น ไม่ตัดสิน ไม่ทำให้รู้สึกผิดถ้าตัวเลขไม่ลด ---- */
+function computeSodiumInsights(){
+  const logs = state.allDailyLogs || [];
+  const trackedDays = logs
+    .filter(l => (l.sodiumChecks && l.sodiumChecks.length>0) || (l.mealSodiumEntries && l.mealSodiumEntries.length>0))
+    .map(l => ({date: l.date, total: computeDailySodiumTotal(l)}))
+    .filter(d => d.date);
+
+  let bestDay = null;
+  if(trackedDays.length > 0) bestDay = trackedDays.reduce((min,d) => d.total < min.total ? d : min, trackedDays[0]);
+
+  let trendInsight = null;
+  if(trackedDays.length >= 6){
+    const sorted = [...trackedDays].sort((a,b)=> a.date.localeCompare(b.date));
+    const mid = Math.floor(sorted.length/2);
+    const firstHalf = sorted.slice(0, mid), secondHalf = sorted.slice(mid);
+    if(firstHalf.length>=3 && secondHalf.length>=3){
+      const avgFirst = firstHalf.reduce((s,d)=>s+d.total,0)/firstHalf.length;
+      const avgSecond = secondHalf.reduce((s,d)=>s+d.total,0)/secondHalf.length;
+      if(avgSecond < avgFirst) trendInsight = { avgFirst: Math.round(avgFirst), avgSecond: Math.round(avgSecond), diff: Math.round(avgFirst-avgSecond) };
+    }
+  }
+  return { bestDay, trendInsight };
+}
+function renderSodiumInsights(){
+  const {bestDay, trendInsight} = computeSodiumInsights();
+  const cardEl = document.getElementById('sodiumInsightCard');
+  const bodyEl = document.getElementById('sodiumInsightBody');
+  if(!bestDay && !trendInsight){ cardEl.style.display='none'; return; }
+  cardEl.style.display = 'block';
+  let html = '';
+  if(bestDay){
+    html += `<div class="hl-card" style="margin-bottom:${trendInsight?'10px':'0'};">
+      <div class="hl-icon">🏅</div>
+      <div><div class="hl-title">วันที่ทำได้ดีที่สุด</div>
+      <div class="hl-value">${dayLabelThai(bestDay.date)} — บันทึกโซเดียมแค่ <b>${bestDay.total.toLocaleString('th-TH')} มก.</b></div></div>
+    </div>`;
+  }
+  if(trendInsight){
+    html += `<div class="hl-card">
+      <div class="hl-icon">📉</div>
+      <div><div class="hl-title">แนวโน้มดีขึ้น</div>
+      <div class="hl-value">ค่าเฉลี่ยช่วงหลังบันทึกไว้ <b>${trendInsight.avgSecond.toLocaleString('th-TH')} มก.</b> ต่ำกว่าช่วงแรก (${trendInsight.avgFirst.toLocaleString('th-TH')} มก.) อยู่ <b>${trendInsight.diff.toLocaleString('th-TH')} มก.</b></div></div>
+    </div>`;
+  }
+  bodyEl.innerHTML = html;
+}
+
+function toggleTableCollapse(){
+  const area = document.getElementById('pgTableCollapseArea');
+  const icon = document.getElementById('pgCollapseIcon');
+  const isOpen = area.style.display === 'block';
+  area.style.display = isOpen ? 'none' : 'block';
+  icon.classList.toggle('open', !isOpen);
+}
+
 function renderStats(){
   document.getElementById('stStreak').textContent = state.selectedStudent.currentStreak || 0;
   document.getElementById('stPoints').textContent = state.selectedStudent.totalPoints || 0;
@@ -3919,6 +4187,11 @@ async function loadProgressTable(){
     }catch(e){ console.error(e); state.approvedMissionCount = state.approvedMissionCount || 0; }
 
     renderStats(); // เรียกซ้ำอีกครั้งตอนนี้ เพื่อให้ badge/Quiz accuracy สะสม อัปเดตด้วยข้อมูลที่เพิ่งโหลดครบ
+    renderJourney();
+    renderHighlights();
+    renderPlantStory();
+    renderEncouragement();
+    renderSodiumInsights();
 
     try{
       document.getElementById('sodiumTrendChart').innerHTML = renderSodiumTrendChart(days, logByDate);
