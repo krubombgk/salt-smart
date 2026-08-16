@@ -438,6 +438,15 @@
       <div class="panel" id="p-assessment">
         <h2>ผล Baseline Survey / Pre-Post Test</h2>
         <p style="font-size:12.5px; color:#9aa8ab; margin-top:-8px;">ข้อมูลจากหน้า assessment.html (แยกจากระบบเกม) — ตารางนี้เป็นสรุปเบื้องต้นให้เห็นภาพรวมเท่านั้น ถ้าจะวิเคราะห์สถิติจริง (paired t-test, CI ฯลฯ) แนะนำ Export CSV ไปทำต่อใน Excel/SPSS ตามที่ระบุไว้ในรายงานออกแบบเครื่องมือ</p>
+        <div class="card" style="max-width:420px; border-color:var(--lagoon);">
+          <h3 style="margin-top:0;">🔓 เปิด/ปิด Post-test สำหรับนักเรียน</h3>
+          <p style="font-size:12.5px; color:#9aa8ab; margin-top:-6px;">ค่าเริ่มต้นคือ "ปิด" เสมอ นักเรียนจะกดเข้าไปทำ Post-test (หลังจบโครงการ 21 วัน) ไม่ได้จนกว่าจะกดเปิดตรงนี้ — กดเปิดเมื่อพร้อมให้นักเรียนทำ Post-test จริงเท่านั้น</p>
+          <div style="display:flex; align-items:center; gap:10px; margin-top:10px; flex-wrap:wrap;">
+            <span class="pill" id="postTestStatusPill">กำลังโหลด…</span>
+            <button class="btn btn-primary" id="postTestToggleBtn" style="width:auto; padding:10px 18px;" onclick="togglePostTestEnabled()">…</button>
+          </div>
+          <div class="msg" id="postTestSwitchMsg"></div>
+        </div>
         <div class="card">
           <div class="field" style="max-width:260px;"><label>กรองตามห้อง</label><select id="assessClassFilter" onchange="loadAssessmentResults()"></select></div>
           <div id="assessSummary" style="display:flex; flex-wrap:wrap; gap:8px; margin:10px 0;"></div>
@@ -532,7 +541,7 @@ function showPanel(id){
   if(id==='p-leaderboard') switchLbCat(currentLbCat);
   if(id==='p-review') loadReviewQueue();
   if(id==='p-announce') loadAnnouncements();
-  if(id==='p-assessment') loadAssessmentResults();
+  if(id==='p-assessment'){ loadAssessmentResults(); loadPostTestSwitchState(); }
 }
 
 /* ---- ประกาศ ---- */
@@ -1370,6 +1379,49 @@ function setMsg(id, text, isErr){
 }
 
 /* ---- ผล Baseline Survey / Pre-Post Test (จาก assessment.html แยกระบบ) ---- */
+/* ---- สวิตช์เปิด/ปิด Post-test (settings/campaign.postTestEnabled) ---- */
+async function loadPostTestSwitchState(){
+  try{
+    const snap = await db.collection('settings').doc('campaign').get();
+    const enabled = snap.exists && snap.data().postTestEnabled === true;
+    renderPostTestSwitch(enabled);
+  }catch(e){
+    console.error('โหลดสถานะ postTestEnabled ไม่สำเร็จ:', e);
+    document.getElementById('postTestStatusPill').textContent = 'โหลดสถานะไม่สำเร็จ ลองรีเฟรชหน้า';
+  }
+}
+function renderPostTestSwitch(enabled){
+  const pill = document.getElementById('postTestStatusPill');
+  const btn = document.getElementById('postTestToggleBtn');
+  pill.textContent = enabled ? '🟢 เปิดอยู่ — นักเรียนทำ Post-test ได้แล้ว' : '🔒 ปิดอยู่ — นักเรียนยังทำ Post-test ไม่ได้';
+  btn.textContent = enabled ? 'ปิด Post-test' : 'เปิด Post-test';
+  btn.className = 'btn ' + (enabled ? 'btn-danger' : 'btn-primary');
+}
+async function togglePostTestEnabled(){
+  let current;
+  try{
+    const snap = await db.collection('settings').doc('campaign').get();
+    current = snap.exists && snap.data().postTestEnabled === true;
+  }catch(e){
+    console.error(e);
+    setMsg('postTestSwitchMsg', 'เช็คสถานะปัจจุบันไม่สำเร็จ ลองใหม่อีกครั้ง', true);
+    return;
+  }
+  const next = !current;
+  const confirmMsg = next
+    ? 'ยืนยันเปิดให้ทำ Post-test?\nนักเรียนทุกคนจะกดเข้าไปทำได้ทันที'
+    : 'ยืนยันปิด Post-test?\nนักเรียนที่ยังไม่ได้ทำจะกดเข้าไม่ได้จนกว่าจะเปิดอีกครั้ง (คนที่ทำไปแล้วก่อนหน้านี้ ข้อมูลจะยังอยู่ตามเดิม ไม่หายไปไหน)';
+  if(!confirm(confirmMsg)) return;
+  try{
+    await db.collection('settings').doc('campaign').set({postTestEnabled: next}, {merge:true});
+    renderPostTestSwitch(next);
+    setMsg('postTestSwitchMsg', next ? 'เปิดให้ทำ Post-test แล้ว' : 'ปิด Post-test แล้ว');
+  }catch(e){
+    console.error(e);
+    setMsg('postTestSwitchMsg', 'บันทึกไม่สำเร็จ: ' + e.message, true);
+  }
+}
+
 async function loadAssessmentResults(){
   // เติม dropdown กรองห้องถ้ายังไม่เคยเติม
   const filterEl = document.getElementById('assessClassFilter');

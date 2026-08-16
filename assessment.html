@@ -29,6 +29,7 @@
     cursor:pointer; font-family:'Kanit'; font-weight:600; margin-bottom:10px;
   }
   .pick-tile.active{border-color:var(--lagoon); background:#E4F5F3;}
+  .pick-tile.locked{opacity:0.55; background:#F7F5EE;}
   .grid2{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
   .q-item{margin-bottom:22px;}
   .q-num{font-family:'Kanit'; font-weight:700; font-size:14px; color:var(--lagoon); margin-bottom:6px;}
@@ -73,10 +74,11 @@
         <div style="font-size:22px;">🟢</div>
         ก่อนเริ่มโครงการ<br><span style="font-weight:400; font-size:12px;">(Baseline Survey + Pre-test)</span>
       </div>
-      <div class="pick-tile" onclick="selectPhase('post')">
-        <div style="font-size:22px;">🏁</div>
-        หลังจบโครงการ 21 วัน<br><span style="font-weight:400; font-size:12px;">(Post Behavior Survey + Post-test)</span>
+      <div class="pick-tile locked" id="postTile" onclick="handlePostTileClick()">
+        <div style="font-size:22px;" id="postTileIcon">🔒</div>
+        หลังจบโครงการ 21 วัน<br><span style="font-weight:400; font-size:12px;" id="postTileSub">(ครูยังไม่เปิดให้ทำ)</span>
       </div>
+      <div class="msg" id="phaseMsg" style="margin-top:6px;"></div>
     </div>
   </div>
 
@@ -109,6 +111,19 @@
       </div>
       <div class="msg" id="pinError"></div>
       <div class="keypad" id="keypad"></div>
+    </div>
+  </div>
+
+  <!-- SCREEN: เตือนทำซ้ำ -->
+  <div id="screen-duplicate" style="display:none;">
+    <div class="card" style="text-align:center;">
+      <div style="font-size:40px;">⚠️</div>
+      <h3 style="margin-top:0;">ทำแบบทดสอบชุดนี้ไปแล้ว</h3>
+      <p style="color:#6b7c80; font-size:13.5px;" id="duplicateDetail"></p>
+      <p style="color:#6b7c80; font-size:13px;">ถ้าทำใหม่อีกครั้ง ระบบจะบันทึกเป็นชุดคำตอบใหม่เพิ่มเข้าไป (ไม่ได้ลบของเดิม) — ตรวจสอบกับครูก่อนถ้าไม่แน่ใจ</p>
+      <button class="btn btn-primary" onclick="confirmDuplicateContinue()">ยืนยัน ทำต่อ/ทำใหม่</button>
+      <div style="height:10px;"></div>
+      <button class="btn btn-ghost" onclick="goScreen('screen-student')">ยกเลิก กลับไปเลือกชื่อ</button>
     </div>
   </div>
 
@@ -158,10 +173,10 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
-let state = { phase:null, classId:null, className:null, student:null, classes:[], students:[] };
+let state = { phase:null, classId:null, className:null, student:null, classes:[], students:[], postTestEnabled:false };
 
 function goScreen(id){
-  ['screen-phase','screen-class','screen-student','screen-pin','screen-behavior','screen-test','screen-done'].forEach(s=>{
+  ['screen-phase','screen-class','screen-student','screen-pin','screen-duplicate','screen-behavior','screen-test','screen-done'].forEach(s=>{
     document.getElementById(s).style.display = (s===id) ? 'block' : 'none';
   });
 }
@@ -253,7 +268,7 @@ async function handlePinComplete(){
   const entered = state.pinBuffer;
   if(state.pinMode==='verify'){
     if(entered === state.student.pin){
-      startBehaviorSurvey();
+      proceedAfterPin();
     }else{
       document.getElementById('pinError').textContent = 'รหัสไม่ถูกต้อง ลองใหม่อีกครั้ง';
       state.pinBuffer=''; updatePinDots();
@@ -267,13 +282,70 @@ async function handlePinComplete(){
     if(entered === state.pendingPin){
       await db.collection('students').doc(state.student.id).update({pin:entered});
       state.student.pin = entered;
-      startBehaviorSurvey();
+      proceedAfterPin();
     }else{
       document.getElementById('pinError').textContent = 'รหัสไม่ตรงกัน กรุณาตั้งใหม่';
       state.pinBuffer=''; state.pendingPin=''; state.pinMode='setup';
       updatePinModeText(); updatePinDots();
     }
   }
+}
+
+// เช็คว่านักเรียนคนนี้เคยส่งคำตอบของ phase นี้ไปแล้วหรือยัง (ทั้ง behavior survey และ knowledge test)
+// ไม่บล็อก แค่เตือนก่อน เพราะบางครั้งครู/นักเรียนอาจตั้งใจทำใหม่จริง ๆ (เช่น กดผิดตั้งแต่ต้น)
+async function checkExistingSubmission(studentId, phase){
+  const fmt = (ts) => {
+    if(!ts || !ts.toDate) return '';
+    try{
+      return ts.toDate().toLocaleDateString('th-TH', {day:'numeric', month:'short', year:'numeric'});
+    }catch(e){ return ''; }
+  };
+  // ไม่ใช้ orderBy ร่วมกับ where 2 ตัว เพื่อเลี่ยงการต้องสร้าง composite index เพิ่มใน Firestore
+  // จำนวนเอกสารต่อ studentId+phase ปกติมีน้อยมาก (0-2 รายการ) จึงเรียงเองฝั่ง client ได้สบาย
+  const [behaviorSnap, testSnap] = await Promise.all([
+    db.collection('behaviorSurveys').where('studentId','==',studentId).where('phase','==',phase).get(),
+    db.collection('knowledgeTests').where('studentId','==',studentId).where('phase','==',phase).get(),
+  ]);
+  const latestOf = (snap) => {
+    if(snap.empty) return null;
+    return snap.docs.map(d=>d.data()).sort((a,b)=>{
+      const ta = a.submittedAt && a.submittedAt.toMillis ? a.submittedAt.toMillis() : 0;
+      const tb = b.submittedAt && b.submittedAt.toMillis ? b.submittedAt.toMillis() : 0;
+      return tb - ta;
+    })[0];
+  };
+  const latestBehavior = latestOf(behaviorSnap);
+  const latestTest = latestOf(testSnap);
+  return {
+    behaviorExists: !!latestBehavior, behaviorDate: latestBehavior ? fmt(latestBehavior.submittedAt) : '',
+    testExists: !!latestTest, testDate: latestTest ? fmt(latestTest.submittedAt) : '',
+  };
+}
+
+async function proceedAfterPin(){
+  let result;
+  try{
+    result = await checkExistingSubmission(state.student.id, state.phase);
+  }catch(e){
+    console.error('เช็คการทำซ้ำไม่สำเร็จ:', e);
+    // เช็คไม่สำเร็จ (เช่น เน็ตหลุด) — ปล่อยให้ทำต่อได้ตามปกติ ไม่บล็อกนักเรียนเพราะเหตุผลทางเทคนิค
+    startBehaviorSurvey();
+    return;
+  }
+  if(result.behaviorExists || result.testExists){
+    const parts = [];
+    if(result.behaviorExists) parts.push(`แบบสำรวจพฤติกรรม (${result.behaviorDate || 'ไม่ทราบวันที่'})`);
+    if(result.testExists) parts.push(`แบบทดสอบความรู้ (${result.testDate || 'ไม่ทราบวันที่'})`);
+    document.getElementById('duplicateDetail').textContent =
+      `${state.student.name} เคยทำ ${parts.join(' และ ')} ของช่วง "${state.phase==='pre'?'ก่อนเริ่มโครงการ':'หลังจบโครงการ'}" ไปแล้ว`;
+    goScreen('screen-duplicate');
+  } else {
+    startBehaviorSurvey();
+  }
+}
+
+function confirmDuplicateContinue(){
+  startBehaviorSurvey();
 }
 
 /* =========================================================
@@ -458,7 +530,45 @@ async function finishKnowledgeTest(){
   goScreen('screen-done');
 }
 
+// เช็ค flag settings/campaign.postTestEnabled — ครูเป็นคนกดเปิดเองจากหลังบ้านตอนแคมเปญจบ
+// ปลอดภัยไว้ก่อน: ถ้ายังโหลดไม่เสร็จ หรือเอกสารยังไม่มี หรือดึงข้อมูลไม่สำเร็จ ให้ถือว่า "ยังไม่เปิด" เสมอ
+async function loadCampaignSettings(){
+  try{
+    const snap = await db.collection('settings').doc('campaign').get();
+    state.postTestEnabled = snap.exists && snap.data().postTestEnabled === true;
+  }catch(e){
+    console.error('โหลดสถานะแคมเปญไม่สำเร็จ:', e);
+    state.postTestEnabled = false;
+  }
+  applyPostTileState();
+}
+
+function applyPostTileState(){
+  const tile = document.getElementById('postTile');
+  const icon = document.getElementById('postTileIcon');
+  const sub = document.getElementById('postTileSub');
+  if(state.postTestEnabled){
+    tile.classList.remove('locked');
+    icon.textContent = '🏁';
+    sub.textContent = '(Post Behavior Survey + Post-test)';
+  }else{
+    tile.classList.add('locked');
+    icon.textContent = '🔒';
+    sub.textContent = '(ครูยังไม่เปิดให้ทำ)';
+  }
+}
+
+function handlePostTileClick(){
+  if(!state.postTestEnabled){
+    document.getElementById('phaseMsg').textContent = 'ครูยังไม่เปิดให้ทำ Post-test ตอนนี้ รอครูประกาศก่อนนะ';
+    return;
+  }
+  document.getElementById('phaseMsg').textContent = '';
+  selectPhase('post');
+}
+
 goScreen('screen-phase');
+loadCampaignSettings();
 </script>
 </body>
 </html>
