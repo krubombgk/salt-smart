@@ -1048,8 +1048,8 @@
           <input type="number" id="ciSodium" placeholder="เช่น 850" inputmode="numeric">
         </div>
 
-        <input type="file" accept="image/*" capture="environment" id="labelPhotoInput" style="display:none" onchange="handleLabelPhoto(event)">
-        <button class="btn btn-ghost btn-block" type="button" onclick="document.getElementById('labelPhotoInput').click()">📷 ถ่ายรูปฉลากให้ช่วยอ่าน</button>
+        <input type="file" accept="image/*" id="labelPhotoInput" style="display:none" onchange="handleLabelPhoto(event)">
+        <button class="btn btn-ghost btn-block" type="button" onclick="document.getElementById('labelPhotoInput').click()">📷 ถ่ายรูป/แนบไฟล์ฉลากให้ช่วยอ่าน</button>
         <div class="ocr-status" id="ocrStatus"></div>
 
         <button class="btn btn-primary btn-block" style="margin-top:10px;" onclick="calcSodium()">คำนวณ</button>
@@ -3101,8 +3101,8 @@ function renderMissionUI(mission, sub){
   if (!locked) {
     formHtml = `
       ${needsPhoto ? `
-        <input type="file" accept="image/*" capture="environment" id="missionPhotoInput" style="display:none" onchange="previewMissionPhoto(event)">
-        <button class="btn btn-ghost btn-block" type="button" onclick="document.getElementById('missionPhotoInput').click()">📷 ถ่ายรูปหลักฐาน</button>
+        <input type="file" accept="image/*" id="missionPhotoInput" style="display:none" onchange="previewMissionPhoto(event)">
+        <button class="btn btn-ghost btn-block" type="button" onclick="document.getElementById('missionPhotoInput').click()">📷 ถ่ายรูป/แนบไฟล์หลักฐาน</button>
         <div id="missionPhotoPreview" style="margin-top:8px;"></div>
       ` : ''}
       ${needsText ? `
