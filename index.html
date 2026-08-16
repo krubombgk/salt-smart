@@ -2475,11 +2475,13 @@ async function handleLabelPhoto(event){
     }
 
     // เก็บค่าพลังงาน/น้ำตาล/ไขมัน/หมวดหมู่ไว้ใช้ตอนบันทึกยืนยัน (ไม่ได้โชว์ในหน้าจอ แค่ช่วยแยกสินค้าชื่อคล้ายกัน + ทำรายงานตามหมวดหมู่)
+    // aiSodiumMg เก็บค่าที่ AI อ่านได้ดิบๆ ไว้ด้วย (เผื่อนักเรียนแก้ตัวเลขก่อนบันทึกจริง) ใช้เทียบความแม่นยำ AI vs ค่าสุดท้ายที่บันทึกในหลังบ้าน
     state.lastAiReadExtra = {
       energyKcal: data.energy_kcal ?? null,
       sugarG: data.sugar_g ?? null,
       fatG: data.fat_g ?? null,
-      category: data.category || null
+      category: data.category || null,
+      aiSodiumMg: (data.found && data.sodium_mg) ? data.sodium_mg : null
     };
 
     statusEl.innerHTML = msgParts.join(' · ') + (data.note ? `<br><span style="color:#aab5b8;">${data.note}</span>` : '') + `<br><span style="color:#aab5b8;">(เหลือ ${data.remainingToday} ครั้งวันนี้)</span>`;
@@ -2656,6 +2658,12 @@ async function saveSodiumCheck(consumed){
   const totalSodium = Math.round(perUnitSodium * servings);
   const totalPct = Math.min(Math.round((totalSodium/getSodiumGoal())*100),200);
 
+  // ที่มาของค่าโซเดียม: 'ai' ถ้ามีการอ่านฉลากด้วย AI Vision มาก่อนหน้านี้ในรอบเดียวกัน (ยังไม่ได้บันทึก/ยังไม่ถ่ายรูปใหม่ทับ)
+  // ไว้ใช้ทำสถิติ "AI ช่วยอ่านไปกี่ครั้ง" และเทียบความแม่นยำกับค่าที่บันทึกจริง (เผื่อนักเรียนแก้เลขเอง)
+  // หมายเหตุ: เคสที่พิมพ์ชื่อสินค้าอื่นทับหลังถ่ายรูปโดยไม่ถ่ายใหม่ ระบบจะยังนับเป็น 'ai' อยู่ (พบน้อยมาก ยอมรับความคลาดเคลื่อนนี้)
+  const aiSodiumMg = (state.lastAiReadExtra && state.lastAiReadExtra.aiSodiumMg != null) ? state.lastAiReadExtra.aiSodiumMg : null;
+  const source = aiSodiumMg != null ? 'ai' : 'manual';
+
   // กันฟาร์มคะแนน: ชื่อสินค้าเดียวกันได้คะแนนแค่ครั้งแรกของวัน + จำกัดจำนวนครั้งที่ได้คะแนนต่อวันไว้อีกชั้น
   // (ตรวจซ้ำ/ตรวจเกินโควตายังบันทึกรายการได้ปกติ แค่ไม่ได้คะแนนเพิ่มเฉยๆ)
   const normalizedName = state.pendingCalc.name.trim().toLowerCase();
@@ -2667,7 +2675,8 @@ async function saveSodiumCheck(consumed){
     ...state.pendingCalc,
     sodium: totalSodium, pct: totalPct, perUnitSodium, servings, consumed: !!consumed,
     category, time: new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'}),
-    pointsAwarded: eligibleForPoints
+    pointsAwarded: eligibleForPoints,
+    source, aiSodiumMg
   });
   await db.collection('dailyLogs').doc(logDocId()).set({
     studentId: state.selectedStudent.id,
