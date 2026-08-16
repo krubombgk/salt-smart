@@ -360,6 +360,7 @@
         <div class="card">
           <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;">
             <div class="field" style="max-width:200px; margin-bottom:0;"><label>กรองตามห้อง</label><select id="historyClassFilter" onchange="loadMissionHistory()"></select></div>
+            <div class="field" style="max-width:220px; margin-bottom:0;"><label>กรองตามภารกิจ</label><select id="historyMissionFilter" onchange="loadMissionHistory()"><option value="">ทุกภารกิจ</option></select></div>
             <div class="field" style="max-width:180px; margin-bottom:0;">
               <label>กรองตามสถานะ</label>
               <select id="historyStatusFilter" onchange="loadMissionHistory()">
@@ -1266,9 +1267,25 @@ async function loadMissionHistory(){
   try{
     const classFilter = document.getElementById('historyClassFilter').value;
     const statusFilter = document.getElementById('historyStatusFilter').value;
+    const missionFilterEl = document.getElementById('historyMissionFilter');
+    const missionFilter = missionFilterEl.value;
     const snap = await db.collection('missionSubmissions').get();
     let subs = snap.docs.map(d=>({id:d.id, ...d.data()}));
+
+    // สร้างตัวเลือกในดรอปดาวน์ "กรองตามภารกิจ" จากภารกิจที่เคยมีคนส่งจริงเท่านั้น (ไม่ใช้ collection missions ตรงๆ
+    // เพราะอยากให้เห็นภารกิจเก่าที่อาจถูกลบ/ปิดไปแล้วด้วย ไม่ให้ประวัติหายไปจากตัวกรอง)
+    const missionMap = new Map();
+    subs.forEach(s=>{ if(s.missionId && !missionMap.has(s.missionId)) missionMap.set(s.missionId, s.missionText || s.missionId); });
+    const currentOptions = Array.from(missionFilterEl.options).map(o=>o.value).join(',');
+    const newOptionValues = ['', ...missionMap.keys()].join(',');
+    if(currentOptions !== newOptionValues){
+      missionFilterEl.innerHTML = '<option value="">ทุกภารกิจ</option>' +
+        Array.from(missionMap.entries()).sort((a,b)=>a[1].localeCompare(b[1],'th')).map(([id,text])=>`<option value="${id}">${text}</option>`).join('');
+      missionFilterEl.value = missionFilter; // คืนค่าที่เลือกไว้เดิม กันดรอปดาวน์รีเซ็ตเองตอนโหลดข้อมูลใหม่
+    }
+
     if(statusFilter) subs = subs.filter(s=>s.status===statusFilter);
+    if(missionFilter) subs = subs.filter(s=>s.missionId===missionFilter);
     if(classFilter){
       subs = subs.filter(s=>{
         const student = studentsCache.find(st=>st.id===s.studentId);
