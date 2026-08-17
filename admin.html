@@ -587,7 +587,7 @@
    APP UPDATE CHECK — แก้ปัญหา PWA ค้างเวอร์ชันเก่าตอนเปิดหลังบ้านทิ้งไว้
    ใช้ version.json ไฟล์เดียวกับ index.html (แก้เลขคู่กันทุกครั้งที่ deploy)
    ========================================================= */
-const APP_VERSION = "2026-08-17-1"; // ต้องตรงกับใน version.json เสมอ แก้คู่กันทุกครั้งที่ deploy
+const APP_VERSION = "2026-08-17-2"; // ต้องตรงกับใน version.json เสมอ แก้คู่กันทุกครั้งที่ deploy
 async function checkForAppUpdate(){
   try{
     const res = await fetch('./version.json?t=' + Date.now(), { cache: 'no-store' });
@@ -1666,27 +1666,44 @@ async function loadReviewQueue(){
 }
 async function reviewMission(subId, decision){
   const subRef = db.collection('missionSubmissions').doc(subId);
-  const subSnap = await subRef.get();
+  const subSnap = await subRef.get(); // อ่านนอก transaction แค่เพื่อเช็คคร่าวๆ ก่อนโชว์ prompt เหตุผล (ไม่ใช้ตัดสินใจ logic จริง)
   if(!subSnap.exists) return;
   const sub = subSnap.data();
-  if(sub.status !== 'pending') return; // กันกดซ้ำ (เช่น ดับเบิลคลิกก่อนคิวรีเฟรช) ไม่ให้ตรวจซ้ำ/ให้คะแนนซ้ำรายการที่ตัดสินไปแล้ว
+  if(sub.status !== 'pending') return;
   let reviewNote = '';
   if(decision === 'rejected'){
     reviewNote = prompt('เหตุผลที่ไม่ผ่าน (ไม่บังคับ)') || '';
   }
-  await subRef.update({
-    status: decision, reviewedAt: new Date().toISOString(), reviewNote,
-    pointsAwarded: decision==='approved' ? (sub.pointsValue||15) : 0
-  });
-  if(decision === 'approved'){
-    const studentRef = db.collection('students').doc(sub.studentId);
+  // ทำทุกอย่าง (เช็คสถานะ + อัปเดตภารกิจ + บวกคะแนน) ใน transaction เดียวกันทั้งหมด กันดับเบิลคลิก/สองแท็บกดพร้อมกันบวกคะแนนซ้ำ
+  // (เดิมเช็คสถานะแยกจากขั้นบวกคะแนน ทำให้กดซ้ำเร็วๆ แซงกันได้ คะแนนเลยบวกทบ 2 รอบทั้งที่ภารกิจอนุมัติแค่ครั้งเดียว)
+  try{
     await db.runTransaction(async (tx)=>{
-      const doc = await tx.get(studentRef);
-      const data = doc.data();
-      const cur = (data.totalPoints||0) + (sub.pointsValue||15);
-      const catTotal = (data.pointsByCategory && data.pointsByCategory.mission || 0) + (sub.pointsValue||15);
-      tx.update(studentRef, {totalPoints: cur, 'pointsByCategory.mission': catTotal});
+      const freshSnap = await tx.get(subRef);
+      if(!freshSnap.exists) throw new Error('ไม่พบรายการนี้แล้ว');
+      const freshSub = freshSnap.data();
+      if(freshSub.status !== 'pending') throw new Error('ALREADY_REVIEWED'); // คลิกซ้ำ/อีกแท็บตัดสินไปก่อนแล้วเสี้ยววินาที ไม่ต้องทำอะไรต่อ
+      const pointsValue = freshSub.pointsValue || 15;
+      const studentRef = db.collection('students').doc(freshSub.studentId);
+      let studentData = null;
+      if(decision === 'approved'){
+        const studentSnap = await tx.get(studentRef); // ต้องอ่านให้ครบก่อน write ทั้งหมดเสมอ (กฎของ Firestore transaction)
+        studentData = studentSnap.exists ? studentSnap.data() : {};
+      }
+      tx.update(subRef, {
+        status: decision, reviewedAt: new Date().toISOString(), reviewNote,
+        pointsAwarded: decision==='approved' ? pointsValue : 0
+      });
+      if(decision === 'approved'){
+        const newTotal = (studentData.totalPoints||0) + pointsValue;
+        const newCat = (studentData.pointsByCategory && studentData.pointsByCategory.mission || 0) + pointsValue;
+        tx.update(studentRef, { totalPoints: newTotal, 'pointsByCategory.mission': newCat });
+      }
     });
+  }catch(e){
+    if(e.message !== 'ALREADY_REVIEWED'){
+      console.error('reviewMission error:', e);
+      alert('เกิดข้อผิดพลาด: ' + e.message);
+    }
   }
   await loadReviewQueue();
 }

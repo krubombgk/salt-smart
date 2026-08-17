@@ -1554,7 +1554,7 @@
    ระบบจะเช็คไฟล์นี้ตอนเปิดแอป, ทุกครั้งที่สลับกลับมาที่แอป (visibilitychange), และเช็คซ้ำทุก 10 นาทีเผื่อเปิดค้างไว้นานๆ
    ถ้าเจอเวอร์ชันใหม่กว่าที่ฝังมากับโค้ดตอนนี้ จะขึ้นแบนเนอร์ให้กดรีเฟรชเอง (ไม่บังคับรีเฟรชทันที เผื่อกำลังกรอกฟอร์มอยู่)
    ========================================================= */
-const APP_VERSION = "2026-08-17-1"; // ต้องตรงกับใน version.json เสมอ แก้คู่กันทุกครั้งที่ deploy
+const APP_VERSION = "2026-08-17-2"; // ต้องตรงกับใน version.json เสมอ แก้คู่กันทุกครั้งที่ deploy
 async function checkForAppUpdate(){
   try{
     const res = await fetch('./version.json?t=' + Date.now(), { cache: 'no-store' });
@@ -3601,6 +3601,7 @@ async function submitDailyLog(){
     + (reflectionAnswered ? 3 : 0)
     + (improveAnswered ? 3 : 0);
   const targetDate = state.targetDate;
+  let logWriteSucceeded = false;
 
   try{
     await db.collection('dailyLogs').doc(docIdFor(targetDate)).set({
@@ -3618,6 +3619,7 @@ async function submitDailyLog(){
       submitted: true,
       pointsEarned: points
     }, {merge:true});
+    logWriteSucceeded = true;
 
     await updateStreakAndPoints(points, targetDate);
 
@@ -3630,7 +3632,16 @@ async function submitDailyLog(){
     checkAndGrantDailyCard(targetDate); // เช็คให้การ์ดของวันนี้ (วันที่บันทึกนี้) หรือยัง — ไม่ได้ผูกกับ "วันนี้" ตายตัวแบบเดิม เพราะย้อนหลังก็ต้องได้การ์ดของวันนั้นเองด้วย
   }catch(e){
     console.error('submitDailyLog error:', e);
-    showToast('⚠️ บันทึกไม่สำเร็จ: ' + e.message + ' — ลองใหม่อีกครั้ง');
+    if(logWriteSucceeded){
+      // บันทึกข้อมูลไปแล้ว แต่ขั้นตอนบวกคะแนนไม่สำเร็จ (เช่น เน็ตหลุดกลางทาง) — ปลดล็อกวันนี้กลับมาให้กดบันทึกใหม่ได้อีกครั้ง
+      // กันเคสค้างแบบกู้เองไม่ได้ (ข้อมูลถูกบันทึกไปแล้วแต่ไม่เคยได้คะแนนจริง วันนั้นก็หายไปพร้อมล็อกฟอร์มไม่ให้ทำซ้ำ)
+      try{
+        await db.collection('dailyLogs').doc(docIdFor(targetDate)).set({submitted:false}, {merge:true});
+      }catch(e2){ console.error('เคลียร์สถานะ submitted เพื่อให้ลองใหม่ได้ ล้มเหลว:', e2); }
+      showToast('⚠️ บันทึกข้อมูลสำเร็จ แต่ให้คะแนนไม่สำเร็จ (เน็ตอาจมีปัญหา) — ลองกดบันทึกอีกครั้ง');
+    } else {
+      showToast('⚠️ บันทึกไม่สำเร็จ: ' + e.message + ' — ลองใหม่อีกครั้ง');
+    }
     btn.disabled = false; btn.textContent = 'บันทึก'; // คืนปุ่มให้กดใหม่ได้ เฉพาะตอนบันทึกไม่สำเร็จจริง
   }
 }
