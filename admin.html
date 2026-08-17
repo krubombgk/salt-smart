@@ -201,6 +201,14 @@
           <p style="font-size:12px; color:#9aa8ab; margin-top:-6px;">ลบห้องได้เฉพาะห้องที่ไม่มีนักเรียนอยู่แล้ว (กันลบพลาดทำข้อมูลนักเรียนหลุดห้อง) — ถ้าจะลบห้องที่มีคนอยู่ ให้ลบนักเรียนในห้องนั้นออกให้หมดก่อน</p>
           <table><thead><tr><th>ลำดับ</th><th>ชื่อห้อง</th><th>จำนวนนักเรียน</th><th></th></tr></thead><tbody id="classTable"></tbody></table>
         </div>
+        <div class="card" style="border-color:var(--red-high);">
+          <h3 style="margin-top:0;">🔎 หาชื่อซ้ำในระบบ</h3>
+          <p style="font-size:12.5px; color:#9aa8ab; margin-top:-6px;">สแกนนักเรียนทั้งหมดเทียบชื่อกันเอง (ตัดช่องว่าง/ตัวพิมพ์ใหญ่เล็กออกก่อนเทียบ) ไม่สนใจห้อง ไม่ต้องพิมพ์ค้นหาเอง ใช้ตอนสงสัยว่ามีคนถูกลงทะเบียนซ้ำ 2 รอบ (เช่น ตอนแก้ห้องผิด)</p>
+          <button class="btn btn-primary" onclick="scanDuplicateNames()">🔍 เริ่มสแกนหาชื่อซ้ำ</button>
+          <div class="msg" id="dupScanMsg"></div>
+          <div id="dupScanResult" style="margin-top:10px;"></div>
+        </div>
+
         <div class="card">
           <h3 style="margin-top:0;">รายชื่อนักเรียนทั้งหมด</h3>
           <div class="field" style="max-width:260px;"><label>กรองตามห้อง</label><select id="filterClassSelect" onchange="loadStudentTable()"></select></div>
@@ -1310,6 +1318,51 @@ async function loadStudentsCache(){
   const snap = await db.collection('students').get();
   studentsCache = snap.docs.map(d=>({id:d.id, ...d.data()}));
   loadClassTable(); // รีเฟรชจำนวนนักเรียนต่อห้องให้ถูก หลังโหลด studentsCache เสร็จจริง
+}
+
+// สแกนหาชื่อซ้ำทั้งระบบ (ไม่พึ่งพิมพ์ค้นหาเอง ไม่สนใจตัวกรองห้อง) เทียบชื่อแบบตัดช่องว่างซ้ำ/หัวท้าย + ตัวพิมพ์เล็กใหญ่ก่อนเทียบ
+// ใช้ตอนสงสัยว่ามีคนถูกลงทะเบียนซ้ำ 2 รอบ (เช่น ตอนลบแล้วเพิ่มใหม่เพื่อแก้ห้องผิด แต่ลืมลบตัวเดิม)
+function scanDuplicateNames(){
+  const msgEl = document.getElementById('dupScanMsg');
+  const resultEl = document.getElementById('dupScanResult');
+  const normalize = (name) => (name||'').replace(/\s+/g,' ').trim().toLowerCase();
+  const groups = {};
+  studentsCache.forEach(s=>{
+    const key = normalize(s.name);
+    if(!key) return;
+    (groups[key] = groups[key] || []).push(s);
+  });
+  const dupGroups = Object.values(groups).filter(g=>g.length > 1);
+  if(dupGroups.length === 0){
+    msgEl.style.color = 'var(--lagoon)';
+    msgEl.textContent = `สแกนครบ ${studentsCache.length} คน — ไม่พบชื่อซ้ำเลย ✅`;
+    resultEl.innerHTML = '';
+    return;
+  }
+  msgEl.style.color = 'var(--red-high)';
+  msgEl.textContent = `สแกนครบ ${studentsCache.length} คน พบชื่อซ้ำ ${dupGroups.length} กลุ่ม (รวม ${dupGroups.reduce((s,g)=>s+g.length,0)} รายการ)`;
+  resultEl.innerHTML = dupGroups.map(group=>`
+    <div class="card" style="background:var(--sand); margin-bottom:10px;">
+      <div style="font-family:'Kanit'; font-weight:700; margin-bottom:6px;">${group[0].name} — พบ ${group.length} รายการ</div>
+      <table>
+        <thead><tr><th>ห้อง</th><th>คะแนน</th><th>Streak</th><th>PIN</th><th></th></tr></thead>
+        <tbody>
+          ${group.map(s=>`
+            <tr>
+              <td>${classNameOf(s.classId)}</td>
+              <td>${s.totalPoints||0}</td>
+              <td>${s.currentStreak||0}</td>
+              <td>${s.pin ? 'ตั้งแล้ว' : 'ยังไม่ตั้ง'}</td>
+              <td><button class="btn btn-danger" style="padding:6px 10px;font-size:12px;" onclick="deleteDuplicateAndRescan('${s.id}','${(s.name||'').replace(/'/g,"\\'")}')">ลบแถวนี้</button></td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+  `).join('');
+}
+async function deleteDuplicateAndRescan(id, name){
+  await deleteStudent(id, name);
+  scanDuplicateNames();
 }
 
 // เดาเพศจากคำนำหน้าชื่อภาษาไทยที่กรอกอยู่แล้ว (ไม่ต้องเปลี่ยนฟอร์แมตที่ครูใช้ปกติ)
