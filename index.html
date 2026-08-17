@@ -1549,6 +1549,33 @@
 
 <script>
 /* =========================================================
+   APP UPDATE CHECK — แก้ปัญหา PWA ค้างเวอร์ชันเก่าตอนเปิดแอปทิ้งไว้
+   วิธีใช้: ทุกครั้งที่ deploy โค้ดใหม่ ให้แก้เลขใน version.json ให้ไม่ซ้ำของเดิม (เช่น ใช้วันที่+เลขรัน)
+   ระบบจะเช็คไฟล์นี้ตอนเปิดแอป, ทุกครั้งที่สลับกลับมาที่แอป (visibilitychange), และเช็คซ้ำทุก 10 นาทีเผื่อเปิดค้างไว้นานๆ
+   ถ้าเจอเวอร์ชันใหม่กว่าที่ฝังมากับโค้ดตอนนี้ จะขึ้นแบนเนอร์ให้กดรีเฟรชเอง (ไม่บังคับรีเฟรชทันที เผื่อกำลังกรอกฟอร์มอยู่)
+   ========================================================= */
+const APP_VERSION = "2026-08-17-1"; // ต้องตรงกับใน version.json เสมอ แก้คู่กันทุกครั้งที่ deploy
+async function checkForAppUpdate(){
+  try{
+    const res = await fetch('./version.json?t=' + Date.now(), { cache: 'no-store' });
+    const data = await res.json();
+    if(data.version && data.version !== APP_VERSION) showAppUpdateBanner();
+  }catch(e){ /* เน็ตหลุด/ไฟล์โหลดไม่ได้ ไม่ต้องทำอะไร ลองใหม่รอบหน้า */ }
+}
+function showAppUpdateBanner(){
+  if(document.getElementById('appUpdateBanner')) return; // กันสร้างซ้ำถ้าเช็คเจอหลายรอบ
+  const b = document.createElement('div');
+  b.id = 'appUpdateBanner';
+  b.style.cssText = 'position:fixed; top:0; left:0; right:0; z-index:99999; background:var(--coral); color:#fff; padding:12px 16px; text-align:center; font-family:Kanit,sans-serif; font-weight:600; font-size:13.5px; cursor:pointer; box-shadow:0 2px 10px rgba(0,0,0,0.15);';
+  b.textContent = '🔄 มีเวอร์ชันใหม่ของแอป แตะตรงนี้เพื่ออัปเดต';
+  b.onclick = () => location.reload();
+  document.body.prepend(b);
+}
+document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'visible') checkForAppUpdate(); });
+setInterval(checkForAppUpdate, 10*60*1000);
+checkForAppUpdate();
+
+/* =========================================================
    FIREBASE CONFIG — แก้ค่าตรงนี้ให้เป็นโปรเจกต์ของโรงเรียน
    ========================================================= */
 const firebaseConfig = {
