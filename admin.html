@@ -855,18 +855,25 @@ function computePointsFromRaw(logs, missions, student, startDate, totalDays){
   const missionByDate = {};
   missions.forEach(m=>{ missionByDate[m.date] = (missionByDate[m.date]||0) + (m.pointsAwarded||0); });
 
-  const dayRows = logs
-    .filter(d=>d.submitted || (d.sodiumChecks && d.sodiumChecks.length>0) || d.quizScore!=null)
-    .sort((a,b)=> a.date < b.date ? -1 : 1)
-    .map(d=>{
-      const labelPts = (d.sodiumChecks||[]).filter(c=>c.pointsAwarded).length * AUDIT_LABEL_CHECK_POINTS;
-      const quizPts = (d.quizScore||0) * AUDIT_QUIZ_POINTS_PER_Q;
-      const dailyLogPts = d.pointsEarned || 0;
-      const missionPts = missionByDate[d.date] || 0;
-      const dayTotal = labelPts + quizPts + dailyLogPts + missionPts;
-      const dayNum = startDate ? Math.round((dateFromStr(d.date)-startDate)/(1000*60*60*24))+1 : (d.dayNumber||'-');
-      return { date:d.date, dayNum, labelPts, quizPts, dailyLogPts, missionPts, dayTotal };
-    });
+  const logByDate = {};
+  logs.forEach(d=>{
+    if(d.submitted || (d.sodiumChecks && d.sodiumChecks.length>0) || d.quizScore!=null) logByDate[d.date] = d;
+  });
+
+  // รวมวันที่จากทั้ง dailyLogs และ missionSubmissions เข้าด้วยกัน (แก้บั๊กเดิม: ถ้าวันไหนทำแค่ภารกิจอย่างเดียว
+  // ไม่มีบันทึกประจำวัน/Quiz คู่กัน คะแนนภารกิจของวันนั้นจะหายไปจากการคำนวณทั้งหมด ทั้งที่นักเรียนได้คะแนนจริงถูกต้องแล้ว)
+  const allDates = Array.from(new Set([...Object.keys(logByDate), ...Object.keys(missionByDate)])).sort();
+
+  const dayRows = allDates.map(date=>{
+    const d = logByDate[date] || {};
+    const labelPts = (d.sodiumChecks||[]).filter(c=>c.pointsAwarded).length * AUDIT_LABEL_CHECK_POINTS;
+    const quizPts = (d.quizScore||0) * AUDIT_QUIZ_POINTS_PER_Q;
+    const dailyLogPts = d.pointsEarned || 0;
+    const missionPts = missionByDate[date] || 0;
+    const dayTotal = labelPts + quizPts + dailyLogPts + missionPts;
+    const dayNum = startDate ? Math.round((dateFromStr(date)-startDate)/(1000*60*60*24))+1 : (d.dayNumber||'-');
+    return { date, dayNum, labelPts, quizPts, dailyLogPts, missionPts, dayTotal };
+  });
 
   // คำนวณโบนัสหลักไมล์ Streak รวม จากรายการที่เคยได้ไปแล้ว (ไม่แยกว่าได้วันไหนเป๊ะๆ เพราะขึ้นกับลำดับ streak จริง ไม่ใช่แค่จำนวนวันสะสม)
   const bonusMap = {}; // milestone value -> bonus points
