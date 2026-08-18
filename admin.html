@@ -613,7 +613,7 @@
    APP UPDATE CHECK — แก้ปัญหา PWA ค้างเวอร์ชันเก่าตอนเปิดหลังบ้านทิ้งไว้
    ใช้ version.json ไฟล์เดียวกับ index.html (แก้เลขคู่กันทุกครั้งที่ deploy)
    ========================================================= */
-const APP_VERSION = "2026-08-18-1"; // ต้องตรงกับใน version.json เสมอ แก้คู่กันทุกครั้งที่ deploy
+const APP_VERSION = "2026-08-18-2"; // ต้องตรงกับใน version.json เสมอ แก้คู่กันทุกครั้งที่ deploy
 async function checkForAppUpdate(){
   try{
     const res = await fetch('./version.json?t=' + Date.now(), { cache: 'no-store' });
@@ -1679,7 +1679,8 @@ async function loadReviewQueue(){
     wrap.innerHTML = subs.map(s=>{
       const student = studentsCache.find(st=>st.id===s.studentId);
       const name = student ? `${student.name} (${classNameOf(student.classId)})` : s.studentId;
-      const photoHtml = s.evidencePhotoUrl ? `<img src="${s.evidencePhotoUrl}" style="max-width:220px;border-radius:10px;display:block;margin:8px 0;">` : '';
+      const photoUrls = (s.evidencePhotoUrls && s.evidencePhotoUrls.length) ? s.evidencePhotoUrls : (s.evidencePhotoUrl ? [s.evidencePhotoUrl] : []);
+      const photoHtml = photoUrls.length ? `<div style="display:flex; gap:6px; flex-wrap:wrap; margin:8px 0;">${photoUrls.map(u=>`<img src="${u}" style="width:${photoUrls.length>1?'140px':'220px'};height:${photoUrls.length>1?'140px':'auto'};object-fit:cover;border-radius:10px;">`).join('')}</div>` : '';
       const textHtml = s.evidenceText ? `<p style="font-size:13.5px; margin:6px 0;">"${s.evidenceText}"</p>` : '';
       return `
         <div class="card" style="margin-bottom:12px; background:var(--sand);">
@@ -1782,7 +1783,8 @@ async function loadMissionHistory(){
     wrap.innerHTML = subs.map(s=>{
       const student = studentsCache.find(st=>st.id===s.studentId);
       const name = student ? `${student.name} (${classNameOf(student.classId)})` : s.studentId;
-      const photoHtml = s.evidencePhotoUrl ? `<img src="${s.evidencePhotoUrl}" style="max-width:180px;border-radius:10px;display:block;margin:8px 0;">` : '';
+      const photoUrls2 = (s.evidencePhotoUrls && s.evidencePhotoUrls.length) ? s.evidencePhotoUrls : (s.evidencePhotoUrl ? [s.evidencePhotoUrl] : []);
+      const photoHtml = photoUrls2.length ? `<div style="display:flex; gap:6px; flex-wrap:wrap; margin:8px 0;">${photoUrls2.map(u=>`<img src="${u}" style="width:${photoUrls2.length>1?'120px':'180px'};height:${photoUrls2.length>1?'120px':'auto'};object-fit:cover;border-radius:10px;">`).join('')}</div>` : '';
       const textHtml = s.evidenceText ? `<p style="font-size:13px; margin:6px 0; color:#4a5a5e;">"${s.evidenceText}"</p>` : '';
       const noteHtml = s.reviewNote ? `<p style="font-size:12px; margin:4px 0; color:#9aa8ab;">เหตุผล: ${s.reviewNote}</p>` : '';
       const effortHtml = s.effortCreditAwarded ? `<p style="font-size:12px; margin:4px 0; color:var(--lagoon);">💚 ${s.effortCreditNote||'ได้คะแนนความพยายามแล้ว'}</p>` : '';
@@ -1811,7 +1813,8 @@ async function exportMissionHistoryCsv(){
     const student = studentsCache.find(st=>st.id===s.studentId);
     const name = student ? student.name : s.studentId;
     const className = student ? classNameOf(student.classId) : '';
-    rows.push([s.date||'', name, className, s.missionText||'', statusLabel[s.status]||s.status||'', s.pointsAwarded||0, s.reviewNote||'', s.evidenceText||'', s.evidencePhotoUrl||'', s.reviewedAt||'']);
+    const photoUrlsCsv = (s.evidencePhotoUrls && s.evidencePhotoUrls.length) ? s.evidencePhotoUrls.join(' ; ') : (s.evidencePhotoUrl || '');
+    rows.push([s.date||'', name, className, s.missionText||'', statusLabel[s.status]||s.status||'', s.pointsAwarded||0, s.reviewNote||'', s.evidenceText||'', photoUrlsCsv, s.reviewedAt||'']);
   });
   downloadCSV('salt-smart-mission-history.csv', rows);
 }
