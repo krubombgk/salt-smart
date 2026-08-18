@@ -1582,7 +1582,7 @@
    ระบบจะเช็คไฟล์นี้ตอนเปิดแอป, ทุกครั้งที่สลับกลับมาที่แอป (visibilitychange), และเช็คซ้ำทุก 10 นาทีเผื่อเปิดค้างไว้นานๆ
    ถ้าเจอเวอร์ชันใหม่กว่าที่ฝังมากับโค้ดตอนนี้ จะขึ้นแบนเนอร์ให้กดรีเฟรชเอง (ไม่บังคับรีเฟรชทันที เผื่อกำลังกรอกฟอร์มอยู่)
    ========================================================= */
-const APP_VERSION = "2026-08-18-3"; // ต้องตรงกับใน version.json เสมอ แก้คู่กันทุกครั้งที่ deploy
+const APP_VERSION = "2026-08-18-4"; // ต้องตรงกับใน version.json เสมอ แก้คู่กันทุกครั้งที่ deploy
 async function checkForAppUpdate(){
   try{
     const res = await fetch('./version.json?t=' + Date.now(), { cache: 'no-store' });
@@ -2292,7 +2292,8 @@ function refreshMissionHub(){
   logCard.classList.toggle('done', logDone);
 
   // ---- วันนี้ทำไปแล้ว X/3 ----
-  const doneCount = (missionDone?1:0) + (state.quizFinished?1:0) + (logDone?1:0);
+  const missionDoneForCount = state.todaysMissionStatus==='approved' || state.todaysMissionStatus==='pending';
+  const doneCount = (missionDoneForCount?1:0) + (state.quizFinished?1:0) + (logDone?1:0);
   document.getElementById('mhTodoCount').textContent = doneCount;
   document.getElementById('mhTodoBar').style.width = Math.round(doneCount/3*100) + '%';
   document.getElementById('mhProgressTitle').textContent = doneCount>=3 ? '✅ วันนี้ทำครบแล้ว' : 'วันนี้ทำไปแล้ว';
