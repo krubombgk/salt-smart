@@ -247,15 +247,23 @@
   }
   .status-pill span{display:block; font-size:10.5px; font-weight:500;}
   .status-pill.done{background:#E4F5F3; color:var(--lagoon);}
+  .status-pill.pending{background:#FBF0DC; color:var(--amber-warn);}
+  .status-pill.rejected{background:#FBE6E2; color:var(--red-high);}
   .sodium-summary-row{display:flex; align-items:center; gap:14px;}
   .sodium-icon-badge{
     width:52px; height:52px; border-radius:50%; background:#E4F5F3; color:var(--lagoon);
     display:flex; align-items:center; justify-content:center; font-family:'Kanit'; font-weight:800; font-size:15px; flex-shrink:0;
   }
   .quick-action-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:16px;}
-  .quick-action{border-radius:16px; padding:14px; cursor:pointer; display:flex; align-items:center; gap:10px;}
-  .quick-action.qa-check{background:#E4F5F3;}
-  .quick-action.qa-add{background:#FCEFDC;}
+  .quick-action{
+    border-radius:16px; padding:14px; cursor:pointer; display:flex; align-items:center; gap:10px;
+    box-shadow:0 3px 10px rgba(11,61,76,0.10); border:1.5px solid rgba(255,255,255,0.6);
+    transition:transform .12s ease, box-shadow .12s ease;
+  }
+  .quick-action:active{transform:scale(0.96); box-shadow:0 1px 4px rgba(11,61,76,0.10);}
+  .quick-action.qa-check{background:#E4F5F3; border-color:rgba(42,157,143,0.35);}
+  .quick-action.qa-add{background:#FCEFDC; border-color:rgba(244,162,97,0.4);}
+  .quick-action-arrow{margin-left:auto; color:var(--deep-sea); opacity:0.45; font-size:16px; flex-shrink:0;}
   .quick-action-icon{font-size:24px; flex-shrink:0;}
   .quick-action-icon img{width:40px; height:40px; object-fit:contain; display:block;}
   .quick-action-title{font-family:'Kanit'; font-weight:700; font-size:13.5px; color:var(--deep-sea);}
@@ -275,6 +283,8 @@
     margin:14px 0; box-shadow:0 4px 14px rgba(11,61,76,0.08); cursor:pointer;
   }
   .mh-hero.done{background:linear-gradient(135deg,#E4F5F3,#D7F0EA);}
+  .mh-hero.pending{background:linear-gradient(135deg,#FDF3DE,#FBE9C6);}
+  .mh-hero.rejected{background:linear-gradient(135deg,#FCE7E2,#F9D8D0);}
   .mh-hero-status-row{text-align:right; margin-bottom:8px;}
   .mh-hero-top{display:flex; align-items:flex-start; justify-content:space-between; gap:10px;}
   .mh-hero-text{flex:1; min-width:0;}
@@ -289,6 +299,8 @@
   .mh-tag-status{background:rgba(255,255,255,0.85); color:var(--deep-sea); display:inline-block;}
   .mh-tag-status.approved{background:#DFF3E5; color:var(--green-ok);}
   .mh-tag-status.rejected{background:#FBE6E2; color:var(--red-high);}
+  .mh-tag-status.pending{background:#FBF0DC; color:var(--amber-warn);}
+  .mh-tag-status.done{background:#DFF3E5; color:var(--green-ok);}
   .mh-hero-title{font-family:'Kanit'; font-weight:700; font-size:17px; color:var(--deep-sea); margin-bottom:5px; line-height:1.4;}
   .mh-reward{font-size:12.5px; color:#4c5c60; margin-bottom:12px;}
   .mh-reward b{color:var(--lagoon); font-family:'Kanit';}
@@ -963,10 +975,12 @@
         <div class="quick-action qa-check" onclick="goHomeShortcut('tab-check')">
           <div class="quick-action-icon"><img src="icon-checklabel.png" alt=""></div>
           <div><div class="quick-action-title">ตรวจฉลาก</div><div class="quick-action-sub">สแกน/กรอกดูโซเดียม</div></div>
+          <div class="quick-action-arrow">›</div>
         </div>
         <div class="quick-action qa-add" onclick="switchTab('tab-sodium-hub'); toggleMealPicker();">
           <div class="quick-action-icon"><img src="icon-addmenu.png" alt=""></div>
           <div><div class="quick-action-title">เพิ่มอาหาร</div><div class="quick-action-sub">บันทึกที่ทานวันนี้</div></div>
+          <div class="quick-action-arrow">›</div>
         </div>
       </div>
     </div>
@@ -1007,10 +1021,12 @@
         <div class="quick-action qa-check" onclick="switchTab('tab-check')">
           <div class="quick-action-icon"><img src="icon-checklabel.png" alt=""></div>
           <div><div class="quick-action-title">ตรวจฉลากอาหาร</div><div class="quick-action-sub">ถ่ายรูปหรือกรอกข้อมูลโซเดียม</div></div>
+          <div class="quick-action-arrow">›</div>
         </div>
         <div class="quick-action qa-add" onclick="toggleMealPicker()">
           <div class="quick-action-icon"><img src="icon-addmenu.png" alt=""></div>
           <div><div class="quick-action-title">เพิ่มอาหารที่กิน</div><div class="quick-action-sub">เลือกจากรายการอาหารทั่วไป</div></div>
+          <div class="quick-action-arrow">›</div>
         </div>
       </div>
 
@@ -1462,7 +1478,7 @@
   <div class="tabbar">
     <div class="tabbtn active" data-tab="tab-home" onclick="switchTab('tab-home')"><span class="ic"><img src="nav-home.png" alt=""></span>Home</div>
     <div class="tabbtn" data-tab="tab-mission-hub" onclick="switchTab('tab-mission-hub')"><span class="ic"><img src="nav-mission.png" alt=""></span>ภารกิจ</div>
-    <div class="tabbtn" data-tab="tab-sodium-hub" onclick="switchTab('tab-sodium-hub')"><span class="ic"><img src="nav-sodium.png" alt=""></span>วัดโซเดียม</div>
+    <div class="tabbtn" data-tab="tab-sodium-hub" onclick="switchTab('tab-sodium-hub')"><span class="ic"><img src="nav-sodium.png" alt=""></span>บันทึกโซเดียม</div>
     <div class="tabbtn" data-tab="tab-album" onclick="switchTab('tab-album')"><span class="ic"><img src="nav-rewards.png" alt=""></span>รางวัล</div>
     <div class="tabbtn" data-tab="tab-stats" onclick="switchTab('tab-stats')"><span class="ic"><img src="nav-progress.png" alt=""></span>ความก้าวหน้า</div>
   </div>
@@ -1566,7 +1582,7 @@
    ระบบจะเช็คไฟล์นี้ตอนเปิดแอป, ทุกครั้งที่สลับกลับมาที่แอป (visibilitychange), และเช็คซ้ำทุก 10 นาทีเผื่อเปิดค้างไว้นานๆ
    ถ้าเจอเวอร์ชันใหม่กว่าที่ฝังมากับโค้ดตอนนี้ จะขึ้นแบนเนอร์ให้กดรีเฟรชเอง (ไม่บังคับรีเฟรชทันที เผื่อกำลังกรอกฟอร์มอยู่)
    ========================================================= */
-const APP_VERSION = "2026-08-18-2"; // ต้องตรงกับใน version.json เสมอ แก้คู่กันทุกครั้งที่ deploy
+const APP_VERSION = "2026-08-18-3"; // ต้องตรงกับใน version.json เสมอ แก้คู่กันทุกครั้งที่ deploy
 async function checkForAppUpdate(){
   try{
     const res = await fetch('./version.json?t=' + Date.now(), { cache: 'no-store' });
@@ -2186,7 +2202,9 @@ function refreshHomeTab(){
   if(todoCountEl){
     todoCountEl.textContent = doneCount;
     document.getElementById('homeTodoBar').style.width = Math.round(doneCount/3*100) + '%';
-    document.getElementById('homeMissionPill').classList.toggle('done', missionDone);
+    document.getElementById('homeMissionPill').classList.toggle('pending', state.todaysMissionStatus==='pending');
+    document.getElementById('homeMissionPill').classList.toggle('done', state.todaysMissionStatus==='approved');
+    document.getElementById('homeMissionPill').classList.toggle('rejected', state.todaysMissionStatus==='rejected');
     document.getElementById('homeQuizPill').classList.toggle('done', quizDone);
     document.getElementById('homeLogPill').classList.toggle('done', logDone);
   }
@@ -2216,8 +2234,14 @@ function refreshMissionHub(){
   hubMissionStatusEl.textContent = missionLabels[state.todaysMissionStatus] || 'ยังไม่ได้เริ่ม';
   hubMissionStatusEl.classList.toggle('approved', state.todaysMissionStatus==='approved');
   hubMissionStatusEl.classList.toggle('rejected', state.todaysMissionStatus==='rejected');
-  document.getElementById('hubQuizStatus').textContent = state.quizFinished ? '✅ ทำ Quiz แล้ว' : 'ยังไม่ได้ทำ';
-  document.getElementById('hubLogStatus').textContent = (state.targetLog && state.targetLog.submitted) ? '✅ บันทึกแล้ว' : 'ยังไม่ได้บันทึก';
+  hubMissionStatusEl.classList.toggle('pending', state.todaysMissionStatus==='pending');
+  const hubQuizStatusEl = document.getElementById('hubQuizStatus');
+  const hubLogStatusEl = document.getElementById('hubLogStatus');
+  hubQuizStatusEl.textContent = state.quizFinished ? '✅ ทำ Quiz แล้ว' : 'ยังไม่ได้ทำ';
+  hubQuizStatusEl.classList.toggle('done', !!state.quizFinished);
+  const hubLogDone = !!(state.targetLog && state.targetLog.submitted);
+  hubLogStatusEl.textContent = hubLogDone ? '✅ บันทึกแล้ว' : 'ยังไม่ได้บันทึก';
+  hubLogStatusEl.classList.toggle('done', hubLogDone);
 
   // ---- ภารกิจประจำวัน (Hero card) ----
   const mission = state.todaysMission;
@@ -2229,8 +2253,9 @@ function refreshMissionHub(){
     // เลือกภาพ mascot ตามประเภทหลักฐานที่ต้องส่ง — 'text' ใช้ท่าจดบันทึก นอกนั้น (photo/both) ใช้ท่าถ่ายรูป
     document.getElementById('mhMissionMascot').src = mission.evidenceType==='text' ? 'mascot-text.png' : 'mascot-photo.png';
   }
-  const missionDone = state.todaysMissionStatus==='approved' || state.todaysMissionStatus==='pending';
-  missionCard.classList.toggle('done', missionDone);
+  missionCard.classList.toggle('done', state.todaysMissionStatus==='approved');
+  missionCard.classList.toggle('pending', state.todaysMissionStatus==='pending');
+  missionCard.classList.toggle('rejected', state.todaysMissionStatus==='rejected');
   if(state.todaysMissionStatus==='approved') missionBtn.textContent = '✅ ผ่านแล้ว ดูรายละเอียด';
   else if(state.todaysMissionStatus==='pending') missionBtn.textContent = '⏳ ส่งแล้ว รอตรวจ';
   else if(state.todaysMissionStatus==='rejected') missionBtn.textContent = 'ส่งใหม่อีกครั้ง';
@@ -2604,7 +2629,7 @@ async function handleLabelPhoto(event){
       aiSodiumMg: (data.found && data.sodium_mg) ? data.sodium_mg : null
     };
 
-    statusEl.innerHTML = msgParts.join(' · ') + (data.note ? `<br><span style="color:#aab5b8;">${data.note}</span>` : '') + `<br><span style="color:#aab5b8;">(เหลือ ${data.remainingToday} ครั้งวันนี้)</span>`;
+    statusEl.innerHTML = msgParts.join(' · ') + (data.note ? `<div style="font-size:13px; color:#4c5c60; background:#F3ECDD; border-radius:8px; padding:7px 10px; margin-top:8px; line-height:1.5;">💡 ${data.note}</div>` : '') + `<br><span style="color:#aab5b8;">(เหลือ ${data.remainingToday} ครั้งวันนี้)</span>`;
   }catch(e){
     console.error(e);
     statusEl.textContent = 'เชื่อมต่อ AI ไม่สำเร็จ ลองใหม่อีกครั้ง หรือพิมพ์ตัวเลขเองจากฉลากได้เลย';
