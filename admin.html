@@ -518,11 +518,37 @@
           <div id="holidayList" style="margin-top:12px;"></div>
         </div>
 
-        <div class="card" style="max-width:420px;">
-          <h3 style="margin-top:0;">🔔 ทดสอบส่งแจ้งเตือนภารกิจรายวัน</h3>
-          <p style="font-size:12.5px; color:#9aa8ab; margin-top:-6px;">ปกติระบบส่งอัตโนมัติทุกวัน 19:00 น. หาเฉพาะนักเรียนที่ยังไม่ส่งภารกิจของวันนั้น — ปุ่มนี้ใช้ทดสอบยิงได้ทันทีโดยไม่ต้องรอถึงเวลา (ต้องยืนยันรหัสผ่านผู้ดูแลก่อนทุกครั้ง กันคนอื่นมากดเล่น)</p>
-          <button class="btn btn-primary" onclick="testSendPushReminder()">🔔 ทดสอบส่งเลยตอนนี้</button>
-          <div class="msg" id="testPushMsg"></div>
+        <div class="card" style="max-width:460px;">
+          <h3 style="margin-top:0;">🔔 การแจ้งเตือนอัตโนมัติรายวัน</h3>
+          <p style="font-size:12.5px; color:#9aa8ab; margin-top:-6px;">ปุ่มด้านล่างใช้ทดสอบยิงได้ทันทีโดยไม่ต้องรอถึงเวลาจริง (ต้องยืนยันรหัสผ่านผู้ดูแลก่อนทุกครั้ง กันคนอื่นมากดเล่น)</p>
+
+          <div style="border-top:1px solid #eee; padding-top:10px; margin-top:6px;">
+            <b style="font-size:13px;">☀️ 06:30 — ประกาศภารกิจของวันนี้</b>
+            <p style="font-size:12px; color:#9aa8ab; margin:4px 0;">ส่งหาทุกคนที่เปิดแจ้งเตือนไว้ ไม่มีเงื่อนไข</p>
+            <button class="btn btn-ghost" style="padding:8px 14px; font-size:12.5px;" onclick="testPush('testSendMorningMissionAnnouncement','testMorningMsg')">ทดสอบส่งเลย</button>
+            <div class="msg" id="testMorningMsg"></div>
+          </div>
+
+          <div style="border-top:1px solid #eee; padding-top:10px; margin-top:10px;">
+            <b style="font-size:13px;">🔔 18:00 — เตือนภารกิจ (เฉพาะคนยังไม่ส่ง)</b>
+            <p style="font-size:12px; color:#9aa8ab; margin:4px 0;">คนที่ส่งภารกิจของวันนั้นไปแล้วจะไม่ถูกรบกวน</p>
+            <button class="btn btn-ghost" style="padding:8px 14px; font-size:12.5px;" onclick="testPush('testSendMissionReminder','testPushMsg')">ทดสอบส่งเลย</button>
+            <div class="msg" id="testPushMsg"></div>
+          </div>
+
+          <div style="border-top:1px solid #eee; padding-top:10px; margin-top:10px;">
+            <b style="font-size:13px;">📝 19:30 — เตือน/ชม เรื่องบันทึกประจำวัน</b>
+            <p style="font-size:12px; color:#9aa8ab; margin:4px 0;">ยังไม่บันทึก → เตือน, บันทึกแล้ว → ส่งคำชม</p>
+            <button class="btn btn-ghost" style="padding:8px 14px; font-size:12.5px;" onclick="testPush('testSendDailyLogReminder','testLogMsg')">ทดสอบส่งเลย</button>
+            <div class="msg" id="testLogMsg"></div>
+          </div>
+
+          <div style="border-top:1px solid #eee; padding-top:10px; margin-top:10px;">
+            <b style="font-size:13px;">🌙 23:00 — คะแนนความพยายาม (ภารกิจไม่ผ่าน)</b>
+            <p style="font-size:12px; color:#9aa8ab; margin:4px 0;">ให้ 40% ของคะแนนเต็ม เฉพาะภารกิจที่ยัง "ไม่ผ่าน" ค้างอยู่ข้ามวันแล้ว (ไม่ใช่ notification แต่เป็นการให้คะแนนอัตโนมัติ)</p>
+            <button class="btn btn-ghost" style="padding:8px 14px; font-size:12.5px;" onclick="testPush('testAwardMissionEffortCredit','testEffortMsg')">ทดสอบรันเลย</button>
+            <div class="msg" id="testEffortMsg"></div>
+          </div>
         </div>
 
         <div class="card" style="max-width:420px; border-color:var(--red-high); background:#FBE6E2;">
@@ -587,7 +613,7 @@
    APP UPDATE CHECK — แก้ปัญหา PWA ค้างเวอร์ชันเก่าตอนเปิดหลังบ้านทิ้งไว้
    ใช้ version.json ไฟล์เดียวกับ index.html (แก้เลขคู่กันทุกครั้งที่ deploy)
    ========================================================= */
-const APP_VERSION = "2026-08-17-2"; // ต้องตรงกับใน version.json เสมอ แก้คู่กันทุกครั้งที่ deploy
+const APP_VERSION = "2026-08-18-1"; // ต้องตรงกับใน version.json เสมอ แก้คู่กันทุกครั้งที่ deploy
 async function checkForAppUpdate(){
   try{
     const res = await fetch('./version.json?t=' + Date.now(), { cache: 'no-store' });
@@ -1759,6 +1785,7 @@ async function loadMissionHistory(){
       const photoHtml = s.evidencePhotoUrl ? `<img src="${s.evidencePhotoUrl}" style="max-width:180px;border-radius:10px;display:block;margin:8px 0;">` : '';
       const textHtml = s.evidenceText ? `<p style="font-size:13px; margin:6px 0; color:#4a5a5e;">"${s.evidenceText}"</p>` : '';
       const noteHtml = s.reviewNote ? `<p style="font-size:12px; margin:4px 0; color:#9aa8ab;">เหตุผล: ${s.reviewNote}</p>` : '';
+      const effortHtml = s.effortCreditAwarded ? `<p style="font-size:12px; margin:4px 0; color:var(--lagoon);">💚 ${s.effortCreditNote||'ได้คะแนนความพยายามแล้ว'}</p>` : '';
       const color = statusColor[s.status] || '#9aa8ab';
       return `
         <div class="card" style="margin-bottom:10px; background:var(--sand);">
@@ -1767,7 +1794,7 @@ async function loadMissionHistory(){
             <span class="pill" style="color:${color}; border:1.5px solid ${color}; background:#fff;">${statusLabel[s.status]||s.status}${s.status==='approved'?` (+${s.pointsAwarded||0} คะแนน)`:''}</span>
           </div>
           <div style="font-size:13px; color:#6b7c80; margin:4px 0;">ภารกิจ: ${s.missionText||'-'}</div>
-          ${photoHtml}${textHtml}${noteHtml}
+          ${photoHtml}${textHtml}${noteHtml}${effortHtml}
         </div>`;
     }).join('');
   }catch(e){
@@ -1990,29 +2017,39 @@ function setMsg(id, text, isErr){
 }
 
 /* ---- ผล Baseline Survey / Pre-Post Test (จาก assessment.html แยกระบบ) ---- */
-async function testSendPushReminder(){
-  const msgEl = document.getElementById('testPushMsg');
-  const pw = prompt('ใส่รหัสผ่านผู้ดูแลเพื่อยืนยันการทดสอบส่ง');
+async function testPush(fnName, msgElId){
+  const msgEl = document.getElementById(msgElId);
+  const pw = prompt('ใส่รหัสผ่านผู้ดูแลเพื่อยืนยันการทดสอบ');
   if(!pw) return;
   msgEl.style.color = 'var(--lagoon)';
-  msgEl.textContent = 'กำลังส่ง... (อาจใช้เวลาสักครู่ถ้ามีนักเรียนเยอะ)';
+  msgEl.textContent = 'กำลังทำงาน... (อาจใช้เวลาสักครู่ถ้ามีนักเรียนเยอะ)';
   try{
-    const testSendMissionReminder = functions.httpsCallable('testSendMissionReminder');
-    const result = await testSendMissionReminder({ password: pw });
-    const { sent, failed, skippedNoToken } = result.data;
-    if(skippedNoToken){
-      msgEl.style.color = '#9aa8ab';
-      msgEl.textContent = 'ไม่มีนักเรียนที่ต้องส่ง (ทำภารกิจครบแล้วทุกคน หรือยังไม่มีใครกดเปิดแจ้งเตือนเลย)';
-    }else{
-      msgEl.style.color = 'var(--lagoon)';
-      msgEl.textContent = `ส่งสำเร็จ ${sent} เครื่อง${failed>0 ? ` (ล้มเหลว/token หมดอายุ ${failed} เครื่อง — ลบออกจากระบบให้แล้ว)` : ''}`;
+    const callable = functions.httpsCallable(fnName);
+    const result = await callable({ password: pw });
+    const r = result.data || {};
+    let text;
+    if(r.skippedNoMission){
+      text = 'ยังไม่ได้ตั้งวันเริ่ม/สิ้นสุดแคมเปญ หรือยังไม่มีภารกิจในระบบ ข้ามการส่งไปก่อน';
+    } else if(r.skippedNoToken){
+      text = 'ไม่มีนักเรียนที่ต้องส่ง (ทำครบแล้วทุกคน หรือยังไม่มีใครกดเปิดแจ้งเตือนเลย)';
+    } else if('reminded' in r){ // ผลลัพธ์แบบเตือน+ชม (บันทึกประจำวัน)
+      text = `เตือนแล้ว ${r.reminded} เครื่อง, ชมแล้ว ${r.praised} เครื่อง` +
+        ((r.remindedFailed||r.praisedFailed) ? ` (ล้มเหลวรวม ${(r.remindedFailed||0)+(r.praisedFailed||0)} เครื่อง — ลบ token เสียให้แล้ว)` : '');
+    } else if('awarded' in r){ // ผลลัพธ์แบบให้คะแนนความพยายาม
+      text = `ตรวจพบภารกิจไม่ผ่านที่หมดเวลาแล้ว ${r.checked} รายการ ให้คะแนนความพยายามสำเร็จ ${r.awarded} รายการ` +
+        (r.failed>0 ? ` (ล้มเหลว ${r.failed} รายการ)` : '');
+    } else { // ผลลัพธ์แบบส่ง notification ทั่วไป (sent/failed)
+      text = `ส่งสำเร็จ ${r.sent} เครื่อง${r.failed>0 ? ` (ล้มเหลว/token หมดอายุ ${r.failed} เครื่อง — ลบออกจากระบบให้แล้ว)` : ''}`;
     }
+    msgEl.style.color = (r.skippedNoMission || r.skippedNoToken) ? '#9aa8ab' : 'var(--lagoon)';
+    msgEl.textContent = text;
   }catch(e){
     console.error(e);
     msgEl.style.color = 'var(--red-high)';
-    msgEl.textContent = 'ส่งไม่สำเร็จ: ' + e.message;
+    msgEl.textContent = 'ทำงานไม่สำเร็จ: ' + e.message;
   }
 }
+
 
 /* ---- สวิตช์เปิด/ปิด Post-test (settings/campaign.postTestEnabled) ---- */
 async function loadPostTestSwitchState(){

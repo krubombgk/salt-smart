@@ -889,6 +889,18 @@
       <div class="section-title" id="homeGreeting" style="font-size:16px; margin-top:0;">สวัสดี! 👋</div>
       <div style="text-align:right; margin:-6px 0 8px;"><span style="color:var(--lagoon); font-family:'Kanit'; font-weight:600; font-size:12px; cursor:pointer;" onclick="openAnnounceHistory()">📋 ดูประกาศทั้งหมด</span></div>
 
+      <!-- เตือนทำ Baseline Survey + Pre-test (assessment.html) ถ้ายังไม่เคยทำ — โผล่ทุกครั้งที่ login จนกว่าจะทำเสร็จ -->
+      <div class="card" id="preTestReminderCard" style="display:none; background:#FDE9E4; border-color:var(--clay);">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <div style="font-size:24px;">📋</div>
+          <div style="flex:1;">
+            <div style="font-family:'Kanit'; font-weight:700; font-size:13.5px;">ยังไม่ได้ทำแบบสำรวจ/แบบทดสอบก่อนเริ่มโครงการ</div>
+            <div style="font-size:12px; color:#6b7c80;">ทำ Baseline Survey + Pre-test ให้เสร็จก่อน จะได้เทียบผลตอนจบแคมเปญได้ครบ</div>
+          </div>
+          <a href="./assessment.html" class="btn btn-primary" style="width:auto; padding:8px 14px; font-size:12.5px; text-decoration:none; text-align:center;">ไปทำเลย</a>
+        </div>
+      </div>
+
       <!-- แจ้งเตือนภารกิจรายวัน: โผล่เฉพาะตอนยังไม่เคยเปิด/ยังไม่เคยตอบปฏิเสธ -->
       <div class="card" id="notifyOptInCard" style="display:none; background:#FFF7E0; border-color:#E8C468;">
         <div style="display:flex; align-items:center; gap:10px;">
@@ -1554,7 +1566,7 @@
    ระบบจะเช็คไฟล์นี้ตอนเปิดแอป, ทุกครั้งที่สลับกลับมาที่แอป (visibilitychange), และเช็คซ้ำทุก 10 นาทีเผื่อเปิดค้างไว้นานๆ
    ถ้าเจอเวอร์ชันใหม่กว่าที่ฝังมากับโค้ดตอนนี้ จะขึ้นแบนเนอร์ให้กดรีเฟรชเอง (ไม่บังคับรีเฟรชทันที เผื่อกำลังกรอกฟอร์มอยู่)
    ========================================================= */
-const APP_VERSION = "2026-08-17-2"; // ต้องตรงกับใน version.json เสมอ แก้คู่กันทุกครั้งที่ deploy
+const APP_VERSION = "2026-08-18-1"; // ต้องตรงกับใน version.json เสมอ แก้คู่กันทุกครั้งที่ deploy
 async function checkForAppUpdate(){
   try{
     const res = await fetch('./version.json?t=' + Date.now(), { cache: 'no-store' });
@@ -2065,6 +2077,7 @@ async function enterApp(){
     saveSession();
     startIdleTimer();
     initNotifyOptIn(); // เช็คว่าควรโชว์การ์ดชวนเปิดแจ้งเตือนไหม (ไม่บล็อกอะไร ทำหลังเข้าแอปสำเร็จแล้วเงียบๆ)
+    checkPreTestReminder(); // เช็คว่าทำ Baseline Survey + Pre-test ใน assessment.html ไปแล้วหรือยัง ถ้ายังเตือนไว้เบาๆ (ไม่บล็อกอะไร)
   }catch(e){
     console.error('enterApp error:', e);
     hideLoadingOverlay();
@@ -2116,6 +2129,22 @@ async function enablePushNotifications(){
     showToast('เปิดแจ้งเตือนไม่สำเร็จ ลองใหม่อีกครั้ง');
   }finally{
     btn.disabled = false; btn.textContent = 'เปิด';
+  }
+}
+
+/* ---- เตือนทำ Baseline Survey + Pre-test (assessment.html) ตอน login ทุกครั้งจนกว่าจะทำเสร็จ ---- */
+async function checkPreTestReminder(){
+  const card = document.getElementById('preTestReminderCard');
+  try{
+    const [behaviorSnap, testSnap] = await Promise.all([
+      db.collection('behaviorSurveys').where('studentId','==',state.selectedStudent.id).where('phase','==','pre').limit(1).get(),
+      db.collection('knowledgeTests').where('studentId','==',state.selectedStudent.id).where('phase','==','pre').limit(1).get(),
+    ]);
+    const doneBoth = !behaviorSnap.empty && !testSnap.empty;
+    card.style.display = doneBoth ? 'none' : 'block';
+  }catch(e){
+    console.error('เช็คสถานะ Pre-test ไม่สำเร็จ:', e);
+    card.style.display = 'none'; // เช็คไม่ได้ (เช่นเน็ตหลุด) ไม่ต้องโชว์ค้าง กันดูเหมือนบังคับทั้งที่เช็คไม่ได้จริง
   }
 }
 
@@ -3117,7 +3146,12 @@ function renderMissionUI(mission, sub){
   if (sub) {
     if (sub.status === 'pending') statusHtml = `<div class="mission-status pending">⏳ ส่งแล้ว รอครู/ยุวทูตตรวจ</div>`;
     else if (sub.status === 'approved') statusHtml = `<div class="mission-status approved">✅ ผ่านแล้ว! ได้ ${sub.pointsAwarded || 0} คะแนน</div>`;
-    else if (sub.status === 'rejected') statusHtml = `<div class="mission-status rejected">❌ ยังไม่ผ่าน${sub.reviewNote ? ': ' + sub.reviewNote : ''} — ลองส่งใหม่ได้เลย</div>`;
+    else if (sub.status === 'rejected') {
+      const effortNote = sub.effortCreditAwarded
+        ? `<br><span style="color:var(--lagoon);">💚 ได้คะแนนความพยายาม ${sub.pointsAwarded||0} คะแนนแล้ว (หมดเวลาส่งใหม่ของวันนั้นแล้ว)</span>`
+        : ' — ลองส่งใหม่ได้เลย';
+      statusHtml = `<div class="mission-status rejected">❌ ยังไม่ผ่าน${sub.reviewNote ? ': ' + sub.reviewNote : ''}${effortNote}</div>`;
+    }
   }
 
   const needsPhoto = mission.evidenceType === 'photo' || mission.evidenceType === 'both';
