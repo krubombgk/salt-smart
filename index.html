@@ -1585,7 +1585,7 @@
    ถ้าเจอเวอร์ชันใหม่กว่าที่ฝังมากับโค้ดตอนนี้ จะรีเฟรชอัตโนมัติทันที (ไม่ต้องรอให้ใครกดเอง กันเครื่องค้างเวอร์ชันเก่าไม่รู้ตัว)
    ยกเว้นตอนกำลังพิมพ์อะไรอยู่ในช่องกรอกข้อความ (เช่น เขียนสะท้อนตัวเอง) จะรอรอบถัดไปก่อน กันข้อมูลที่พิมพ์ค้างอยู่หายกะทันหัน
    ========================================================= */
-const APP_VERSION = "2026-08-19-2"; // ต้องตรงกับใน version.json เสมอ แก้คู่กันทุกครั้งที่ deploy
+const APP_VERSION = "2026-08-19-3"; // ต้องตรงกับใน version.json เสมอ แก้คู่กันทุกครั้งที่ deploy
 async function checkForAppUpdate(){
   try{
     const res = await fetch('./version.json?t=' + Date.now(), { cache: 'no-store' });
@@ -2549,8 +2549,8 @@ async function loadTodayLog(){
 
 async function getBackfillableDates(){
   const holidays = state.campaign.holidays || []; // วันที่แอดมินเปิดให้ทำย้อนหลังได้เป็นพิเศษ (ชื่อ field เดิมในฐานข้อมูล ความหมายตอนนี้ใช้ร่วมกับภารกิจ/Quiz ด้วย ไม่ใช่แค่บันทึกพฤติกรรม)
-  const cutoff = addDays(state.todaysDateStr, -3);
-  const candidates = holidays.filter(d => d >= cutoff && d < state.todaysDateStr && d !== state.recallDate).sort();
+  // ไม่มีเพดาน 3 วันแล้ว — แอดมินเปิดวันไหนไว้ วันนั้นทำย้อนหลังได้เสมอ ไม่ว่าจะผ่านมากี่วัน จนกว่าแอดมินจะลบออกเอง
+  const candidates = holidays.filter(d => d < state.todaysDateStr && d !== state.recallDate).sort();
   if(candidates.length===0) return [];
   const snaps = await Promise.all(candidates.map(d => db.collection('dailyLogs').doc(docIdFor(d)).get()));
   return candidates.filter((d,i) => !(snaps[i].exists && snaps[i].data().submitted)).map(d => ({date:d}));
@@ -3235,8 +3235,8 @@ function dayNumberForDate(dateStr){
 // ต่างจาก getBackfillableDates() ตรงเช็คว่า "ยังไม่เคยส่งภารกิจ" ของวันนั้น ไม่ใช่เช็คบันทึกพฤติกรรม
 async function getMissionBackfillableDates(){
   const holidays = state.campaign.holidays || []; // วันที่แอดมินเปิดให้ทำย้อนหลังได้เป็นพิเศษ
-  const cutoff = addDays(state.todaysDateStr, -3);
-  const candidates = holidays.filter(d => d >= cutoff && d < state.todaysDateStr).sort();
+  // ไม่มีเพดาน 3 วันแล้ว — แอดมินเปิดวันไหนไว้ วันนั้นทำย้อนหลังได้เสมอ ไม่ว่าจะผ่านมากี่วัน จนกว่าแอดมินจะลบออกเอง
+  const candidates = holidays.filter(d => d < state.todaysDateStr).sort();
   if(candidates.length===0) return [];
   const snaps = await Promise.all(candidates.map(d => db.collection('missionSubmissions').doc(state.selectedStudent.id + '_' + d).get()));
   // เก็บไว้ในตัวเลือกถ้า "ยังไม่เคยส่งเลย" หรือ "ถูกตีกลับ" (rejected) เท่านั้น — ตัด pending/approved ออก (ไม่ต้องส่งซ้ำ)
@@ -3485,8 +3485,8 @@ async function loadQuiz(){
 // วันย้อนหลังที่ทำ Quiz ได้ (วันหยุดที่ครูเปิด + ช่วงพิเศษเปิดโครงการถ้ายังไม่หมดอายุ) — ยังไม่เคยทำ Quiz ของวันนั้นเท่านั้นถึงจะเลือกได้
 async function getQuizBackfillableDates(){
   const holidays = state.campaign.holidays || []; // วันที่แอดมินเปิดให้ทำย้อนหลังได้เป็นพิเศษ
-  const cutoff = addDays(state.todaysDateStr, -3);
-  const candidates = holidays.filter(d => d >= cutoff && d < state.todaysDateStr).sort();
+  // ไม่มีเพดาน 3 วันแล้ว — แอดมินเปิดวันไหนไว้ วันนั้นทำย้อนหลังได้เสมอ ไม่ว่าจะผ่านมากี่วัน จนกว่าแอดมินจะลบออกเอง
+  const candidates = holidays.filter(d => d < state.todaysDateStr).sort();
   if(candidates.length===0) return [];
   const snaps = await Promise.all(candidates.map(d => db.collection('dailyLogs').doc(docIdFor(d)).get()));
   // เช็คว่า "ทำครบทุกข้อจริง" (ตอบ >= จำนวนคำถามทั้งหมด) ไม่ใช่แค่ "มีคำตอบอยู่บ้าง" — กันวันที่ทำค้างไว้กลางคัน (ตอบไปไม่กี่ข้อ) ถูกกรองออกผิดๆ ทั้งที่ยังไม่เสร็จ
