@@ -127,6 +127,7 @@
       <div class="navitem" data-p="p-quiz" onclick="showPanel('p-quiz')">❓ คลังคำถาม Quiz</div>
       <div class="navitem" data-p="p-cards" onclick="showPanel('p-cards')">💡 การ์ดความรู้</div>
       <div class="navitem" data-p="p-missions" onclick="showPanel('p-missions')">🎯 ภารกิจ</div>
+      <div class="navitem" data-p="p-products" onclick="showPanel('p-products')">🗂️ ฐานข้อมูลสินค้า (AI)</div>
       <div class="navitem" data-p="p-review" onclick="showPanel('p-review')">🔍 ตรวจภารกิจ</div>
       <div class="navitem" data-p="p-history" onclick="showPanel('p-history')">📜 ประวัติการตรวจ</div>
       <div class="navitem" data-p="p-announce" onclick="showPanel('p-announce')">📢 ประกาศ</div>
@@ -350,6 +351,19 @@
           </div>
           <div class="msg" id="deleteAllMissionMsg"></div>
           <table><thead><tr><th>วัน</th><th>เนื้อหา</th><th>หลักฐาน</th><th>คะแนน</th><th>สถานะ</th><th></th></tr></thead><tbody id="missionTable"></tbody></table>
+        </div>
+      </div>
+
+      <!-- VERIFIED PRODUCTS DATABASE (AI Vision) -->
+      <div class="panel" id="p-products">
+        <h2>🗂️ ฐานข้อมูลสินค้าที่ระบบจำไว้ (สำหรับ AI Vision)</h2>
+        <p style="font-size:12.5px; color:#9aa8ab; margin-top:-8px;">ทุกครั้งที่นักเรียนกดยืนยันบันทึกค่าโซเดียมของสินค้าชิ้นหนึ่ง ระบบจะจำชื่อ+ค่าไว้ที่นี่ แล้วเสนอเป็น "คำแนะนำ" ให้คนอื่นที่ตรวจสินค้าชื่อเดียวกันในภายหลัง — ถ้ามีค่าไหนผิด (เช่น AI อ่านพลาดแล้วมีคนกดยืนยันโดยไม่ทันสังเกต) ค่าผิดจะถูกแนะนำซ้ำไปเรื่อยๆ จนกว่าจะแก้/ลบตรงนี้</p>
+        <div class="card">
+          <div class="field" style="max-width:320px;"><label>ค้นหาชื่อสินค้า</label><input type="text" id="productSearchInput" placeholder="พิมพ์ชื่อสินค้า..." oninput="loadVerifiedProducts()"></div>
+          <table>
+            <thead><tr><th>ชื่อสินค้า</th><th>โซเดียม (มก.)</th><th>หมวดหมู่</th><th>ตรวจแล้ว (ครั้ง)</th><th>ตรวจล่าสุด</th><th></th></tr></thead>
+            <tbody id="productTable"><tr><td colspan="6">กำลังโหลด…</td></tr></tbody>
+          </table>
         </div>
       </div>
 
@@ -726,6 +740,7 @@ function showPanel(id){
   if(id==='p-overview') loadOverview();
   if(id==='p-leaderboard') switchLbCat(currentLbCat);
   if(id==='p-review') loadReviewQueue();
+  if(id==='p-products') loadVerifiedProducts();
   if(id==='p-history') loadMissionHistory();
   if(id==='p-announce') loadAnnouncements();
   if(id==='p-assessment'){ loadAssessmentResults(); loadPostTestSwitchState(); }
@@ -1676,6 +1691,59 @@ async function deleteAllMissions(){
 }
 
 /* ---- REVIEW QUEUE ---- */
+/* ---- ฐานข้อมูลสินค้าที่ระบบจำไว้ (verifiedProducts) — ใช้แก้/ลบค่าผิดที่เคยถูกบันทึกไว้ กันแนะนำค่าผิดซ้ำเรื่อยๆ ---- */
+async function loadVerifiedProducts(){
+  const wrap = document.getElementById('productTable');
+  const q = (document.getElementById('productSearchInput').value || '').trim().toLowerCase();
+  wrap.innerHTML = '<tr><td colspan="6">กำลังโหลด…</td></tr>';
+  try{
+    const snap = await db.collection('verifiedProducts').get();
+    let products = snap.docs.map(d=>({id:d.id, ...d.data()}));
+    if(q) products = products.filter(p => (p.name||'').toLowerCase().includes(q));
+    products.sort((a,b)=> (b.timesChecked||0) - (a.timesChecked||0)); // เรียงตามที่ตรวจบ่อยสุดก่อน (ผิดแล้วกระทบคนเยอะสุด)
+    if(products.length===0){ wrap.innerHTML = '<tr><td colspan="6" class="empty-note">ไม่พบสินค้าตามคำค้นหา</td></tr>'; return; }
+    wrap.innerHTML = products.map(p=>`
+      <tr>
+        <td>${p.name}</td>
+        <td><input type="number" value="${p.sodiumMg ?? ''}" id="prodSodium_${p.id}" style="width:80px; padding:6px; border:1px solid #ddd; border-radius:6px;"></td>
+        <td>${p.category || '-'}</td>
+        <td>${p.timesChecked || 1}</td>
+        <td style="font-size:12px; color:#9aa8ab;">${p.lastCheckedAt ? new Date(p.lastCheckedAt).toLocaleDateString('th-TH') : '-'}</td>
+        <td style="white-space:nowrap;">
+          <button class="btn btn-ghost" style="padding:6px 10px; font-size:12px;" onclick="saveVerifiedProductSodium('${p.id}')">บันทึก</button>
+          <button class="btn btn-danger" style="padding:6px 10px; font-size:12px;" onclick="deleteVerifiedProduct('${p.id}','${(p.name||'').replace(/'/g,"\\'")}')">ลบ</button>
+        </td>
+      </tr>`).join('');
+  }catch(e){
+    console.error(e);
+    wrap.innerHTML = '<tr><td colspan="6" class="empty-note">โหลดข้อมูลไม่สำเร็จ</td></tr>';
+  }
+}
+
+async function saveVerifiedProductSodium(id){
+  const input = document.getElementById('prodSodium_'+id);
+  const newVal = parseInt(input.value);
+  if(isNaN(newVal) || newVal < 0){ alert('กรอกค่าโซเดียมเป็นตัวเลขที่ถูกต้อง (0 ขึ้นไป)'); return; }
+  try{
+    await db.collection('verifiedProducts').doc(id).update({ sodiumMg: newVal });
+    alert('แก้ไขค่าโซเดียมแล้ว — คำแนะนำที่จะโชว์ให้คนอื่นเห็นต่อจากนี้จะเป็นค่าใหม่ทันที');
+  }catch(e){
+    console.error(e);
+    alert('บันทึกไม่สำเร็จ: ' + e.message);
+  }
+}
+
+async function deleteVerifiedProduct(id, name){
+  if(!confirm(`ลบ "${name}" ออกจากฐานข้อมูลสินค้าเลยไหม?\n\n(แค่ลบคำแนะนำเก่าออกจากระบบเท่านั้น ไม่กระทบคะแนน/ประวัติการตรวจของนักเรียนที่เคยบันทึกไปแล้วก่อนหน้า)`)) return;
+  try{
+    await db.collection('verifiedProducts').doc(id).delete();
+    loadVerifiedProducts();
+  }catch(e){
+    console.error(e);
+    alert('ลบไม่สำเร็จ: ' + e.message);
+  }
+}
+
 async function loadReviewQueue(){
   const wrap = document.getElementById('reviewQueue');
   try{
