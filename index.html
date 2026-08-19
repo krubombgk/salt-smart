@@ -1582,7 +1582,7 @@
    ระบบจะเช็คไฟล์นี้ตอนเปิดแอป, ทุกครั้งที่สลับกลับมาที่แอป (visibilitychange), และเช็คซ้ำทุก 10 นาทีเผื่อเปิดค้างไว้นานๆ
    ถ้าเจอเวอร์ชันใหม่กว่าที่ฝังมากับโค้ดตอนนี้ จะขึ้นแบนเนอร์ให้กดรีเฟรชเอง (ไม่บังคับรีเฟรชทันที เผื่อกำลังกรอกฟอร์มอยู่)
    ========================================================= */
-const APP_VERSION = "2026-08-18-6"; // ต้องตรงกับใน version.json เสมอ แก้คู่กันทุกครั้งที่ deploy
+const APP_VERSION = "2026-08-18-7"; // ต้องตรงกับใน version.json เสมอ แก้คู่กันทุกครั้งที่ deploy
 async function checkForAppUpdate(){
   try{
     const res = await fetch('./version.json?t=' + Date.now(), { cache: 'no-store' });
@@ -1617,6 +1617,16 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const storage = firebase.storage();
+
+// แอป Firebase แยกต่างหากเฉพาะสำหรับ Push Notification เท่านั้น
+// เหตุผล: Firebase Messaging มีพฤติกรรมที่รู้จักกันว่าบางครั้งพยายามเช็ค/ลงทะเบียน service worker ที่ path รากของโดเมนเองเป็นค่าเริ่มต้น
+// (ไม่สนใจ service worker ที่เราลงทะเบียนเองแล้วส่งให้ตรงๆ) ซึ่งพังได้ถ้าเว็บไม่ได้อยู่ที่ root โดเมน (เช่น GitHub Pages ที่อยู่ในโฟลเดอร์ย่อยของ repo)
+// เคยเจอเคสที่ปัญหานี้ไปทำให้ Cloud Function อื่นที่ไม่เกี่ยวกัน (เช่น AI Vision) เรียกไม่ได้ไปด้วย เพราะใช้ app instance เดียวกัน
+// จึงแยก app instance ต่างหากไว้เฉพาะ messaging กันปัญหาฝั่งนี้ลามไปกระทบฝั่งอื่นเด็ดขาด
+function getMessagingApp(){
+  const existing = firebase.apps.find(a => a.name === 'messagingApp');
+  return existing || firebase.initializeApp(firebaseConfig, 'messagingApp');
+}
 
 // TODO: ครูบอมบ์ต้องไปสร้างเองที่ Firebase Console → Project Settings → Cloud Messaging
 // → Web configuration → กด "Generate key pair" แล้วเอาค่าที่ได้มาแปะแทนตรงนี้ ก่อนใช้งานแจ้งเตือนจริง
@@ -2131,7 +2141,8 @@ async function enablePushNotifications(){
       return;
     }
     const reg = await navigator.serviceWorker.register('firebase-messaging-sw.js');
-    const messaging = firebase.messaging();
+    await navigator.serviceWorker.ready; // รอให้ service worker "active" จริงๆ ไม่ใช่แค่ลงทะเบียนสำเร็จเฉยๆ — กัน Firebase SDK ไปเช็ค/หา default ที่ root โดเมนเอง
+    const messaging = getMessagingApp().messaging();
     const token = await messaging.getToken({ vapidKey: FCM_VAPID_KEY, serviceWorkerRegistration: reg });
     if(token && state.selectedStudent){
       await db.collection('students').doc(state.selectedStudent.id).update({
