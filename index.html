@@ -1582,7 +1582,7 @@
    ระบบจะเช็คไฟล์นี้ตอนเปิดแอป, ทุกครั้งที่สลับกลับมาที่แอป (visibilitychange), และเช็คซ้ำทุก 10 นาทีเผื่อเปิดค้างไว้นานๆ
    ถ้าเจอเวอร์ชันใหม่กว่าที่ฝังมากับโค้ดตอนนี้ จะขึ้นแบนเนอร์ให้กดรีเฟรชเอง (ไม่บังคับรีเฟรชทันที เผื่อกำลังกรอกฟอร์มอยู่)
    ========================================================= */
-const APP_VERSION = "2026-08-18-5"; // ต้องตรงกับใน version.json เสมอ แก้คู่กันทุกครั้งที่ deploy
+const APP_VERSION = "2026-08-18-6"; // ต้องตรงกับใน version.json เสมอ แก้คู่กันทุกครั้งที่ deploy
 async function checkForAppUpdate(){
   try{
     const res = await fetch('./version.json?t=' + Date.now(), { cache: 'no-store' });
@@ -2607,8 +2607,19 @@ async function handleLabelPhoto(event){
   if(!file) return;
   const statusEl = document.getElementById('ocrStatus');
   statusEl.innerHTML = '🔎 กำลังส่งรูปให้ AI ช่วยอ่าน... รอสักครู่นะ';
+  console.log('handleLabelPhoto: ไฟล์ที่เลือก', { name: file.name, type: file.type, size: file.size });
+
+  let imageBase64;
   try{
-    const imageBase64 = await resizeImageForUpload(file);
+    imageBase64 = await resizeImageForUpload(file);
+  }catch(e){
+    console.error('resizeImageForUpload error:', e);
+    statusEl.innerHTML = `⚠️ ประมวลผลรูปในเครื่องไม่สำเร็จ<br><span style="font-size:12px; color:#aab5b8;">รายละเอียด: ${(e && (e.message||e.name)) || 'ไม่ทราบสาเหตุ'} (ไฟล์: ${file.type||'ไม่ทราบชนิด'})</span><br>ลองถ่ายรูปใหม่ หรือพิมพ์ตัวเลขเองจากฉลากได้เลย`;
+    event.target.value = '';
+    return;
+  }
+
+  try{
     const checkSodiumLabel = firebase.app().functions('asia-southeast1').httpsCallable('checkSodiumLabel');
     const res = await checkSodiumLabel({ studentId: state.selectedStudent.id, imageBase64 });
     const data = res.data;
@@ -2675,8 +2686,9 @@ async function handleLabelPhoto(event){
       <div style="text-align:center; margin-top:8px;"><span style="color:#aab5b8; font-size:12px;">(เหลือ ${data.remainingToday} ครั้งวันนี้)</span></div>
     `;
   }catch(e){
-    console.error(e);
-    statusEl.textContent = 'เชื่อมต่อ AI ไม่สำเร็จ ลองใหม่อีกครั้ง หรือพิมพ์ตัวเลขเองจากฉลากได้เลย';
+    console.error('checkSodiumLabel error:', e);
+    const detail = (e && (e.message || e.code)) || 'ไม่ทราบสาเหตุ';
+    statusEl.innerHTML = `⚠️ เชื่อมต่อ AI ไม่สำเร็จ<br><span style="font-size:12px; color:#aab5b8;">รายละเอียด: ${detail}</span><br>ลองใหม่อีกครั้ง หรือพิมพ์ตัวเลขเองจากฉลากได้เลย`;
   }
   event.target.value = '';
 }
