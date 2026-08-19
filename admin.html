@@ -522,10 +522,10 @@
         </div>
 
         <div class="card" style="max-width:420px;">
-          <h3 style="margin-top:0;">📅 วันหยุดที่บันทึกย้อนหลังได้</h3>
-          <p style="font-size:12.5px; color:#9aa8ab; margin-top:-6px;">นักเรียนบันทึกของ "เมื่อวาน" เป็นค่าเริ่มต้นทุกวันอยู่แล้ว (24-Hour Recall) ส่วนนี้ใช้เพิ่มเฉพาะวันที่ไม่มีการเรียน (เสาร์-อาทิตย์ปกติ หรือวันหยุดพิเศษ) ที่จะให้บันทึกย้อนหลังได้ ไม่เกิน 3 วันจากวันนี้ ถ้าไม่ระบุไว้ในนี้ นักเรียนจะบันทึกย้อนหลังวันนั้นไม่ได้</p>
+          <h3 style="margin-top:0;">📅 วันที่บันทึกย้อนหลังได้</h3>
+          <p style="font-size:12.5px; color:#9aa8ab; margin-top:-6px;">ใช้ควบคุมว่า "ภารกิจ" กับ "Quiz" ให้ทำย้อนหลังได้วันไหนบ้าง (ปกติทำได้แค่วันเดียวกันเท่านั้น) — ส่วนบันทึกพฤติกรรม นักเรียนบันทึกของ "เมื่อวาน" เป็นค่าเริ่มต้นทุกวันอยู่แล้ว (24-Hour Recall) ไม่ต้องเปิดเพิ่ม เว้นแต่อยากเปิดย้อนหลังมากกว่า 1 วัน เพิ่มวันที่ตรงนี้ได้เลย (ย้อนได้ไม่เกิน 3 วันจากวันนี้) เปิดปิดได้เองตลอด ไม่จำเป็นต้องเป็นวันหยุดจริงก็ได้</p>
           <div class="field" style="display:flex; gap:8px; align-items:flex-end;">
-            <div style="flex:1;"><label>เพิ่มวันหยุด</label><input type="date" id="newHolidayDate"></div>
+            <div style="flex:1;"><label>เพิ่มวันที่เปิดให้ทำย้อนหลัง</label><input type="date" id="newHolidayDate"></div>
             <button class="btn btn-primary" onclick="addHoliday()">เพิ่ม</button>
           </div>
           <div class="msg" id="holidayMsg"></div>
@@ -628,7 +628,7 @@
    ใช้ version.json ไฟล์เดียวกับ index.html (แก้เลขคู่กันทุกครั้งที่ deploy)
    เจอเวอร์ชันใหม่แล้วรีเฟรชอัตโนมัติทันที ยกเว้นกำลังพิมพ์อะไรอยู่ (เช่น เหตุผลไม่ผ่านภารกิจ) จะรอรอบถัดไปก่อน
    ========================================================= */
-const APP_VERSION = "2026-08-19-1"; // ต้องตรงกับใน version.json เสมอ แก้คู่กันทุกครั้งที่ deploy
+const APP_VERSION = "2026-08-19-2"; // ต้องตรงกับใน version.json เสมอ แก้คู่กันทุกครั้งที่ deploy
 async function checkForAppUpdate(){
   try{
     const res = await fetch('./version.json?t=' + Date.now(), { cache: 'no-store' });
@@ -2069,7 +2069,7 @@ async function addHoliday(){
   holidaysCache.sort();
   await db.collection('settings').doc('campaign').set({holidays: holidaysCache}, {merge:true});
   document.getElementById('newHolidayDate').value='';
-  setMsg('holidayMsg','เพิ่มวันหยุดแล้ว');
+  setMsg('holidayMsg','เพิ่มวันที่แล้ว');
   renderHolidayList();
 }
 async function removeHoliday(d){
@@ -2079,7 +2079,7 @@ async function removeHoliday(d){
 }
 function renderHolidayList(){
   const el = document.getElementById('holidayList');
-  if(holidaysCache.length===0){ el.innerHTML = '<div class="msg" style="color:#9aa8ab;">ยังไม่มีวันหยุดที่ตั้งไว้</div>'; return; }
+  if(holidaysCache.length===0){ el.innerHTML = '<div class="msg" style="color:#9aa8ab;">ยังไม่มีวันที่ตั้งไว้</div>'; return; }
   el.innerHTML = holidaysCache.map(d=>`
     <div style="display:flex; align-items:center; justify-content:space-between; padding:8px 0; border-bottom:1px solid #F2EEE1;">
       <span class="pill">${d}</span>

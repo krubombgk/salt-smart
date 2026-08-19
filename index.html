@@ -1585,7 +1585,7 @@
    ถ้าเจอเวอร์ชันใหม่กว่าที่ฝังมากับโค้ดตอนนี้ จะรีเฟรชอัตโนมัติทันที (ไม่ต้องรอให้ใครกดเอง กันเครื่องค้างเวอร์ชันเก่าไม่รู้ตัว)
    ยกเว้นตอนกำลังพิมพ์อะไรอยู่ในช่องกรอกข้อความ (เช่น เขียนสะท้อนตัวเอง) จะรอรอบถัดไปก่อน กันข้อมูลที่พิมพ์ค้างอยู่หายกะทันหัน
    ========================================================= */
-const APP_VERSION = "2026-08-19-1"; // ต้องตรงกับใน version.json เสมอ แก้คู่กันทุกครั้งที่ deploy
+const APP_VERSION = "2026-08-19-2"; // ต้องตรงกับใน version.json เสมอ แก้คู่กันทุกครั้งที่ deploy
 async function checkForAppUpdate(){
   try{
     const res = await fetch('./version.json?t=' + Date.now(), { cache: 'no-store' });
@@ -2120,9 +2120,6 @@ async function enterApp(){
     refreshMissionHub();
     refreshSodiumHub();
     checkAndGrantDailyCard(); // เผื่อครบ 3 กิจกรรมไปแล้วตั้งแต่ก่อนรีเฟรชหน้า แต่ยังไม่เคยได้การ์ด (มี flag กันซ้ำอยู่แล้ว ปลอดภัย)
-    // ไล่เช็คย้อนหลังทุกวันในช่วงเปิดโครงการพิเศษด้วย เผื่อมีใครทำครบ 3 อย่างของหลายวันไปแล้วตอนที่ยังมีบั๊กเดิม (ได้การ์ดไม่ครบ)
-    // ธงกันซ้ำ (dailyCardGranted) เก็บแยกรายวันอยู่แล้ว จึงเช็คซ้ำได้อย่างปลอดภัย ไม่มีทางได้การ์ดซ้ำวันที่เคยได้ไปแล้ว
-    getLaunchGraceWindowDates().forEach(d => checkAndGrantDailyCard(d));
     switchTab('tab-home', true); // ตั้งค่าแท็บเริ่มต้น ไม่ push history ตรงนี้ ให้ goScreen ด้านล่าง push รวมทีเดียว
     goScreen('screen-main');
     hideLoadingOverlay();
@@ -2548,32 +2545,15 @@ async function loadTodayLog(){
 
 // วันที่ย้อนหลังได้: เฉพาะ "วันหยุด" ที่แอดมินกำหนดไว้ล่วงหน้าเท่านั้น (ไม่ใช่วันเรียนที่แค่ลืมบันทึก)
 // ย้อนได้ไม่เกิน 3 วันจากวันนี้ และต้องยังไม่ได้บันทึก ไม่รวมวันเมื่อวาน (recallDate) เพราะเป็นค่าเริ่มต้นอยู่แล้ว
-// ช่วงพิเศษเปิดโครงการ: ย้อนทำได้ถึงวันแรกของแคมเปญ ทั้งภารกิจ/Quiz/บันทึก ไม่ต้องรอครูตั้งวันหยุดทีละวัน
-// ปิดอัตโนมัติหลังวันที่กำหนด แล้วกลับไปใช้กติกาปกติ (เฉพาะวันหยุดที่ครูตั้งไว้) — ไม่ยุ่งกับกติกาเดิมเลย แค่เสริมชั่วคราว
-const LAUNCH_GRACE_PERIOD_END = '2026-08-17';
-function getLaunchGraceWindowDates(){
-  if(state.todaysDateStr > LAUNCH_GRACE_PERIOD_END) return [];
-  const start = state.campaign.startDate;
-  if(!start) return [];
-  const dates = [];
-  let d = start;
-  while(d < state.todaysDateStr){
-    dates.push(d);
-    d = addDays(d, 1);
-  }
-  return dates;
-}
+// (เดิมมีกลไก "ช่วงเปิดโครงการพิเศษ" เสริมชั่วคราวช่วงต้นแคมเปญ ตอนนี้หมดอายุแล้วและลบออกแล้ว เหลือกติกาเดียว: อิงตาม "วันที่แอดมินเปิดให้ทำย้อนหลัง" เท่านั้น)
 
 async function getBackfillableDates(){
-  const holidays = state.campaign.holidays || [];
+  const holidays = state.campaign.holidays || []; // วันที่แอดมินเปิดให้ทำย้อนหลังได้เป็นพิเศษ (ชื่อ field เดิมในฐานข้อมูล ความหมายตอนนี้ใช้ร่วมกับภารกิจ/Quiz ด้วย ไม่ใช่แค่บันทึกพฤติกรรม)
   const cutoff = addDays(state.todaysDateStr, -3);
-  const holidayDates = holidays.filter(d => d >= cutoff && d < state.todaysDateStr && d !== state.recallDate);
-  const graceDates = getLaunchGraceWindowDates().filter(d => d !== state.recallDate);
-  const graceSet = new Set(graceDates);
-  const candidates = [...new Set([...holidayDates, ...graceDates])].sort();
+  const candidates = holidays.filter(d => d >= cutoff && d < state.todaysDateStr && d !== state.recallDate).sort();
   if(candidates.length===0) return [];
   const snaps = await Promise.all(candidates.map(d => db.collection('dailyLogs').doc(docIdFor(d)).get()));
-  return candidates.filter((d,i) => !(snaps[i].exists && snaps[i].data().submitted)).map(d => ({date:d, isGrace: graceSet.has(d)}));
+  return candidates.filter((d,i) => !(snaps[i].exists && snaps[i].data().submitted)).map(d => ({date:d}));
 }
 
 async function renderBackfillChips(){
@@ -2582,7 +2562,7 @@ async function renderBackfillChips(){
   const missed = await getBackfillableDates();
   const recallChip = `<div class="chip ${state.targetDate===state.recallDate?'active':''}" onclick="selectLogDate('${state.recallDate}')">เมื่อวาน (${dayLabelThai(state.recallDate)})</div>`;
   const todayChip = `<div class="chip ${state.targetDate===state.todaysDateStr?'active':''}" onclick="selectLogDate('${state.todaysDateStr}')">วันนี้ (${dayLabelThai(state.todaysDateStr)})</div>`;
-  const missedChips = missed.map(m => `<div class="chip ${state.targetDate===m.date?'active':''}" onclick="selectLogDate('${m.date}')">${m.isGrace?'ช่วงเปิดโครงการ':'วันหยุด'}: ${dayLabelThai(m.date)}</div>`).join('');
+  const missedChips = missed.map(m => `<div class="chip ${state.targetDate===m.date?'active':''}" onclick="selectLogDate('${m.date}')">ย้อนหลัง: ${dayLabelThai(m.date)}</div>`).join('');
   chipsEl.innerHTML = recallChip + todayChip + missedChips;
 }
 
@@ -3254,21 +3234,17 @@ function dayNumberForDate(dateStr){
 // วันหยุดที่ครูเปิดให้ทำภารกิจย้อนหลังได้ (ใช้รายการวันหยุดชุดเดียวกับที่ตั้งไว้สำหรับบันทึกวันนี้)
 // ต่างจาก getBackfillableDates() ตรงเช็คว่า "ยังไม่เคยส่งภารกิจ" ของวันนั้น ไม่ใช่เช็คบันทึกพฤติกรรม
 async function getMissionBackfillableDates(){
-  const holidays = state.campaign.holidays || [];
+  const holidays = state.campaign.holidays || []; // วันที่แอดมินเปิดให้ทำย้อนหลังได้เป็นพิเศษ
   const cutoff = addDays(state.todaysDateStr, -3);
-  const holidayDates = holidays.filter(d => d >= cutoff && d < state.todaysDateStr);
-  const graceDates = getLaunchGraceWindowDates();
-  const graceSet = new Set(graceDates);
-  const candidates = [...new Set([...holidayDates, ...graceDates])].sort();
+  const candidates = holidays.filter(d => d >= cutoff && d < state.todaysDateStr).sort();
   if(candidates.length===0) return [];
   const snaps = await Promise.all(candidates.map(d => db.collection('missionSubmissions').doc(state.selectedStudent.id + '_' + d).get()));
-  // บั๊กเดิม: เช็คแค่ "มีเอกสารส่งอยู่ไหม" ทำให้ภารกิจที่ถูกตีกลับ (rejected) หายไปจากตัวเลือกด้วย ทั้งที่ยังต้องส่งใหม่ได้
-  // แก้ให้เก็บไว้ในตัวเลือกถ้า "ยังไม่เคยส่งเลย" หรือ "ถูกตีกลับ" — ตัด pending/approved ออกเท่านั้น (ไม่ต้องส่งซ้ำ)
+  // เก็บไว้ในตัวเลือกถ้า "ยังไม่เคยส่งเลย" หรือ "ถูกตีกลับ" (rejected) เท่านั้น — ตัด pending/approved ออก (ไม่ต้องส่งซ้ำ)
   return candidates.filter((d,i) => {
     if(!snaps[i].exists) return true;
     const status = snaps[i].data().status;
     return status === 'rejected';
-  }).map(d => ({date:d, isGrace: graceSet.has(d)}));
+  }).map(d => ({date:d}));
 }
 
 async function renderMissionBackfillChips(){
@@ -3277,7 +3253,7 @@ async function renderMissionBackfillChips(){
   const missed = await getMissionBackfillableDates();
   picker.style.display = 'block'; // โชว์เสมอเหมือนบันทึกวันนี้ — บั๊กเดิม: ซ่อนทั้งกล่องรวมปุ่ม "วันนี้" ไปด้วยตอนไม่มีวันพิเศษเหลือ ทำให้กดสลับกลับมาวันนี้ไม่ได้เลย
   const todayChip = `<div class="chip ${state.missionTargetDate===state.todaysDateStr?'active':''}" onclick="loadMissionForDate('${state.todaysDateStr}')">วันนี้ (${dayLabelThai(state.todaysDateStr)})</div>`;
-  const missedChips = missed.map(m => `<div class="chip ${state.missionTargetDate===m.date?'active':''}" onclick="loadMissionForDate('${m.date}')">${m.isGrace?'ช่วงเปิดโครงการ':'วันหยุด'}: ${dayLabelThai(m.date)}</div>`).join('');
+  const missedChips = missed.map(m => `<div class="chip ${state.missionTargetDate===m.date?'active':''}" onclick="loadMissionForDate('${m.date}')">ย้อนหลัง: ${dayLabelThai(m.date)}</div>`).join('');
   chipsEl.innerHTML = todayChip + missedChips;
 }
 
@@ -3508,12 +3484,9 @@ async function loadQuiz(){
 
 // วันย้อนหลังที่ทำ Quiz ได้ (วันหยุดที่ครูเปิด + ช่วงพิเศษเปิดโครงการถ้ายังไม่หมดอายุ) — ยังไม่เคยทำ Quiz ของวันนั้นเท่านั้นถึงจะเลือกได้
 async function getQuizBackfillableDates(){
-  const holidays = state.campaign.holidays || [];
+  const holidays = state.campaign.holidays || []; // วันที่แอดมินเปิดให้ทำย้อนหลังได้เป็นพิเศษ
   const cutoff = addDays(state.todaysDateStr, -3);
-  const holidayDates = holidays.filter(d => d >= cutoff && d < state.todaysDateStr);
-  const graceDates = getLaunchGraceWindowDates();
-  const graceSet = new Set(graceDates);
-  const candidates = [...new Set([...holidayDates, ...graceDates])].sort();
+  const candidates = holidays.filter(d => d >= cutoff && d < state.todaysDateStr).sort();
   if(candidates.length===0) return [];
   const snaps = await Promise.all(candidates.map(d => db.collection('dailyLogs').doc(docIdFor(d)).get()));
   // เช็คว่า "ทำครบทุกข้อจริง" (ตอบ >= จำนวนคำถามทั้งหมด) ไม่ใช่แค่ "มีคำตอบอยู่บ้าง" — กันวันที่ทำค้างไว้กลางคัน (ตอบไปไม่กี่ข้อ) ถูกกรองออกผิดๆ ทั้งที่ยังไม่เสร็จ
@@ -3523,7 +3496,7 @@ async function getQuizBackfillableDates(){
     const qLen = (data.quizQuestions||[]).length;
     const aLen = (data.quizAnswers||[]).length;
     return !(qLen>0 && aLen >= qLen);
-  }).map(d => ({date:d, isGrace: graceSet.has(d)}));
+  }).map(d => ({date:d}));
 }
 
 async function renderQuizBackfillChips(){
@@ -3532,7 +3505,7 @@ async function renderQuizBackfillChips(){
   const missed = await getQuizBackfillableDates();
   picker.style.display = 'block'; // โชว์เสมอเหมือนบันทึกวันนี้ — บั๊กเดิม: ซ่อนทั้งกล่องรวมปุ่ม "วันนี้" ไปด้วยตอนไม่มีวันพิเศษเหลือ ทำให้กดสลับกลับมาวันนี้ไม่ได้เลย
   const todayChip = `<div class="chip ${state.quizTargetDate===state.todaysDateStr?'active':''}" onclick="selectQuizDate('${state.todaysDateStr}')">วันนี้ (${dayLabelThai(state.todaysDateStr)})</div>`;
-  const missedChips = missed.map(m => `<div class="chip ${state.quizTargetDate===m.date?'active':''}" onclick="selectQuizDate('${m.date}')">${m.isGrace?'ช่วงเปิดโครงการ':'วันหยุด'}: ${dayLabelThai(m.date)}</div>`).join('');
+  const missedChips = missed.map(m => `<div class="chip ${state.quizTargetDate===m.date?'active':''}" onclick="selectQuizDate('${m.date}')">ย้อนหลัง: ${dayLabelThai(m.date)}</div>`).join('');
   chipsEl.innerHTML = todayChip + missedChips;
 }
 function selectQuizDate(dateStr){
