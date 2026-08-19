@@ -21,7 +21,9 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-functions-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
+<!-- firebase-messaging-compat.js ไม่โหลดตรงนี้แล้ว — โหลดแบบ lazy เฉพาะตอนกดเปิดแจ้งเตือนจริงๆ เท่านั้น (ดูฟังก์ชัน loadMessagingScript)
+     เหตุผล: แค่โหลด SDK ตัวนี้ทิ้งไว้เฉยๆ (ไม่ได้เรียกใช้อะไรเลย) พบว่า SDK เริ่มพยายามเช็ค/ลงทะเบียน service worker อัตโนมัติเองตั้งแต่หน้าเว็บโหลด
+     ถ้าเคยอนุญาต notification ไว้ก่อนหน้า — ไปกระทบการเชื่อมต่อ Firebase Functions ส่วนอื่น (เช่น AI Vision) ที่ใช้ app instance เดียวกันโดยไม่ได้ตั้งใจ -->
 <script src="who-bmi-data.js"></script>
 <style>
   :root{
@@ -1582,7 +1584,7 @@
    ระบบจะเช็คไฟล์นี้ตอนเปิดแอป, ทุกครั้งที่สลับกลับมาที่แอป (visibilitychange), และเช็คซ้ำทุก 10 นาทีเผื่อเปิดค้างไว้นานๆ
    ถ้าเจอเวอร์ชันใหม่กว่าที่ฝังมากับโค้ดตอนนี้ จะขึ้นแบนเนอร์ให้กดรีเฟรชเอง (ไม่บังคับรีเฟรชทันที เผื่อกำลังกรอกฟอร์มอยู่)
    ========================================================= */
-const APP_VERSION = "2026-08-18-8"; // ต้องตรงกับใน version.json เสมอ แก้คู่กันทุกครั้งที่ deploy
+const APP_VERSION = "2026-08-18-9"; // ต้องตรงกับใน version.json เสมอ แก้คู่กันทุกครั้งที่ deploy
 async function checkForAppUpdate(){
   try{
     const res = await fetch('./version.json?t=' + Date.now(), { cache: 'no-store' });
@@ -1626,6 +1628,23 @@ const storage = firebase.storage();
 function getMessagingApp(){
   const existing = firebase.apps.find(a => a.name === 'messagingApp');
   return existing || firebase.initializeApp(firebaseConfig, 'messagingApp');
+}
+
+// โหลด firebase-messaging-compat.js แบบ lazy (ไม่โหลดตั้งแต่หน้าเว็บเปิด) เฉพาะตอนกดเปิดแจ้งเตือนจริงๆ เท่านั้น
+// เหตุผล: แค่โหลด SDK ตัวนี้ทิ้งไว้ (ไม่ได้เรียกใช้อะไรเลย) พบว่า SDK พยายามเช็ค/ลงทะเบียน service worker อัตโนมัติเองตั้งแต่ตอนโหลดสคริปต์
+// ถ้าเคยอนุญาต notification ไว้ก่อนหน้า — กระทบ Firebase Functions ส่วนอื่น (เช่น AI Vision) ไปด้วยโดยไม่ได้ตั้งใจ แม้จะแยก app instance ไปแล้วก็ตาม
+// (แยก app instance ป้องกันได้แค่โค้ดที่เราเรียกเอง แต่ป้องกันพฤติกรรมอัตโนมัติของตัว SDK เองไม่ได้ ต้องไม่โหลดสคริปต์เลยถึงจะชัวร์ที่สุด)
+let messagingScriptLoadPromise = null;
+function loadMessagingScript(){
+  if(messagingScriptLoadPromise) return messagingScriptLoadPromise;
+  messagingScriptLoadPromise = new Promise((resolve, reject)=>{
+    const script = document.createElement('script');
+    script.src = 'https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js';
+    script.onload = resolve;
+    script.onerror = () => { messagingScriptLoadPromise = null; reject(new Error('โหลด Messaging SDK ไม่สำเร็จ')); };
+    document.head.appendChild(script);
+  });
+  return messagingScriptLoadPromise;
 }
 
 // TODO: ครูบอมบ์ต้องไปสร้างเองที่ Firebase Console → Project Settings → Cloud Messaging
@@ -2196,6 +2215,7 @@ async function enablePushNotifications(){
       document.getElementById('notifyOptInCard').style.display = 'none';
       return;
     }
+    await loadMessagingScript(); // โหลด SDK ตอนต้องใช้จริงเท่านั้น (ดูเหตุผลที่ loadMessagingScript)
     const reg = await navigator.serviceWorker.register('firebase-messaging-sw.js');
     await navigator.serviceWorker.ready; // รอให้ service worker "active" จริงๆ ไม่ใช่แค่ลงทะเบียนสำเร็จเฉยๆ — กัน Firebase SDK ไปเช็ค/หา default ที่ root โดเมนเอง
     const messaging = getMessagingApp().messaging();
