@@ -1582,7 +1582,7 @@
    ระบบจะเช็คไฟล์นี้ตอนเปิดแอป, ทุกครั้งที่สลับกลับมาที่แอป (visibilitychange), และเช็คซ้ำทุก 10 นาทีเผื่อเปิดค้างไว้นานๆ
    ถ้าเจอเวอร์ชันใหม่กว่าที่ฝังมากับโค้ดตอนนี้ จะขึ้นแบนเนอร์ให้กดรีเฟรชเอง (ไม่บังคับรีเฟรชทันที เผื่อกำลังกรอกฟอร์มอยู่)
    ========================================================= */
-const APP_VERSION = "2026-08-18-4"; // ต้องตรงกับใน version.json เสมอ แก้คู่กันทุกครั้งที่ deploy
+const APP_VERSION = "2026-08-18-5"; // ต้องตรงกับใน version.json เสมอ แก้คู่กันทุกครั้งที่ deploy
 async function checkForAppUpdate(){
   try{
     const res = await fetch('./version.json?t=' + Date.now(), { cache: 'no-store' });
@@ -2556,26 +2556,49 @@ function applyLogLockState(){
 
 /* ---- Sodium checker: AI Vision (Claude Haiku ผ่าน Cloud Function) ---- */
 function resizeImageForUpload(file){
-  return new Promise(async (resolve, reject)=>{
-    try{
-      // ใช้ createImageBitmap แทน new Image() เพราะจะจัดการทิศทางภาพ (EXIF orientation) ให้ถูกต้องเสมอ
-      // ภาพถ่ายจากมือถือมักมีข้อมูลการหมุนภาพแนบมา ถ้าไม่จัดการตรงนี้ อาจส่งภาพที่หมุนผิดด้านไปให้ AI อ่านโดยไม่รู้ตัว
-      const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
-      const maxDim = 1568;
-      const scale = Math.min(1, maxDim / Math.max(bitmap.width, bitmap.height));
-      const w = Math.max(1, Math.round(bitmap.width * scale));
-      const h = Math.max(1, Math.round(bitmap.height * scale));
-      const canvas = document.createElement('canvas');
-      canvas.width = w; canvas.height = h;
-      canvas.getContext('2d').drawImage(bitmap, 0, 0, w, h);
-      bitmap.close();
-      canvas.toBlob(blob=>{
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result.split(',')[1]);
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-      }, 'image/jpeg', 0.88);
-    }catch(e){ reject(e); }
+  return new Promise((resolve, reject)=>{
+    const maxDim = 1568;
+
+    function drawAndResolve(source, w0, h0, cleanup){
+      try{
+        const scale = Math.min(1, maxDim / Math.max(w0, h0));
+        const w = Math.max(1, Math.round(w0 * scale));
+        const h = Math.max(1, Math.round(h0 * scale));
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(source, 0, 0, w, h);
+        if (cleanup) cleanup();
+        canvas.toBlob(blob=>{
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result.split(',')[1]);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        }, 'image/jpeg', 0.88);
+      }catch(e){ reject(e); }
+    }
+
+    // วิธีสุดท้าย รองรับเบราว์เซอร์กว้างที่สุด (รวม iOS Safari รุ่นเก่าที่ไม่รองรับ createImageBitmap) — ไม่ auto-fix การหมุนภาพให้ แต่อย่างน้อยใช้งานได้เสมอ
+    function fallbackViaImageElement(){
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => drawAndResolve(img, img.naturalWidth, img.naturalHeight, () => URL.revokeObjectURL(url));
+      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('โหลดรูปไม่สำเร็จ')); };
+      img.src = url;
+    }
+
+    // ใช้ createImageBitmap ก่อนถ้ามี เพราะจัดการทิศทางภาพ (EXIF orientation) ให้ถูกต้องอัตโนมัติ — ภาพถ่ายจากมือถือมักมีข้อมูลการหมุนภาพแนบมา
+    // แต่ Safari บน iOS บางเวอร์ชันไม่รองรับ option imageOrientation หรือไม่รองรับฟังก์ชันนี้เลย จึงต้องมี fallback ไว้เสมอ กันเคสนี้แอปพังตั้งแต่ขั้นประมวลผลรูปในเครื่อง
+    if (typeof createImageBitmap === 'function') {
+      createImageBitmap(file, { imageOrientation: 'from-image' })
+        .then(bitmap => drawAndResolve(bitmap, bitmap.width, bitmap.height, () => bitmap.close()))
+        .catch(() => {
+          createImageBitmap(file) // ลองแบบไม่ใส่ option ก่อน เผื่อ browser รองรับฟังก์ชันแต่ไม่รองรับ option นี้
+            .then(bitmap => drawAndResolve(bitmap, bitmap.width, bitmap.height, () => bitmap.close()))
+            .catch(fallbackViaImageElement);
+        });
+    } else {
+      fallbackViaImageElement();
+    }
   });
 }
 
@@ -2596,26 +2619,36 @@ async function handleLabelPhoto(event){
       return;
     }
 
-    let msgParts = [];
+    let sodiumHeroHtml = '';
     if(data.found && data.sodium_mg){
       document.getElementById('ciSodium').value = data.sodium_mg;
-      msgParts.push(`AI อ่านโซเดียมได้: <b>${data.sodium_mg} มก.</b>`);
+      sodiumHeroHtml = `
+        <div style="text-align:center; padding:4px 0 2px;">
+          <div style="font-size:12.5px; color:#6b7c80;">AI อ่านโซเดียมได้</div>
+          <div style="font-family:'Kanit',sans-serif; font-weight:800; font-size:34px; color:var(--lagoon); line-height:1.2;">
+            ${data.sodium_mg}<span style="font-size:16px; font-weight:600; margin-left:3px;">มก.</span>
+          </div>
+        </div>`;
     } else {
-      msgParts.push('AI อ่านฉลากนี้ไม่เจอค่าโซเดียม ลองถ่ายให้ใกล้/ชัดขึ้น หรือพิมพ์ตัวเลขเองจากฉลากได้เลย');
+      sodiumHeroHtml = `<div style="text-align:center; font-size:14px; color:var(--red-high); padding:6px 0;">AI อ่านฉลากนี้ไม่เจอค่าโซเดียม ลองถ่ายให้ใกล้/ชัดขึ้น หรือพิมพ์ตัวเลขเองจากฉลากได้เลย</div>`;
     }
 
+    let detailLines = [];
     if(data.product_name){
       document.getElementById('ciName').value = data.product_name;
-      msgParts.push(`เห็นชื่อสินค้า: <b>${data.product_name}</b>`);
+      detailLines.push(`📦 ชื่อสินค้า: <b>${data.product_name}</b>`);
       triggerProductMatch(); // มีชื่อแล้ว ลองหาของที่เคยตรวจไว้มาเทียบให้เลย
     }
-
     if(data.category){
-      msgParts.push(`หมวดหมู่: <b>${data.category}</b>`);
+      detailLines.push(`🏷️ หมวดหมู่: <b>${data.category}</b>`);
     }
+    const detailHtml = detailLines.length
+      ? `<div style="text-align:center; font-size:14px; color:#4c5c60; margin-top:6px; line-height:1.7;">${detailLines.join('<br>')}</div>`
+      : '';
 
+    let healthyChoiceHtml = '';
     if(data.healthy_choice_logo){
-      msgParts.push('💚 เห็นสัญลักษณ์ "ทางเลือกสุขภาพ" ด้วย! ระบบจะติ๊กให้อัตโนมัติตอนบันทึกพฤติกรรมของวันนี้นะ');
+      healthyChoiceHtml = `<div style="text-align:center; font-size:13.5px; color:var(--lagoon); font-weight:600; margin-top:8px;">💚 เห็นสัญลักษณ์ "ทางเลือกสุขภาพ" ด้วย! ระบบจะติ๊กให้อัตโนมัติตอนบันทึกพฤติกรรมของวันนี้นะ</div>`;
       // เก็บ flag ไว้ที่เอกสารของวันนี้ (docId เดียวกับที่ recall form จะมาโหลดใช้ทีหลัง)
       await db.collection('dailyLogs').doc(logDocId()).set({ aiDetectedHealthyChoice: true }, { merge:true });
     }
@@ -2630,7 +2663,17 @@ async function handleLabelPhoto(event){
       aiSodiumMg: (data.found && data.sodium_mg) ? data.sodium_mg : null
     };
 
-    statusEl.innerHTML = msgParts.join(' · ') + (data.note ? `<div style="font-size:13px; color:#4c5c60; background:#F3ECDD; border-radius:8px; padding:7px 10px; margin-top:8px; line-height:1.5;">💡 ${data.note}</div>` : '') + `<br><span style="color:#aab5b8;">(เหลือ ${data.remainingToday} ครั้งวันนี้)</span>`;
+    const noteHtml = data.note
+      ? `<div style="font-size:14.5px; color:#3d4b4f; background:#F3ECDD; border-radius:12px; padding:12px 14px; margin-top:10px; line-height:1.6; font-weight:500;">💡 ${data.note}</div>`
+      : '';
+
+    statusEl.innerHTML = `
+      <div style="background:#fff; border-radius:14px; padding:14px 12px; box-shadow:0 2px 10px rgba(11,61,76,0.08);">
+        ${sodiumHeroHtml}${detailHtml}${healthyChoiceHtml}
+      </div>
+      ${noteHtml}
+      <div style="text-align:center; margin-top:8px;"><span style="color:#aab5b8; font-size:12px;">(เหลือ ${data.remainingToday} ครั้งวันนี้)</span></div>
+    `;
   }catch(e){
     console.error(e);
     statusEl.textContent = 'เชื่อมต่อ AI ไม่สำเร็จ ลองใหม่อีกครั้ง หรือพิมพ์ตัวเลขเองจากฉลากได้เลย';
