@@ -918,10 +918,10 @@
         <div style="display:flex; align-items:center; gap:10px;">
           <div style="font-size:24px;">🔔</div>
           <div style="flex:1;">
-            <div style="font-family:'Kanit'; font-weight:700; font-size:13.5px;">เปิดแจ้งเตือนภารกิจ</div>
+            <div style="font-family:'Kanit'; font-weight:700; font-size:13.5px;" id="notifyOptInTitle">เปิดแจ้งเตือนภารกิจ</div>
             <div style="font-size:12px; color:#6b7c80;" id="notifyOptInDesc">รับแจ้งเตือนถ้ายังไม่ได้ทำภารกิจของวันนั้น จะได้ไม่ลืม</div>
           </div>
-          <button class="btn btn-primary" style="width:auto; padding:8px 14px; font-size:12.5px;" id="notifyOptInBtn" onclick="enablePushNotifications()">เปิด</button>
+          <button class="btn btn-primary" style="width:auto; padding:8px 14px; font-size:12.5px;" id="notifyOptInBtn" onclick="handleNotifyOptInClick()">เปิด</button>
         </div>
       </div>
       <div class="stat-grid" style="grid-template-columns:repeat(3,1fr);">
@@ -1582,7 +1582,7 @@
    ระบบจะเช็คไฟล์นี้ตอนเปิดแอป, ทุกครั้งที่สลับกลับมาที่แอป (visibilitychange), และเช็คซ้ำทุก 10 นาทีเผื่อเปิดค้างไว้นานๆ
    ถ้าเจอเวอร์ชันใหม่กว่าที่ฝังมากับโค้ดตอนนี้ จะขึ้นแบนเนอร์ให้กดรีเฟรชเอง (ไม่บังคับรีเฟรชทันที เผื่อกำลังกรอกฟอร์มอยู่)
    ========================================================= */
-const APP_VERSION = "2026-08-18-7"; // ต้องตรงกับใน version.json เสมอ แก้คู่กันทุกครั้งที่ deploy
+const APP_VERSION = "2026-08-18-8"; // ต้องตรงกับใน version.json เสมอ แก้คู่กันทุกครั้งที่ deploy
 async function checkForAppUpdate(){
   try{
     const res = await fetch('./version.json?t=' + Date.now(), { cache: 'no-store' });
@@ -2113,12 +2113,36 @@ async function enterApp(){
 }
 
 /* ---- Push Notification opt-in (เตือนภารกิจรายวัน) ---- */
+const NOTIFY_TOKEN_KEY = 'saltSmartFcmToken'; // เก็บ token ของ "เครื่องนี้" ไว้ใน localStorage เพื่อให้รู้ว่าต้องลบตัวไหนตอนกดปิด (คงอยู่ข้ามเซสชัน ต่างจาก sessionStorage)
+
 function initNotifyOptIn(){
   const card = document.getElementById('notifyOptInCard');
+  const title = document.getElementById('notifyOptInTitle');
   const desc = document.getElementById('notifyOptInDesc');
   const btn = document.getElementById('notifyOptInBtn');
   if(!('Notification' in window) || !('serviceWorker' in navigator)){ return; } // เบราว์เซอร์รุ่นเก่า/ไม่รองรับเลย ไม่ต้องรบกวน
-  if(Notification.permission === 'granted' || Notification.permission === 'denied'){ return; } // เปิดแล้ว หรือเคยปฏิเสธไปแล้ว (เบราว์เซอร์ไม่ให้ขอซ้ำเองอยู่แล้ว)
+  if(Notification.permission === 'denied'){ card.style.display = 'none'; return; } // เคยปฏิเสธไปแล้ว เบราว์เซอร์ไม่ให้ขอซ้ำเองอยู่แล้ว ในแอปทำอะไรไม่ได้ต้องไปเปิดจากตั้งค่าเครื่องเอง
+
+  const savedToken = localStorage.getItem(NOTIFY_TOKEN_KEY);
+  if(Notification.permission === 'granted' && savedToken){
+    // เปิดแจ้งเตือนอยู่แล้วบนเครื่องนี้ — โชว์เป็นสถานะ "เปิดอยู่" พร้อมปุ่มปิด แทนที่จะซ่อนการ์ดไปเลย
+    title.textContent = '🔔 เปิดแจ้งเตือนอยู่';
+    desc.textContent = 'เครื่องนี้จะได้รับแจ้งเตือนภารกิจ/บันทึกประจำวัน';
+    btn.textContent = 'ปิด';
+    btn.className = 'btn btn-ghost';
+    btn.style.cssText = 'width:auto; padding:8px 14px; font-size:12.5px;';
+    card.style.display = 'block';
+    return;
+  }
+
+  // ยังไม่ได้เปิด (ไม่ว่าจะยังไม่เคยกด หรือเคยกดแต่ยังไม่มี token บนเครื่องนี้)
+  title.textContent = 'เปิดแจ้งเตือนภารกิจ';
+  desc.textContent = 'รับแจ้งเตือนถ้ายังไม่ได้ทำภารกิจของวันนั้น จะได้ไม่ลืม';
+  btn.textContent = 'เปิด';
+  btn.className = 'btn btn-primary';
+  btn.style.cssText = 'width:auto; padding:8px 14px; font-size:12.5px;';
+  btn.style.display = '';
+
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
   const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
   if(isIOS && !isStandalone){
@@ -2129,15 +2153,47 @@ function initNotifyOptIn(){
   card.style.display = 'block';
 }
 
+function handleNotifyOptInClick(){
+  const savedToken = localStorage.getItem(NOTIFY_TOKEN_KEY);
+  if(Notification.permission === 'granted' && savedToken){
+    disablePushNotifications();
+  } else {
+    enablePushNotifications();
+  }
+}
+
+async function disablePushNotifications(){
+  const btn = document.getElementById('notifyOptInBtn');
+  btn.disabled = true; btn.textContent = 'กำลังปิด...';
+  const savedToken = localStorage.getItem(NOTIFY_TOKEN_KEY);
+  try{
+    if(savedToken && state.selectedStudent){
+      await db.collection('students').doc(state.selectedStudent.id).update({
+        fcmTokens: firebase.firestore.FieldValue.arrayRemove(savedToken)
+      });
+      if(state.selectedStudent.fcmTokens){
+        state.selectedStudent.fcmTokens = state.selectedStudent.fcmTokens.filter(t => t !== savedToken);
+      }
+    }
+    localStorage.removeItem(NOTIFY_TOKEN_KEY);
+    showToast('ปิดแจ้งเตือนแล้ว');
+  }catch(e){
+    console.error('ปิดแจ้งเตือนไม่สำเร็จ:', e);
+    showToast('ปิดแจ้งเตือนไม่สำเร็จ ลองใหม่อีกครั้ง');
+  }finally{
+    btn.disabled = false;
+    initNotifyOptIn(); // รีเฟรชการ์ดกลับไปเป็นสถานะ "ยังไม่ได้เปิด" (permission ระดับเบราว์เซอร์ยังเป็น granted อยู่ กดเปิดใหม่ได้ทันทีไม่ต้องขอ permission ซ้ำ)
+  }
+}
+
 async function enablePushNotifications(){
   const btn = document.getElementById('notifyOptInBtn');
-  const card = document.getElementById('notifyOptInCard');
   btn.disabled = true; btn.textContent = 'กำลังเปิด...';
   try{
     const perm = await Notification.requestPermission();
     if(perm !== 'granted'){
       showToast('ไม่ได้เปิดแจ้งเตือน ลองเปิดใหม่ได้ทีหลังนะ');
-      card.style.display = 'none';
+      document.getElementById('notifyOptInCard').style.display = 'none';
       return;
     }
     const reg = await navigator.serviceWorker.register('firebase-messaging-sw.js');
@@ -2148,14 +2204,20 @@ async function enablePushNotifications(){
       await db.collection('students').doc(state.selectedStudent.id).update({
         fcmTokens: firebase.firestore.FieldValue.arrayUnion(token)
       });
+      localStorage.setItem(NOTIFY_TOKEN_KEY, token); // จำ token ของเครื่องนี้ไว้ ใช้ตอนกดปิดทีหลัง
+      if(state.selectedStudent.fcmTokens){
+        if(!state.selectedStudent.fcmTokens.includes(token)) state.selectedStudent.fcmTokens.push(token);
+      } else {
+        state.selectedStudent.fcmTokens = [token];
+      }
     }
-    card.style.display = 'none';
     showToast('เปิดแจ้งเตือนแล้ว 🔔');
   }catch(e){
     console.error('เปิดแจ้งเตือนไม่สำเร็จ:', e);
     showToast('เปิดแจ้งเตือนไม่สำเร็จ ลองใหม่อีกครั้ง');
   }finally{
-    btn.disabled = false; btn.textContent = 'เปิด';
+    btn.disabled = false;
+    initNotifyOptIn(); // รีเฟรชการ์ดให้ตรงกับสถานะล่าสุด (เปิดสำเร็จ -> โชว์ "เปิดอยู่" พร้อมปุ่มปิด)
   }
 }
 
