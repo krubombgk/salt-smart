@@ -1582,24 +1582,31 @@
    APP UPDATE CHECK — แก้ปัญหา PWA ค้างเวอร์ชันเก่าตอนเปิดแอปทิ้งไว้
    วิธีใช้: ทุกครั้งที่ deploy โค้ดใหม่ ให้แก้เลขใน version.json ให้ไม่ซ้ำของเดิม (เช่น ใช้วันที่+เลขรัน)
    ระบบจะเช็คไฟล์นี้ตอนเปิดแอป, ทุกครั้งที่สลับกลับมาที่แอป (visibilitychange), และเช็คซ้ำทุก 10 นาทีเผื่อเปิดค้างไว้นานๆ
-   ถ้าเจอเวอร์ชันใหม่กว่าที่ฝังมากับโค้ดตอนนี้ จะขึ้นแบนเนอร์ให้กดรีเฟรชเอง (ไม่บังคับรีเฟรชทันที เผื่อกำลังกรอกฟอร์มอยู่)
+   ถ้าเจอเวอร์ชันใหม่กว่าที่ฝังมากับโค้ดตอนนี้ จะรีเฟรชอัตโนมัติทันที (ไม่ต้องรอให้ใครกดเอง กันเครื่องค้างเวอร์ชันเก่าไม่รู้ตัว)
+   ยกเว้นตอนกำลังพิมพ์อะไรอยู่ในช่องกรอกข้อความ (เช่น เขียนสะท้อนตัวเอง) จะรอรอบถัดไปก่อน กันข้อมูลที่พิมพ์ค้างอยู่หายกะทันหัน
    ========================================================= */
-const APP_VERSION = "2026-08-18-9"; // ต้องตรงกับใน version.json เสมอ แก้คู่กันทุกครั้งที่ deploy
+const APP_VERSION = "2026-08-19-1"; // ต้องตรงกับใน version.json เสมอ แก้คู่กันทุกครั้งที่ deploy
 async function checkForAppUpdate(){
   try{
     const res = await fetch('./version.json?t=' + Date.now(), { cache: 'no-store' });
     const data = await res.json();
-    if(data.version && data.version !== APP_VERSION) showAppUpdateBanner();
+    if(data.version && data.version !== APP_VERSION) autoReloadForUpdate();
   }catch(e){ /* เน็ตหลุด/ไฟล์โหลดไม่ได้ ไม่ต้องทำอะไร ลองใหม่รอบหน้า */ }
 }
-function showAppUpdateBanner(){
-  if(document.getElementById('appUpdateBanner')) return; // กันสร้างซ้ำถ้าเช็คเจอหลายรอบ
+function autoReloadForUpdate(){
+  if(document.getElementById('appUpdateBanner')) return; // กันเรียกซ้ำถ้าเช็คเจอหลายรอบ
+  const active = document.activeElement;
+  const isTyping = active && (active.tagName === 'TEXTAREA' || active.tagName === 'INPUT') && active.value && active.value.trim().length > 0;
+  if(isTyping){
+    console.log('เจอเวอร์ชันใหม่ แต่กำลังพิมพ์อะไรอยู่ รอเช็คใหม่รอบถัดไปก่อน กันข้อมูลที่พิมพ์หาย');
+    return;
+  }
   const b = document.createElement('div');
   b.id = 'appUpdateBanner';
-  b.style.cssText = 'position:fixed; top:0; left:0; right:0; z-index:99999; background:var(--coral); color:#fff; padding:12px 16px; text-align:center; font-family:Kanit,sans-serif; font-weight:600; font-size:13.5px; cursor:pointer; box-shadow:0 2px 10px rgba(0,0,0,0.15);';
-  b.textContent = '🔄 มีเวอร์ชันใหม่ของแอป แตะตรงนี้เพื่ออัปเดต';
-  b.onclick = () => location.reload();
+  b.style.cssText = 'position:fixed; top:0; left:0; right:0; z-index:99999; background:var(--coral); color:#fff; padding:12px 16px; text-align:center; font-family:Kanit,sans-serif; font-weight:600; font-size:13.5px; box-shadow:0 2px 10px rgba(0,0,0,0.15);';
+  b.textContent = '🔄 กำลังอัปเดตเป็นเวอร์ชันล่าสุด รอสักครู่นะ...';
   document.body.prepend(b);
+  setTimeout(() => location.reload(), 700); // หน่วงนิดหน่อยให้เห็นข้อความก่อน ไม่ใช่รีเฟรชวูบวาบจนงง
 }
 document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'visible') checkForAppUpdate(); });
 setInterval(checkForAppUpdate, 10*60*1000);

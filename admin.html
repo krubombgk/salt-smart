@@ -612,23 +612,30 @@
 /* =========================================================
    APP UPDATE CHECK — แก้ปัญหา PWA ค้างเวอร์ชันเก่าตอนเปิดหลังบ้านทิ้งไว้
    ใช้ version.json ไฟล์เดียวกับ index.html (แก้เลขคู่กันทุกครั้งที่ deploy)
+   เจอเวอร์ชันใหม่แล้วรีเฟรชอัตโนมัติทันที ยกเว้นกำลังพิมพ์อะไรอยู่ (เช่น เหตุผลไม่ผ่านภารกิจ) จะรอรอบถัดไปก่อน
    ========================================================= */
-const APP_VERSION = "2026-08-18-9"; // ต้องตรงกับใน version.json เสมอ แก้คู่กันทุกครั้งที่ deploy
+const APP_VERSION = "2026-08-19-1"; // ต้องตรงกับใน version.json เสมอ แก้คู่กันทุกครั้งที่ deploy
 async function checkForAppUpdate(){
   try{
     const res = await fetch('./version.json?t=' + Date.now(), { cache: 'no-store' });
     const data = await res.json();
-    if(data.version && data.version !== APP_VERSION) showAppUpdateBanner();
+    if(data.version && data.version !== APP_VERSION) autoReloadForUpdate();
   }catch(e){ /* เน็ตหลุด/ไฟล์โหลดไม่ได้ ไม่ต้องทำอะไร ลองใหม่รอบหน้า */ }
 }
-function showAppUpdateBanner(){
+function autoReloadForUpdate(){
   if(document.getElementById('appUpdateBanner')) return;
+  const active = document.activeElement;
+  const isTyping = active && (active.tagName === 'TEXTAREA' || active.tagName === 'INPUT') && active.value && active.value.trim().length > 0;
+  if(isTyping){
+    console.log('เจอเวอร์ชันใหม่ แต่กำลังพิมพ์อะไรอยู่ รอเช็คใหม่รอบถัดไปก่อน');
+    return;
+  }
   const b = document.createElement('div');
   b.id = 'appUpdateBanner';
-  b.style.cssText = 'position:fixed; top:0; left:0; right:0; z-index:99999; background:var(--coral); color:#fff; padding:12px 16px; text-align:center; font-family:Kanit,sans-serif; font-weight:600; font-size:13.5px; cursor:pointer; box-shadow:0 2px 10px rgba(0,0,0,0.15);';
-  b.textContent = '🔄 มีเวอร์ชันใหม่ของหลังบ้าน แตะตรงนี้เพื่ออัปเดต';
-  b.onclick = () => location.reload();
+  b.style.cssText = 'position:fixed; top:0; left:0; right:0; z-index:99999; background:var(--coral); color:#fff; padding:12px 16px; text-align:center; font-family:Kanit,sans-serif; font-weight:600; font-size:13.5px; box-shadow:0 2px 10px rgba(0,0,0,0.15);';
+  b.textContent = '🔄 กำลังอัปเดตเป็นเวอร์ชันล่าสุด รอสักครู่นะ...';
   document.body.prepend(b);
+  setTimeout(() => location.reload(), 700);
 }
 document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'visible') checkForAppUpdate(); });
 setInterval(checkForAppUpdate, 10*60*1000);
