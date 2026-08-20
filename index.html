@@ -1585,7 +1585,7 @@
    ถ้าเจอเวอร์ชันใหม่กว่าที่ฝังมากับโค้ดตอนนี้ จะรีเฟรชอัตโนมัติทันที (ไม่ต้องรอให้ใครกดเอง กันเครื่องค้างเวอร์ชันเก่าไม่รู้ตัว)
    ยกเว้นตอนกำลังพิมพ์อะไรอยู่ในช่องกรอกข้อความ (เช่น เขียนสะท้อนตัวเอง) จะรอรอบถัดไปก่อน กันข้อมูลที่พิมพ์ค้างอยู่หายกะทันหัน
    ========================================================= */
-const APP_VERSION = "2026-08-19-3"; // ต้องตรงกับใน version.json เสมอ แก้คู่กันทุกครั้งที่ deploy
+const APP_VERSION = "2026-08-19-4"; // ต้องตรงกับใน version.json เสมอ แก้คู่กันทุกครั้งที่ deploy
 async function checkForAppUpdate(){
   try{
     const res = await fetch('./version.json?t=' + Date.now(), { cache: 'no-store' });
@@ -1958,7 +1958,7 @@ function renderClassGrid(){
   state.classes.forEach(c=>{
     const el = document.createElement('div');
     el.className='pick-tile';
-    el.innerHTML = `<span class="emoji">🏫</span>${c.name}`;
+    el.innerHTML = `<span class="emoji">${c.icon || '🏫'}</span>${c.name}`;
     el.onclick = ()=>selectClass(c);
     grid.appendChild(el);
   });
@@ -4654,6 +4654,20 @@ function bmiCategory(z){
   if (z <= 2) return { label: 'น้ำหนักเกิน', level: 'overweight', normal:false };
   return { label: 'อ้วน', level: 'obese', normal:false };
 }
+// สำหรับผู้ใหญ่ (อายุเกิน 19 ปี) ใช้เกณฑ์ BMI มาตรฐานเอเชีย-แปซิฟิก (WHO Western Pacific Region) แทนตาราง WHO Growth Reference ที่ใช้ได้กับเด็ก/วัยรุ่นเท่านั้น
+// เกณฑ์นี้ใช้กันทั่วไปในไทย (เข้มกว่าเกณฑ์โลกตะวันตกเล็กน้อย เหมาะกับสรีระคนเอเชียมากกว่า)
+function bmiCategoryAdult(bmi){
+  if (bmi < 18.5) return { label: 'ผอม/น้ำหนักน้อย', level: 'underweight', normal:false };
+  if (bmi < 23) return { label: 'ปกติ', level: 'normal', normal:true };
+  if (bmi < 25) return { label: 'น้ำหนักเกิน', level: 'overweight', normal:false };
+  if (bmi < 30) return { label: 'อ้วนระดับ 1', level: 'obese1', normal:false };
+  return { label: 'อ้วนระดับ 2', level: 'obese2', normal:false };
+}
+// ป้ายกำกับรวมทั้งฝั่งเด็ก/วัยรุ่นและผู้ใหญ่ ไว้ใช้ตอนแสดงผลย้อนหลัง (ไม่ต้องคำนวณ zScore ใหม่ อ่านจาก category ที่บันทึกไว้ตรงๆ)
+const BMI_CATEGORY_LABELS = {
+  severe_thin:'ผอมมาก', thin:'ผอม', normal:'ปกติ', overweight:'น้ำหนักเกิน', obese:'อ้วน', // เด็ก/วัยรุ่น
+  underweight:'ผอม/น้ำหนักน้อย', obese1:'อ้วนระดับ 1', obese2:'อ้วนระดับ 2', // ผู้ใหญ่ (normal/overweight ใช้ label ร่วมกับฝั่งเด็กได้เลย)
+};
 function monthsBetween(birthDateStr, todayDateStr){
   const b = dateFromStr(birthDateStr);
   const t = dateFromStr(todayDateStr);
@@ -4680,8 +4694,8 @@ async function saveHealthProfile(){
   const msgEl = document.getElementById('healthSetupMsg');
   if (!birthDate) { msgEl.textContent = 'เลือกวันเกิดก่อนนะ'; return; }
   const ageMonths = monthsBetween(birthDate, state.todaysDateStr);
-  if (ageMonths < WHO_BMI_LMS.monthStart || ageMonths > WHO_BMI_LMS.monthEnd) {
-    msgEl.textContent = 'ระบบรองรับช่วงอายุ 5-19 ปีเท่านั้น ลองเช็ควันเกิดอีกครั้ง';
+  if (ageMonths < WHO_BMI_LMS.monthStart) {
+    msgEl.textContent = 'ระบบรองรับอายุตั้งแต่ 5 ปีขึ้นไปเท่านั้น ลองเช็ควันเกิดอีกครั้ง';
     return;
   }
   await db.collection('students').doc(state.selectedStudent.id).update({ sex, birthDate });
@@ -4704,8 +4718,14 @@ async function saveHealthEntry(){
   const ageMonths = monthsBetween(s.birthDate, state.todaysDateStr);
   const heightM = height / 100;
   const bmi = weight / (heightM * heightM);
-  const z = calcBmiZScore(bmi, ageMonths, s.sex);
-  const cat = bmiCategory(z);
+  const isAdult = ageMonths > WHO_BMI_LMS.monthEnd; // เกิน 19 ปี ใช้เกณฑ์ผู้ใหญ่แทน
+  let z = null, cat;
+  if (isAdult) {
+    cat = bmiCategoryAdult(bmi);
+  } else {
+    z = calcBmiZScore(bmi, ageMonths, s.sex);
+    cat = bmiCategory(z);
+  }
 
   await db.collection('healthLogs').add({
     studentId: s.id,
@@ -4713,7 +4733,8 @@ async function saveHealthEntry(){
     weightKg: weight,
     heightCm: height,
     bmi: Math.round(bmi * 10) / 10,
-    zScore: Math.round(z * 100) / 100,
+    zScore: z===null ? null : Math.round(z * 100) / 100,
+    isAdult,
     category: cat.level,
     loggedAt: new Date().toISOString()
   });
@@ -4728,17 +4749,21 @@ async function saveHealthEntry(){
 function renderHealthResult(entry){
   const card = document.getElementById('healthResultCard');
   card.style.display = 'block';
-  const cat = bmiCategory(entry.zScore);
+  const catLabel = BMI_CATEGORY_LABELS[entry.category] || entry.category;
+  const isNormal = entry.category === 'normal';
   document.getElementById('healthBmiNum').textContent = entry.bmi;
-  document.getElementById('healthCatLabel').textContent = cat.label;
+  document.getElementById('healthCatLabel').textContent = catLabel;
 
-  document.getElementById('healthExplain').textContent =
-    'BMI คำนวณจากน้ำหนักหารด้วยส่วนสูง (เมตร) ยกกำลังสอง แล้วเทียบกับช่วงวัยและเพศตามเกณฑ์ WHO Growth Reference (ไม่ใช้เกณฑ์ผู้ใหญ่) ค่าที่ได้เป็นข้อมูลอ้างอิงคร่าว ๆ เท่านั้น';
+  document.getElementById('healthExplain').textContent = entry.isAdult
+    ? 'BMI คำนวณจากน้ำหนักหารด้วยส่วนสูง (เมตร) ยกกำลังสอง แล้วเทียบกับเกณฑ์ BMI ผู้ใหญ่มาตรฐานเอเชีย-แปซิฟิก (สำหรับอายุเกิน 19 ปี) ค่าที่ได้เป็นข้อมูลอ้างอิงคร่าว ๆ เท่านั้น'
+    : 'BMI คำนวณจากน้ำหนักหารด้วยส่วนสูง (เมตร) ยกกำลังสอง แล้วเทียบกับช่วงวัยและเพศตามเกณฑ์ WHO Growth Reference (ไม่ใช้เกณฑ์ผู้ใหญ่) ค่าที่ได้เป็นข้อมูลอ้างอิงคร่าว ๆ เท่านั้น';
 
   const referralEl = document.getElementById('healthReferral');
-  if (!cat.normal) {
+  if (!isNormal) {
     referralEl.style.display = 'block';
-    referralEl.innerHTML = '💬 ค่านี้อยู่นอกช่วง "ปกติ" ที่พบทั่วไปในเด็กวัยเดียวกัน ไม่ได้แปลว่าต้องกังวลทันที แต่ลองพูดคุยกับ<b>ครูอนามัยหรือเจ้าหน้าที่สาธารณสุขที่ดูแลโครงการนี้</b>เพื่อขอคำแนะนำที่เหมาะกับตัวเองโดยเฉพาะดีกว่าครับ';
+    referralEl.innerHTML = entry.isAdult
+      ? '💬 ค่านี้อยู่นอกช่วง "ปกติ" ไม่ได้แปลว่าต้องกังวลทันที แต่ลองพูดคุยกับ<b>เจ้าหน้าที่สาธารณสุขหรือแพทย์</b>เพื่อขอคำแนะนำที่เหมาะกับตัวเองโดยเฉพาะดีกว่าครับ'
+      : '💬 ค่านี้อยู่นอกช่วง "ปกติ" ที่พบทั่วไปในเด็กวัยเดียวกัน ไม่ได้แปลว่าต้องกังวลทันที แต่ลองพูดคุยกับ<b>ครูอนามัยหรือเจ้าหน้าที่สาธารณสุขที่ดูแลโครงการนี้</b>เพื่อขอคำแนะนำที่เหมาะกับตัวเองโดยเฉพาะดีกว่าครับ';
   } else {
     referralEl.style.display = 'none';
   }

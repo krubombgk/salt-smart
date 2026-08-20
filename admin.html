@@ -181,7 +181,8 @@
         <div class="grid2">
           <div class="card">
             <h3 style="margin-top:0;">เพิ่มห้องเรียน</h3>
-            <div class="field"><label>ชื่อห้อง (เช่น ป.4/1, ม.1/2)</label><input type="text" id="newClassName"></div>
+            <div class="field"><label>ชื่อห้อง (เช่น ป.4/1, ม.1/2, ครู, ประชาชน)</label><input type="text" id="newClassName"></div>
+            <div class="field"><label>ไอคอน (ไม่ใส่ใช้ 🏫 ให้อัตโนมัติ)</label><input type="text" id="newClassIcon" placeholder="เช่น 👩‍🏫 🧑‍🤝‍🧑 ⚕️" style="max-width:120px;"></div>
             <div class="field"><label>ลำดับการแสดงผล</label><input type="number" id="newClassOrder" value="1"></div>
             <button class="btn btn-primary" onclick="addClass()">เพิ่มห้อง</button>
             <div class="msg" id="classMsg"></div>
@@ -200,7 +201,7 @@
         <div class="card">
           <h3 style="margin-top:0;">ห้องเรียนทั้งหมด</h3>
           <p style="font-size:12px; color:#9aa8ab; margin-top:-6px;">ลบห้องได้เฉพาะห้องที่ไม่มีนักเรียนอยู่แล้ว (กันลบพลาดทำข้อมูลนักเรียนหลุดห้อง) — ถ้าจะลบห้องที่มีคนอยู่ ให้ลบนักเรียนในห้องนั้นออกให้หมดก่อน</p>
-          <table><thead><tr><th>ลำดับ</th><th>ชื่อห้อง</th><th>จำนวนนักเรียน</th><th></th></tr></thead><tbody id="classTable"></tbody></table>
+          <table><thead><tr><th>ลำดับ</th><th>ไอคอน</th><th>ชื่อห้อง</th><th>จำนวนนักเรียน</th><th></th></tr></thead><tbody id="classTable"></tbody></table>
         </div>
         <div class="card" style="border-color:var(--red-high);">
           <h3 style="margin-top:0;">🔎 หาชื่อซ้ำในระบบ</h3>
@@ -628,7 +629,7 @@
    ใช้ version.json ไฟล์เดียวกับ index.html (แก้เลขคู่กันทุกครั้งที่ deploy)
    เจอเวอร์ชันใหม่แล้วรีเฟรชอัตโนมัติทันที ยกเว้นกำลังพิมพ์อะไรอยู่ (เช่น เหตุผลไม่ผ่านภารกิจ) จะรอรอบถัดไปก่อน
    ========================================================= */
-const APP_VERSION = "2026-08-19-3"; // ต้องตรงกับใน version.json เสมอ แก้คู่กันทุกครั้งที่ deploy
+const APP_VERSION = "2026-08-19-4"; // ต้องตรงกับใน version.json เสมอ แก้คู่กันทุกครั้งที่ deploy
 async function checkForAppUpdate(){
   try{
     const res = await fetch('./version.json?t=' + Date.now(), { cache: 'no-store' });
@@ -1347,10 +1348,17 @@ function loadClassTable(){
     const count = (studentsCache||[]).filter(s=>s.classId===c.id).length;
     return `
     <tr>
-      <td>${c.order||'-'}</td><td>${c.name}</td><td>${count} คน</td>
+      <td>${c.order||'-'}</td>
+      <td><input type="text" value="${c.icon||'🏫'}" id="classIcon_${c.id}" style="width:44px; padding:5px; text-align:center; border:1px solid #ddd; border-radius:6px;" onchange="saveClassIcon('${c.id}')"></td>
+      <td>${c.name}</td><td>${count} คน</td>
       <td><button class="btn btn-danger" style="padding:6px 10px;font-size:12px;" onclick="deleteClass('${c.id}','${(c.name||'').replace(/'/g,"\\'")}')">ลบ</button></td>
     </tr>`;
   }).join('');
+}
+async function saveClassIcon(id){
+  const val = document.getElementById('classIcon_'+id).value.trim() || '🏫';
+  await db.collection('classes').doc(id).update({icon: val});
+  await loadClasses();
 }
 async function deleteClass(id, name){
   const count = (studentsCache||[]).filter(s=>s.classId===id).length;
@@ -1362,9 +1370,11 @@ async function deleteClass(id, name){
 async function addClass(){
   const name = document.getElementById('newClassName').value.trim();
   const order = parseInt(document.getElementById('newClassOrder').value) || 1;
+  const icon = document.getElementById('newClassIcon').value.trim() || '🏫';
   if(!name){ setMsg('classMsg','กรอกชื่อห้อง',true); return; }
-  await db.collection('classes').add({name, order, createdAt: new Date().toISOString()});
+  await db.collection('classes').add({name, order, icon, createdAt: new Date().toISOString()});
   document.getElementById('newClassName').value='';
+  document.getElementById('newClassIcon').value='';
   setMsg('classMsg','เพิ่มห้อง "'+name+'" แล้ว');
   await loadClasses();
 }
