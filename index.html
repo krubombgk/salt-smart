@@ -1165,7 +1165,7 @@
         <img src="mascot-complete.png" alt="" class="mh-bonus-mascot">
         <div>
           <div class="mh-bonus-title">🎁 ครบทั้ง 3 ภารกิจ รับโบนัสพิเศษ!</div>
-          <div class="mh-bonus-sub">ทำครบทุกกิจกรรมวันนี้ เพื่อสะสมคะแนนและปลดล็อกการ์ด</div>
+          <div class="mh-bonus-sub">ทำ Quiz + บันทึกประจำวันให้ครบ เพื่อสะสมคะแนนและปลดล็อกการ์ด</div>
         </div>
       </div>
     </div>
@@ -1585,7 +1585,7 @@
    ถ้าเจอเวอร์ชันใหม่กว่าที่ฝังมากับโค้ดตอนนี้ จะรีเฟรชอัตโนมัติทันที (ไม่ต้องรอให้ใครกดเอง กันเครื่องค้างเวอร์ชันเก่าไม่รู้ตัว)
    ยกเว้นตอนกำลังพิมพ์อะไรอยู่ในช่องกรอกข้อความ (เช่น เขียนสะท้อนตัวเอง) จะรอรอบถัดไปก่อน กันข้อมูลที่พิมพ์ค้างอยู่หายกะทันหัน
    ========================================================= */
-const APP_VERSION = "2026-08-19-4"; // ต้องตรงกับใน version.json เสมอ แก้คู่กันทุกครั้งที่ deploy
+const APP_VERSION = "2026-08-19-5"; // ต้องตรงกับใน version.json เสมอ แก้คู่กันทุกครั้งที่ deploy
 async function checkForAppUpdate(){
   try{
     const res = await fetch('./version.json?t=' + Date.now(), { cache: 'no-store' });
@@ -2119,7 +2119,7 @@ async function enterApp(){
     refreshHomeTab();
     refreshMissionHub();
     refreshSodiumHub();
-    checkAndGrantDailyCard(); // เผื่อครบ 3 กิจกรรมไปแล้วตั้งแต่ก่อนรีเฟรชหน้า แต่ยังไม่เคยได้การ์ด (มี flag กันซ้ำอยู่แล้ว ปลอดภัย)
+    checkAndGrantDailyCard(); // เผื่อครบเงื่อนไขไปแล้วตั้งแต่ก่อนรีเฟรชหน้า แต่ยังไม่เคยได้การ์ด (มี flag กันซ้ำอยู่แล้ว ปลอดภัย)
     switchTab('tab-home', true); // ตั้งค่าแท็บเริ่มต้น ไม่ push history ตรงนี้ ให้ goScreen ด้านล่าง push รวมทีเดียว
     goScreen('screen-main');
     hideLoadingOverlay();
@@ -3418,7 +3418,7 @@ async function submitMission(){
     }), 15000, 'บันทึกข้อมูล');
     showToast('ส่งภารกิจแล้ว รอครูตรวจนะ 🎉');
     loadMission();
-    checkAndGrantDailyCard(state.missionTargetDate); // เช็คว่าครบ 3 กิจกรรมของวันนี้ (วันที่ส่งภารกิจนี้) หรือยัง ถึงจะปลดล็อกการ์ด
+    checkAndGrantDailyCard(state.missionTargetDate); // เช็คว่าครบเงื่อนไข (Quiz+บันทึก) ของวันนี้หรือยัง ถึงจะปลดล็อกการ์ด (ภารกิจไม่ผูกกับการ์ดแล้ว แต่ยังคุ้มค่าเช็คไว้เผื่ออนาคต)
   }catch(e){
     console.error('submitMission error:', e);
     msgEl.style.color = 'var(--red-high)';
@@ -3608,7 +3608,7 @@ async function finishQuiz(){
   if(targetDate === state.todaysDateStr){
     refreshMissionHub(); refreshHomeTab(); // อัปเดตสถานะ Quiz ในแท็บฮับภารกิจ+Home ทันทีหลังทำเสร็จ (เฉพาะตอนทำของวันนี้ ย้อนหลังไม่กระทบสถานะวันนี้)
   }
-  checkAndGrantDailyCard(targetDate); // เช็คว่าครบ 3 กิจกรรมของวันนี้ (วันที่ทำ Quiz นี้) หรือยัง — เอาออกมานอก if แล้ว เพราะย้อนหลังก็ต้องเช็คให้การ์ดของวันนั้นด้วย
+  checkAndGrantDailyCard(targetDate); // เช็คว่าครบเงื่อนไขของวันนี้ (วันที่ทำ Quiz นี้) หรือยัง — เอาออกมานอก if แล้ว เพราะย้อนหลังก็ต้องเช็คให้การ์ดของวันนั้นด้วย
   await renderQuizBackfillChips();
   loadProgressTable(); // อัปเดตแท็บ "ความก้าวหน้า" ให้ตรงทันที กันต้อง refresh หน้าถึงจะเห็นผล Quiz ที่เพิ่งทำ (ฟังก์ชันนี้เรียก renderStats() ในตัวอยู่แล้ว)
 }
@@ -3862,9 +3862,9 @@ async function submitDailyLog(){
   }
 }
 
-// การ์ดความรู้จะปลดล็อกก็ต่อเมื่อทำครบ 3 กิจกรรมของ "วันนี้" (ภารกิจ+Quiz+บันทึก) เท่านั้น ไม่ใช่แค่บันทึกอย่างเดียวเหมือนเดิม
+// การ์ดความรู้จะปลดล็อกก็ต่อเมื่อทำ Quiz+บันทึก ของ "วันนี้" ครบทั้งคู่ (ไม่รวมภารกิจแล้ว ตามที่ยุวทูตเสนอให้ลดภาระ)
 // เช็คจาก Firestore สดๆ ทุกครั้ง (ไม่พึ่ง state ที่อาจกำลังแสดงข้อมูลวันอื่นที่ย้อนหลังอยู่) กันให้การ์ดซ้ำด้วย flag dailyCardGranted
-// เช็คและให้การ์ดแยกเป็นรายวัน — บั๊กเดิม: ผูกไว้กับ "วันนี้" จุดเดียวเท่านั้น พอทำครบ 3 อย่างของหลายวันพร้อมกัน (ผ่านฟีเจอร์ย้อนหลัง) เลยได้การ์ดแค่ใบเดียว
+// เช็คและให้การ์ดแยกเป็นรายวัน — บั๊กเดิม: ผูกไว้กับ "วันนี้" จุดเดียวเท่านั้น พอทำครบเงื่อนไขของหลายวันพร้อมกัน (ผ่านฟีเจอร์ย้อนหลัง) เลยได้การ์ดแค่ใบเดียว
 // ตอนนี้รับ dateStr เข้ามาระบุว่ากำลังเช็ค "วันไหน" โดยเฉพาะ แต่ละวันมีธงกันซ้ำ (dailyCardGranted) เป็นของตัวเอง ไม่ปนกัน
 async function checkAndGrantDailyCard(dateStr){
   dateStr = dateStr || state.todaysDateStr;
@@ -3882,12 +3882,8 @@ async function checkAndGrantDailyCard(dateStr){
   const quizDone = qLen>0 && aLen >= qLen;
   if(!quizDone) return;
 
-  const missionSnap = await db.collection('missionSubmissions').doc(state.selectedStudent.id + '_' + dateStr).get();
-  const missionStatus = missionSnap.exists ? missionSnap.data().status : null;
-  const missionDone = missionStatus === 'pending' || missionStatus === 'approved'; // ส่งแล้ว/ผ่านแล้วนับเป็นทำสำเร็จ ส่วน rejected ยังไม่นับ
-
-  if(!missionDone) return;
-
+  // เดิมเงื่อนไขการ์ดต้องครบ 3 อย่าง (ภารกิจ+Quiz+บันทึก) — ตัด "ต้องส่งภารกิจ" ออกแล้วตามที่ยุวทูตเสนอ
+  // เหลือแค่ Quiz+บันทึกครบก็ได้การ์ดเลย ลดภาระ (คะแนนภารกิจยังให้แยกต่างหากตามปกติ ไม่กระทบ แค่การ์ดไม่ผูกกับภารกิจอีกต่อไป)
   await logRef.set({ dailyCardGranted: true }, {merge:true});
   await showKnowledgeCard();
 }
