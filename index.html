@@ -1585,7 +1585,7 @@
    ถ้าเจอเวอร์ชันใหม่กว่าที่ฝังมากับโค้ดตอนนี้ จะรีเฟรชอัตโนมัติทันที (ไม่ต้องรอให้ใครกดเอง กันเครื่องค้างเวอร์ชันเก่าไม่รู้ตัว)
    ยกเว้นตอนกำลังพิมพ์อะไรอยู่ในช่องกรอกข้อความ (เช่น เขียนสะท้อนตัวเอง) จะรอรอบถัดไปก่อน กันข้อมูลที่พิมพ์ค้างอยู่หายกะทันหัน
    ========================================================= */
-const APP_VERSION = "2026-08-19-5"; // ต้องตรงกับใน version.json เสมอ แก้คู่กันทุกครั้งที่ deploy
+const APP_VERSION = "2026-08-20-1"; // ต้องตรงกับใน version.json เสมอ แก้คู่กันทุกครั้งที่ deploy
 async function checkForAppUpdate(){
   try{
     const res = await fetch('./version.json?t=' + Date.now(), { cache: 'no-store' });
@@ -2110,6 +2110,9 @@ async function enterApp(){
     document.getElementById('hbStreak').textContent = state.selectedStudent.currentStreak || 0;
     document.getElementById('hbPoints').textContent = state.selectedStudent.totalPoints || 0;
 
+    // บันทึกเวลาล็อกอินล่าสุด ใช้เช็ค inactive user ในหลังบ้าน (ไม่ await กันหน่วงเวลาเข้าแอป ถ้าล้มเหลวไม่กระทบการใช้งาน)
+    db.collection('students').doc(state.selectedStudent.id).update({ lastLoginAt: new Date().toISOString() }).catch(e=>console.error('บันทึก lastLoginAt ไม่สำเร็จ:', e));
+
     // โหลด "วันนี้" ก่อนเดี่ยวๆ เพราะ loadQuiz() ต้องใช้ข้อมูลจากตัวนี้ ส่วนที่เหลือไม่เกี่ยวกัน โหลดพร้อมกันได้ (เร็วขึ้นมาก + ลดช่วงเวลาที่จะค้าง)
     await withTimeout(loadTodayLog(), 15000, 'ข้อมูลวันนี้');
     await withTimeout(Promise.all([loadQuiz(), loadMission(), loadLeaderboards(), loadAlbum(), loadAnnouncements()]), 15000, 'ข้อมูลแอป');
@@ -2120,6 +2123,7 @@ async function enterApp(){
     refreshMissionHub();
     refreshSodiumHub();
     checkAndGrantDailyCard(); // เผื่อครบเงื่อนไขไปแล้วตั้งแต่ก่อนรีเฟรชหน้า แต่ยังไม่เคยได้การ์ด (มี flag กันซ้ำอยู่แล้ว ปลอดภัย)
+    handleKioskClaim(); // ถ้ามาจากหน้าตรวจฉลากร้านค้า (checklabel.html) แล้วเลือกตัวเองมา ให้พาไปหน้าบันทึกพร้อมข้อมูลที่ตรวจไว้แล้วเลย
     switchTab('tab-home', true); // ตั้งค่าแท็บเริ่มต้น ไม่ push history ตรงนี้ ให้ goScreen ด้านล่าง push รวมทีเดียว
     goScreen('screen-main');
     hideLoadingOverlay();
@@ -2869,6 +2873,47 @@ async function upsertVerifiedProduct(name, sodium, extra){
       products.push({ id: ref.id, name, sodiumMg: sodium, timesChecked: 1 });
     }
   }catch(e){ console.error('upsertVerifiedProduct failed', e); } // ไม่ให้ error ตรงนี้ทำให้บันทึกหลักล้มเหลว
+}
+
+/* ---- รับข้อมูลจากหน้าตรวจฉลากร้านค้า (checklabel.html) เมื่อนักเรียนเลือก "เป็นตัวเอง" มาจากที่นั่น ---- */
+function handleKioskClaim(){
+  const params = new URLSearchParams(window.location.search);
+  if(params.get('claimKiosk') !== '1') return;
+  // ล้าง query param ออกจาก URL ทันที กันเผลอรีเฟรชหน้าแล้วมาซ้ำ
+  window.history.replaceState({}, '', window.location.pathname);
+
+  let payload;
+  try{ payload = JSON.parse(sessionStorage.getItem('saltSmartKioskClaim') || 'null'); }catch(e){ payload = null; }
+  sessionStorage.removeItem('saltSmartKioskClaim');
+  if(!payload || !payload.result) return;
+
+  // เช็คว่าเป็นคนเดียวกับที่เพิ่งล็อกอินจริง กันเผลอเอาไปติดผิดคน (เช่น เปิดเครื่องเดียวกันแล้วสลับคนโดยไม่ได้ตั้งใจ)
+  if(payload.studentId !== state.selectedStudent.id) return;
+
+  const data = payload.result;
+  if(!data.found || data.sodium_mg == null) return; // ตรวจแล้วไม่เจอค่า ไม่มีอะไรให้เคลมต่อ
+
+  switchTab('tab-sodium-hub');
+  document.getElementById('ciName').value = data.product_name || '';
+  document.getElementById('ciSodium').value = data.sodium_mg;
+  state.lastAiReadExtra = {
+    energyKcal: data.energy_kcal ?? null,
+    sugarG: data.sugar_g ?? null,
+    fatG: data.fat_g ?? null,
+    category: data.category || null,
+    aiSodiumMg: data.sodium_mg
+  };
+  calcSodium(); // แสดงหน้ายืนยัน (มาตรวัด+ปุ่มทานแล้ว/แค่ตรวจดู) เหมือนตรวจเองในแอปทุกอย่าง
+
+  if(data.healthy_choice_logo){
+    db.collection('dailyLogs').doc(logDocId()).set({ aiDetectedHealthyChoice: true }, { merge:true }).catch(()=>{});
+  }
+  showToast('📥 ดึงผลตรวจจากร้านค้ามาให้แล้ว เลือกทานแล้ว/แค่ตรวจดูได้เลย');
+
+  // มาร์คว่ารายการนี้ถูกเคลมแล้ว (ไว้ตรวจสอบย้อนหลังเฉยๆ ไม่กระทบการบันทึกจริงถ้าล้มเหลว)
+  if(payload.kioskCheckId){
+    db.collection('kioskChecks').doc(payload.kioskCheckId).update({ claimedByStudentId: state.selectedStudent.id }).catch(e=>console.error('มาร์ค kioskChecks ว่าถูกเคลมไม่สำเร็จ:', e));
+  }
 }
 
 /* ---- Sodium checker ---- */

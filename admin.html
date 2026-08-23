@@ -213,8 +213,14 @@
 
         <div class="card">
           <h3 style="margin-top:0;">รายชื่อนักเรียนทั้งหมด</h3>
-          <div class="field" style="max-width:260px;"><label>กรองตามห้อง</label><select id="filterClassSelect" onchange="loadStudentTable()"></select></div>
-          <table><thead><tr><th>เลขที่</th><th>ชื่อ</th><th>ห้อง</th><th>คะแนน</th><th>Streak</th><th>PIN</th><th></th></tr></thead><tbody id="studentTable"></tbody></table>
+          <div style="display:flex; gap:16px; align-items:flex-end; flex-wrap:wrap;">
+            <div class="field" style="max-width:260px;"><label>กรองตามห้อง</label><select id="filterClassSelect" onchange="loadStudentTable()"></select></div>
+            <label style="display:flex; align-items:center; gap:6px; font-size:13px; padding-bottom:10px;">
+              <input type="checkbox" id="filterInactiveOnly" onchange="loadStudentTable()"> แสดงเฉพาะที่ไม่ได้ใช้งาน (5 วันขึ้นไป/ไม่เคยล็อกอิน)
+            </label>
+            <button class="btn btn-danger" style="padding:8px 14px; font-size:12.5px; margin-bottom:10px;" onclick="deleteAllInactiveShown()">🗑️ ลบ inactive ที่แสดงอยู่ทั้งหมด</button>
+          </div>
+          <table><thead><tr><th>เลขที่</th><th>ชื่อ</th><th>ห้อง</th><th>คะแนน</th><th>Streak</th><th>PIN</th><th>ล็อกอินล่าสุด</th><th></th></tr></thead><tbody id="studentTable"></tbody></table>
         </div>
       </div>
 
@@ -359,6 +365,15 @@
       <div class="panel" id="p-products">
         <h2>🗂️ ฐานข้อมูลสินค้าที่ระบบจำไว้ (สำหรับ AI Vision)</h2>
         <p style="font-size:12.5px; color:#9aa8ab; margin-top:-8px;">ทุกครั้งที่นักเรียนกดยืนยันบันทึกค่าโซเดียมของสินค้าชิ้นหนึ่ง ระบบจะจำชื่อ+ค่าไว้ที่นี่ แล้วเสนอเป็น "คำแนะนำ" ให้คนอื่นที่ตรวจสินค้าชื่อเดียวกันในภายหลัง — ถ้ามีค่าไหนผิด (เช่น AI อ่านพลาดแล้วมีคนกดยืนยันโดยไม่ทันสังเกต) ค่าผิดจะถูกแนะนำซ้ำไปเรื่อยๆ จนกว่าจะแก้/ลบตรงนี้</p>
+
+        <div class="card" style="max-width:420px;">
+          <h3 style="margin-top:0;">🏪 หน้าตรวจฉลากร้านค้า (checklabel.html)</h3>
+          <p style="font-size:12.5px; color:#9aa8ab; margin-top:-6px;">ติดตั้งไว้ที่เครื่องของร้านค้าได้เลย ไม่ต้องล็อกอินก่อนใช้ จำกัดรวมกันวันละ 300 ครั้งกันค่าใช้จ่ายพุ่งโดยไม่ตั้งใจ</p>
+          <div id="kioskUsageInfo" style="font-size:13px; color:#4c5c60; margin-bottom:10px;">กำลังโหลด…</div>
+          <button class="btn btn-danger" style="padding:8px 14px; font-size:12.5px;" onclick="resetKioskUsageBtn()">🔄 รีเซ็ตตัวนับวันนี้</button>
+          <div class="msg" id="kioskResetMsg"></div>
+        </div>
+
         <div class="card">
           <div class="field" style="max-width:320px;"><label>ค้นหาชื่อสินค้า</label><input type="text" id="productSearchInput" placeholder="พิมพ์ชื่อสินค้า..." oninput="loadVerifiedProducts()"></div>
           <table>
@@ -564,6 +579,13 @@
             <button class="btn btn-ghost" style="padding:8px 14px; font-size:12.5px;" onclick="testPush('testAwardMissionEffortCredit','testEffortMsg')">ทดสอบรันเลย</button>
             <div class="msg" id="testEffortMsg"></div>
           </div>
+
+          <div style="border-top:1px solid #eee; padding-top:10px; margin-top:10px;">
+            <b style="font-size:13px;">🌊 20:00 — เตือนคนห่างหายไปนาน (Inactive)</b>
+            <p style="font-size:12px; color:#9aa8ab; margin:4px 0;">ส่งหาคนที่ไม่ได้ล็อกอินเกิน 5 วัน หรือยังไม่เคยล็อกอินเลย (เฉพาะคนที่เปิดแจ้งเตือนไว้)</p>
+            <button class="btn btn-ghost" style="padding:8px 14px; font-size:12.5px;" onclick="testPush('testSendInactivityReminder','testInactiveMsg')">ทดสอบส่งเลย</button>
+            <div class="msg" id="testInactiveMsg"></div>
+          </div>
         </div>
 
         <div class="card" style="max-width:420px; border-color:var(--red-high); background:#FBE6E2;">
@@ -629,7 +651,7 @@
    ใช้ version.json ไฟล์เดียวกับ index.html (แก้เลขคู่กันทุกครั้งที่ deploy)
    เจอเวอร์ชันใหม่แล้วรีเฟรชอัตโนมัติทันที ยกเว้นกำลังพิมพ์อะไรอยู่ (เช่น เหตุผลไม่ผ่านภารกิจ) จะรอรอบถัดไปก่อน
    ========================================================= */
-const APP_VERSION = "2026-08-19-5"; // ต้องตรงกับใน version.json เสมอ แก้คู่กันทุกครั้งที่ deploy
+const APP_VERSION = "2026-08-20-1"; // ต้องตรงกับใน version.json เสมอ แก้คู่กันทุกครั้งที่ deploy
 async function checkForAppUpdate(){
   try{
     const res = await fetch('./version.json?t=' + Date.now(), { cache: 'no-store' });
@@ -741,7 +763,7 @@ function showPanel(id){
   if(id==='p-overview') loadOverview();
   if(id==='p-leaderboard') switchLbCat(currentLbCat);
   if(id==='p-review') loadReviewQueue();
-  if(id==='p-products') loadVerifiedProducts();
+  if(id==='p-products'){ loadVerifiedProducts(); loadKioskUsageInfo(); }
   if(id==='p-history') loadMissionHistory();
   if(id==='p-announce') loadAnnouncements();
   if(id==='p-assessment'){ loadAssessmentResults(); loadPostTestSwitchState(); }
@@ -1462,20 +1484,45 @@ async function bulkAddStudents(){
   loadStudentTable();
 }
 
+function daysInactiveInfo(s){
+  if(!s.pin) return { label: 'ยังไม่เคยล็อกอิน', isInactive: true };
+  if(!s.lastLoginAt) return { label: 'ไม่มีข้อมูล (บัญชีเก่า)', isInactive: true };
+  const days = Math.floor((Date.now() - new Date(s.lastLoginAt).getTime()) / 86400000);
+  return { label: days===0 ? 'วันนี้' : `${days} วันก่อน`, isInactive: days >= 5, days };
+}
 function loadStudentTable(){
   const filter = document.getElementById('filterClassSelect').value;
-  const list = filter ? studentsCache.filter(s=>s.classId===filter) : studentsCache;
-  document.getElementById('studentTable').innerHTML = list.sort((a,b)=>a.studentNo-b.studentNo).map(s=>`
+  const inactiveOnly = document.getElementById('filterInactiveOnly') && document.getElementById('filterInactiveOnly').checked;
+  let list = filter ? studentsCache.filter(s=>s.classId===filter) : studentsCache;
+  if(inactiveOnly) list = list.filter(s=>daysInactiveInfo(s).isInactive);
+  document.getElementById('studentTable').innerHTML = list.sort((a,b)=>a.studentNo-b.studentNo).map(s=>{
+    const inact = daysInactiveInfo(s);
+    return `
     <tr>
       <td>${s.studentNo}</td><td>${s.name}</td><td>${classNameOf(s.classId)}</td>
       <td>${s.totalPoints||0}</td><td>${s.currentStreak||0}</td>
       <td>${s.pin ? '<span class="pill">ตั้งแล้ว</span>' : '<span class="pill">ยังไม่ตั้ง</span>'}</td>
+      <td style="${inact.isInactive?'color:var(--red-high);font-weight:600;':''}">${inact.label}</td>
       <td>
         <button class="btn btn-ghost" style="padding:6px 10px;font-size:12px;" onclick="resetPin('${s.id}')">รีเซ็ต PIN</button>
         <button class="btn btn-ghost" style="padding:6px 10px;font-size:12px;" onclick="resetTodayLog('${s.id}')">ปลดล็อกบันทึก...</button>
         <button class="btn btn-danger" style="padding:6px 10px;font-size:12px;" onclick="deleteStudent('${s.id}','${(s.name||'').replace(/'/g,"\\'")}')">ลบ</button>
       </td>
-    </tr>`).join('');
+    </tr>`;
+  }).join('');
+}
+async function deleteAllInactiveShown(){
+  const filter = document.getElementById('filterClassSelect').value;
+  let list = filter ? studentsCache.filter(s=>s.classId===filter) : studentsCache;
+  list = list.filter(s=>daysInactiveInfo(s).isInactive);
+  if(list.length===0){ alert('ไม่มีรายชื่อ inactive ในตัวกรองปัจจุบัน'); return; }
+  if(!confirm(`ลบนักเรียน inactive ทั้งหมด ${list.length} คนที่แสดงอยู่ตอนนี้เลยไหม? ข้อมูลคะแนน/ประวัติของทุกคนจะหายไปด้วย กู้คืนไม่ได้`)) return;
+  for(const s of list){
+    await db.collection('students').doc(s.id).delete();
+  }
+  await loadStudentsCache();
+  loadStudentTable();
+  alert(`ลบไปแล้ว ${list.length} คน`);
 }
 async function deleteStudent(id, name){
   if(!confirm(`ลบนักเรียน "${name}" ออกจากระบบเลยไหม? ข้อมูลคะแนน/ประวัติทั้งหมดของคนนี้จะหายไปด้วย กู้คืนไม่ได้`)) return;
@@ -1702,6 +1749,40 @@ async function deleteAllMissions(){
 
 /* ---- REVIEW QUEUE ---- */
 /* ---- ฐานข้อมูลสินค้าที่ระบบจำไว้ (verifiedProducts) — ใช้แก้/ลบค่าผิดที่เคยถูกบันทึกไว้ กันแนะนำค่าผิดซ้ำเรื่อยๆ ---- */
+/* ---- หน้าตรวจฉลากร้านค้า (checklabel.html) — ดูสถิติ/รีเซ็ตตัวนับรวมของวันนี้ ---- */
+async function loadKioskUsageInfo(){
+  const el = document.getElementById('kioskUsageInfo');
+  try{
+    const todayStr = new Date().toLocaleDateString('sv-SE'); // YYYY-MM-DD ตามเวลาเครื่อง ใกล้เคียงพอสำหรับโชว์ให้แอดมินดูคร่าวๆ
+    const snap = await db.collection('settings').doc('kioskUsage').get();
+    const usage = snap.exists ? snap.data() : {};
+    const count = usage.date === todayStr ? (usage.count||0) : 0;
+    const totalSnap = await db.collection('kioskChecks').get();
+    const claimedCount = totalSnap.docs.filter(d=>d.data().claimedByStudentId).length;
+    el.innerHTML = `วันนี้ใช้ไปแล้ว <b>${count} / 300</b> ครั้ง · ตรวจสะสมทั้งหมด <b>${totalSnap.size}</b> รายการ (มีคนเคลมเป็นของตัวเองแล้ว ${claimedCount} รายการ)`;
+  }catch(e){
+    console.error(e);
+    el.textContent = 'โหลดข้อมูลไม่สำเร็จ';
+  }
+}
+async function resetKioskUsageBtn(){
+  const msgEl = document.getElementById('kioskResetMsg');
+  const pw = prompt('ใส่รหัสผ่านผู้ดูแลเพื่อยืนยันการรีเซ็ตตัวนับ');
+  if(!pw) return;
+  msgEl.style.color = 'var(--lagoon)';
+  msgEl.textContent = 'กำลังรีเซ็ต...';
+  try{
+    const resetKioskUsage = functions.httpsCallable('resetKioskUsage');
+    await resetKioskUsage({ password: pw });
+    msgEl.textContent = 'รีเซ็ตตัวนับแล้ว ใช้ได้อีก 300 ครั้งตั้งแต่ตอนนี้';
+    loadKioskUsageInfo();
+  }catch(e){
+    console.error(e);
+    msgEl.style.color = 'var(--red-high)';
+    msgEl.textContent = 'รีเซ็ตไม่สำเร็จ: ' + e.message;
+  }
+}
+
 async function loadVerifiedProducts(){
   const wrap = document.getElementById('productTable');
   const q = (document.getElementById('productSearchInput').value || '').trim().toLowerCase();
@@ -2126,6 +2207,9 @@ async function testPush(fnName, msgElId){
     } else if('awarded' in r){ // ผลลัพธ์แบบให้คะแนนความพยายาม
       text = `ตรวจพบภารกิจไม่ผ่านที่หมดเวลาแล้ว ${r.checked} รายการ ให้คะแนนความพยายามสำเร็จ ${r.awarded} รายการ` +
         (r.failed>0 ? ` (ล้มเหลว ${r.failed} รายการ)` : '');
+    } else if('inactiveCount' in r){ // ผลลัพธ์แบบเตือนคน inactive
+      text = `พบคน inactive ${r.inactiveCount} คน ส่งแจ้งเตือนสำเร็จ ${r.sent} เครื่อง` +
+        (r.failed>0 ? ` (ล้มเหลว/token หมดอายุ ${r.failed} เครื่อง — ลบออกจากระบบให้แล้ว)` : '');
     } else { // ผลลัพธ์แบบส่ง notification ทั่วไป (sent/failed)
       text = `ส่งสำเร็จ ${r.sent} เครื่อง${r.failed>0 ? ` (ล้มเหลว/token หมดอายุ ${r.failed} เครื่อง — ลบออกจากระบบให้แล้ว)` : ''}`;
     }

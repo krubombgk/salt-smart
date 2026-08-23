@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>ตรวจฉลากอาหาร · Salt Smart</title>
+<link rel="manifest" href="manifest.json">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;600;700;800&family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-functions-compat.js"></script>
+<style>
+  :root{
+    --deep-sea:#0B3D4C; --deep-sea-2:#124A5C; --lagoon:#2A9D8F; --lagoon-light:#7FD8CC;
+    --coral:#F4A261; --clay:#E76F51; --sand:#F3ECDD; --salt-white:#FDFBF6; --ink:#0B3D4C;
+    --green-ok:#3FA66B; --amber-warn:#E8A33D; --red-high:#D9503F;
+    --radius:20px; --radius-sm:12px; --shadow:0 10px 30px rgba(11,61,76,0.12);
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;min-height:100%;}
+  body{
+    font-family:'Sarabun',sans-serif; color:var(--ink);
+    background:
+      radial-gradient(circle at 15% 0%, rgba(127,216,204,0.35), transparent 45%),
+      radial-gradient(circle at 100% 100%, rgba(244,162,97,0.18), transparent 40%),
+      var(--salt-white);
+    min-height:100vh; display:flex; flex-direction:column; align-items:center; padding:20px 16px 40px;
+  }
+  h1,h2,h3{font-family:'Kanit',sans-serif;}
+  .brand{display:flex; align-items:center; gap:10px; margin-bottom:18px;}
+  .brand-mark{width:40px; height:40px; border-radius:12px; background:linear-gradient(135deg,var(--lagoon),var(--deep-sea)); display:flex; align-items:center; justify-content:center; font-size:20px;}
+  .brand-text .t{font-family:'Kanit'; font-weight:700; font-size:16px; color:var(--deep-sea);}
+  .brand-text .s{font-size:12px; color:#6b7c80;}
+  .card{
+    width:100%; max-width:460px; background:#fff; border-radius:var(--radius);
+    box-shadow:var(--shadow); padding:22px; margin-bottom:16px;
+  }
+  .title{font-family:'Kanit'; font-weight:700; font-size:19px; color:var(--deep-sea); margin:0 0 6px;}
+  .sub{font-size:13px; color:#6b7c80; margin:0 0 18px; line-height:1.6;}
+  .btn{
+    display:block; width:100%; padding:16px; border-radius:16px; border:none; cursor:pointer;
+    font-family:'Kanit'; font-weight:600; font-size:16px; text-align:center; text-decoration:none;
+  }
+  .btn-primary{background:var(--lagoon); color:#fff;}
+  .btn-primary:active{transform:scale(0.98);}
+  .btn-primary:disabled{background:#B8C4C6; cursor:not-allowed;}
+  .btn-ghost{background:var(--sand); color:var(--deep-sea); margin-top:10px;}
+  .btn-outline{background:#fff; color:var(--lagoon); border:1.5px solid var(--lagoon); margin-top:10px;}
+  .status{font-size:13px; color:#6b7c80; text-align:center; margin-top:12px; line-height:1.6;}
+  .result-hero{background:#fff; border-radius:14px; padding:16px 12px; box-shadow:0 2px 10px rgba(11,61,76,0.08); margin-top:6px;}
+  .sodium-num{font-family:'Kanit'; font-weight:800; font-size:38px; color:var(--lagoon); text-align:center; line-height:1.2;}
+  .sodium-label{font-size:12.5px; color:#6b7c80; text-align:center;}
+  .detail-line{font-size:14px; color:#4c5c60; text-align:center; line-height:1.7; margin-top:8px;}
+  .note-box{font-size:14px; color:#3d4b4f; background:var(--sand); border-radius:12px; padding:12px 14px; margin-top:12px; line-height:1.6;}
+  .field{margin-bottom:14px;}
+  .field label{display:block; font-size:13px; font-weight:600; color:var(--deep-sea); margin-bottom:6px;}
+  .field select, .field input{
+    width:100%; padding:12px 14px; border-radius:12px; border:1.5px solid #E0DED8;
+    font-size:15px; font-family:'Sarabun'; background:#fff;
+  }
+  .pick-row{display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px;}
+  .pick-chip{
+    padding:9px 16px; border-radius:999px; border:1.5px solid #E0DED8; background:#fff;
+    font-size:14px; cursor:pointer;
+  }
+  .pick-chip.active{background:var(--lagoon); color:#fff; border-color:var(--lagoon);}
+  .hidden{display:none !important;}
+  .backlink{font-size:13px; color:var(--lagoon); cursor:pointer; margin-bottom:14px; display:inline-block;}
+  .footer-note{font-size:11.5px; color:#9aa8ab; text-align:center; margin-top:6px;}
+</style>
+</head>
+<body>
+
+<div class="brand">
+  <div class="brand-mark">🧂</div>
+  <div class="brand-text">
+    <div class="t">จุดตรวจฉลากอาหาร</div>
+    <div class="s">Salt Smart · ร้านค้าโรงเรียน</div>
+  </div>
+</div>
+
+<!-- STEP 1: ถ่ายรูป/แนบไฟล์ -->
+<div class="card" id="cardScan">
+  <div class="title">🔍 ตรวจสอบโซเดียมจากฉลาก</div>
+  <p class="sub">ถ่ายรูปหรือแนบไฟล์ตารางโภชนาการ ให้ AI ช่วยอ่านค่าโซเดียมให้ ใช้ได้ไม่จำกัดจำนวนครั้ง</p>
+  <input type="file" accept="image/*" id="photoInput" style="display:none" onchange="handlePhoto(event)">
+  <button class="btn btn-primary" id="scanBtn" onclick="document.getElementById('photoInput').click()">📷 ถ่ายรูป/แนบไฟล์ฉลาก</button>
+  <div class="status" id="scanStatus"></div>
+</div>
+
+<!-- STEP 2: ผลลัพธ์ -->
+<div class="card hidden" id="cardResult">
+  <div class="title">ผลการตรวจ</div>
+  <div class="result-hero" id="resultHero"></div>
+  <div class="note-box hidden" id="resultNote"></div>
+  <button class="btn btn-primary" style="margin-top:16px;" onclick="resetScan()">🔄 ตรวจสินค้าชิ้นถัดไป</button>
+  <button class="btn btn-outline" onclick="startClaim()">🙋 ฉันเป็นนักเรียนในโครงการ บันทึกเป็นของฉัน</button>
+</div>
+
+<!-- STEP 3: ยืนยันตัวตน (เลือกห้อง > ชื่อ > PIN) -->
+<div class="card hidden" id="cardClaim">
+  <span class="backlink" onclick="backToResult()">‹ กลับ</span>
+  <div class="title">ยืนยันตัวตนของฉัน</div>
+  <p class="sub">เลือกห้องและชื่อ แล้วใส่ PIN 4 หลักของตัวเอง ระบบจะบันทึกการตรวจนี้เป็นของนักเรียนคนนี้โดยตรง (เหมือนตรวจจากแอปหลักเลย)</p>
+
+  <div class="field" id="claimClassField">
+    <label>ห้องเรียน</label>
+    <div class="pick-row" id="claimClassRow"></div>
+  </div>
+
+  <div class="field hidden" id="claimNameField">
+    <label>ชื่อของฉัน</label>
+    <select id="claimNameSelect" onchange="onClaimNameChange()"></select>
+  </div>
+
+  <div class="field hidden" id="claimPinField">
+    <label>PIN 4 หลัก</label>
+    <input type="password" id="claimPinInput" maxlength="4" inputmode="numeric" placeholder="••••">
+  </div>
+
+  <button class="btn btn-primary hidden" id="claimSubmitBtn" onclick="submitClaim()">ยืนยันและไปหน้าบันทึก</button>
+  <div class="status" id="claimStatus"></div>
+</div>
+
+<div class="footer-note">เครื่องนี้ใช้สำหรับตรวจฉลากอาหารที่ร้านค้าโรงเรียนโดยเฉพาะ · โครงงาน อย.น้อย Smart Project</div>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyDV0wpw4bQ6f2uztfpdVjYiC-toIP1B_oA",
+  authDomain: "salt-smart-2569.firebaseapp.com",
+  projectId: "salt-smart-2569",
+  storageBucket: "salt-smart-2569.firebasestorage.app",
+  messagingSenderId: "91998754790",
+  appId: "1:91998754790:web:2f50cd0e43a9a1fdd16827"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const functions = firebase.app().functions('asia-southeast1');
+
+let lastResult = null; // เก็บผลตรวจล่าสุดไว้ ใช้ตอน "เคลม" เป็นของตัวเอง
+let claimClasses = [], claimStudents = [], selectedClaimClass = null, selectedClaimStudent = null;
+
+/* ---- STEP 1: ถ่ายรูป/ประมวลผล/เรียก AI ---- */
+// ย่อ/บีบอัดรูปก่อนส่ง พร้อม fallback 3 ชั้น (เหมือนแอปหลัก) กัน Safari/iOS บางเวอร์ชันพัง
+function resizeImageForUpload(file){
+  return new Promise((resolve, reject)=>{
+    const maxDim = 1568;
+    function drawAndResolve(source, w0, h0, cleanup){
+      try{
+        const scale = Math.min(1, maxDim / Math.max(w0, h0));
+        const w = Math.max(1, Math.round(w0 * scale));
+        const h = Math.max(1, Math.round(h0 * scale));
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(source, 0, 0, w, h);
+        if (cleanup) cleanup();
+        canvas.toBlob(blob=>{
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result.split(',')[1]);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        }, 'image/jpeg', 0.88);
+      }catch(e){ reject(e); }
+    }
+    function fallbackViaImageElement(){
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => drawAndResolve(img, img.naturalWidth, img.naturalHeight, () => URL.revokeObjectURL(url));
+      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('โหลดรูปไม่สำเร็จ')); };
+      img.src = url;
+    }
+    if (typeof createImageBitmap === 'function') {
+      createImageBitmap(file, { imageOrientation: 'from-image' })
+        .then(bitmap => drawAndResolve(bitmap, bitmap.width, bitmap.height, () => bitmap.close()))
+        .catch(() => {
+          createImageBitmap(file)
+            .then(bitmap => drawAndResolve(bitmap, bitmap.width, bitmap.height, () => bitmap.close()))
+            .catch(fallbackViaImageElement);
+        });
+    } else {
+      fallbackViaImageElement();
+    }
+  });
+}
+
+async function handlePhoto(event){
+  const file = event.target.files[0];
+  if(!file) return;
+  const statusEl = document.getElementById('scanStatus');
+  const btn = document.getElementById('scanBtn');
+  btn.disabled = true;
+  statusEl.textContent = '🔎 กำลังส่งรูปให้ AI ช่วยอ่าน... รอสักครู่นะ';
+
+  let imageBase64;
+  try{
+    imageBase64 = await resizeImageForUpload(file);
+  }catch(e){
+    console.error('resizeImageForUpload error:', e);
+    statusEl.innerHTML = `⚠️ ประมวลผลรูปในเครื่องไม่สำเร็จ<br><span style="font-size:12px;color:#aab5b8;">${(e&&e.message)||'ไม่ทราบสาเหตุ'}</span>`;
+    btn.disabled = false; event.target.value=''; return;
+  }
+
+  try{
+    const checkSodiumLabelPublic = functions.httpsCallable('checkSodiumLabelPublic');
+    const res = await checkSodiumLabelPublic({ imageBase64 });
+    const data = res.data;
+
+    if(data.error === 'daily_limit_reached'){
+      statusEl.textContent = data.message;
+      btn.disabled = false; event.target.value=''; return;
+    }
+
+    lastResult = data;
+    showResult(data);
+  }catch(e){
+    console.error('checkSodiumLabelPublic error:', e);
+    statusEl.innerHTML = `⚠️ เชื่อมต่อ AI ไม่สำเร็จ<br><span style="font-size:12px;color:#aab5b8;">${(e&&(e.message||e.code))||'ไม่ทราบสาเหตุ'}</span>`;
+  }
+  btn.disabled = false;
+  event.target.value = '';
+}
+
+function showResult(data){
+  document.getElementById('cardScan').classList.add('hidden');
+  document.getElementById('cardResult').classList.remove('hidden');
+
+  let heroHtml = '';
+  if(data.found && data.sodium_mg != null){
+    heroHtml = `<div class="sodium-label">AI อ่านโซเดียมได้</div><div class="sodium-num">${data.sodium_mg}<span style="font-size:16px;font-weight:600;margin-left:3px;">มก.</span></div>`;
+  } else {
+    heroHtml = `<div style="text-align:center;font-size:14px;color:var(--red-high);padding:6px 0;">AI อ่านฉลากนี้ไม่เจอค่าโซเดียม ลองถ่ายให้ใกล้/ชัดขึ้น</div>`;
+  }
+  let lines = [];
+  if(data.product_name) lines.push(`📦 ชื่อสินค้า: <b>${data.product_name}</b>`);
+  if(data.category) lines.push(`🏷️ หมวดหมู่: <b>${data.category}</b>`);
+  if(data.healthy_choice_logo) lines.push(`💚 เห็นสัญลักษณ์ "ทางเลือกสุขภาพ" ด้วย`);
+  const detailHtml = lines.length ? `<div class="detail-line">${lines.join('<br>')}</div>` : '';
+
+  document.getElementById('resultHero').innerHTML = heroHtml + detailHtml;
+
+  const noteEl = document.getElementById('resultNote');
+  if(data.note){ noteEl.textContent = '💡 ' + data.note; noteEl.classList.remove('hidden'); }
+  else { noteEl.classList.add('hidden'); }
+}
+
+function resetScan(){
+  lastResult = null;
+  document.getElementById('cardResult').classList.add('hidden');
+  document.getElementById('cardClaim').classList.add('hidden');
+  document.getElementById('cardScan').classList.remove('hidden');
+  document.getElementById('scanStatus').textContent = '';
+}
+
+/* ---- STEP 2->3: เริ่มเคลมเป็นของตัวเอง ---- */
+async function startClaim(){
+  document.getElementById('cardResult').classList.add('hidden');
+  document.getElementById('cardClaim').classList.remove('hidden');
+  document.getElementById('claimNameField').classList.add('hidden');
+  document.getElementById('claimPinField').classList.add('hidden');
+  document.getElementById('claimSubmitBtn').classList.add('hidden');
+  document.getElementById('claimStatus').textContent = 'กำลังโหลดรายชื่อห้อง...';
+  selectedClaimClass = null; selectedClaimStudent = null;
+
+  if(claimClasses.length === 0){
+    const snap = await db.collection('classes').orderBy('order').get();
+    claimClasses = snap.docs.map(d=>({id:d.id, ...d.data()}));
+  }
+  const row = document.getElementById('claimClassRow');
+  row.innerHTML = claimClasses.map(c=>`<div class="pick-chip" onclick="selectClaimClass('${c.id}','${(c.name||'').replace(/'/g,"\\'")}', this)">${c.icon||'🏫'} ${c.name}</div>`).join('');
+  document.getElementById('claimStatus').textContent = '';
+}
+
+async function selectClaimClass(id, name, el){
+  selectedClaimClass = id;
+  [...document.getElementById('claimClassRow').children].forEach(c=>c.classList.remove('active'));
+  el.classList.add('active');
+
+  document.getElementById('claimStatus').textContent = 'กำลังโหลดรายชื่อนักเรียน...';
+  const snap = await db.collection('students').where('classId','==',id).get();
+  claimStudents = snap.docs.map(d=>({id:d.id, ...d.data()})).sort((a,b)=>(a.studentNo||0)-(b.studentNo||0));
+  const sel = document.getElementById('claimNameSelect');
+  sel.innerHTML = '<option value="">-- เลือกชื่อ --</option>' + claimStudents.map(s=>`<option value="${s.id}">${s.studentNo||''} ${s.name}</option>`).join('');
+  document.getElementById('claimNameField').classList.remove('hidden');
+  document.getElementById('claimPinField').classList.add('hidden');
+  document.getElementById('claimSubmitBtn').classList.add('hidden');
+  document.getElementById('claimStatus').textContent = '';
+}
+
+function onClaimNameChange(){
+  const id = document.getElementById('claimNameSelect').value;
+  selectedClaimStudent = claimStudents.find(s=>s.id===id) || null;
+  const showNext = !!selectedClaimStudent;
+  document.getElementById('claimPinField').classList.toggle('hidden', !showNext);
+  document.getElementById('claimSubmitBtn').classList.toggle('hidden', !showNext);
+}
+
+async function submitClaim(){
+  const statusEl = document.getElementById('claimStatus');
+  const pin = document.getElementById('claimPinInput').value.trim();
+  if(!selectedClaimStudent){ statusEl.textContent = 'เลือกชื่อก่อนนะ'; return; }
+  if(!/^\d{4}$/.test(pin)){ statusEl.textContent = 'PIN ต้องเป็นตัวเลข 4 หลัก'; return; }
+
+  // เช็ค PIN: ถ้ายังไม่เคยตั้ง PIN มาก่อน (บัญชีใหม่ยังไม่เคยล็อกอิน) จะตั้งเป็น PIN นี้ให้เลย เหมือนตอนล็อกอินครั้งแรกในแอปหลัก
+  if(selectedClaimStudent.pin){
+    if(selectedClaimStudent.pin !== pin){ statusEl.textContent = 'PIN ไม่ถูกต้อง ลองใหม่อีกครั้ง'; return; }
+  } else {
+    await db.collection('students').doc(selectedClaimStudent.id).update({ pin });
+  }
+
+  // ส่งผลตรวจ + ตัวตนนักเรียนไปทาง sessionStorage แล้วเด้งเข้าแอปหลักให้ไปจบขั้นตอนบันทึกต่อ (ใช้ระบบเดิมที่ทดสอบมาแล้วทั้งหมด ไม่เขียนซ้ำ)
+  sessionStorage.setItem('saltSmartKioskClaim', JSON.stringify({
+    studentId: selectedClaimStudent.id,
+    classId: selectedClaimClass,
+    result: lastResult,
+    kioskCheckId: lastResult ? lastResult.kioskCheckId : null,
+  }));
+  statusEl.textContent = 'สำเร็จ! กำลังพาไปหน้าบันทึก...';
+  setTimeout(()=>{ window.location.href = './index.html?claimKiosk=1'; }, 600);
+}
+
+function backToResult(){
+  document.getElementById('cardClaim').classList.add('hidden');
+  document.getElementById('cardResult').classList.remove('hidden');
+}
+</script>
+</body>
+</html>
