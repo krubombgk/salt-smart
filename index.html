@@ -1585,7 +1585,7 @@
    ถ้าเจอเวอร์ชันใหม่กว่าที่ฝังมากับโค้ดตอนนี้ จะรีเฟรชอัตโนมัติทันที (ไม่ต้องรอให้ใครกดเอง กันเครื่องค้างเวอร์ชันเก่าไม่รู้ตัว)
    ยกเว้นตอนกำลังพิมพ์อะไรอยู่ในช่องกรอกข้อความ (เช่น เขียนสะท้อนตัวเอง) จะรอรอบถัดไปก่อน กันข้อมูลที่พิมพ์ค้างอยู่หายกะทันหัน
    ========================================================= */
-const APP_VERSION = "2026-08-20-1"; // ต้องตรงกับใน version.json เสมอ แก้คู่กันทุกครั้งที่ deploy
+const APP_VERSION = "2026-08-24-1"; // ต้องตรงกับใน version.json เสมอ แก้คู่กันทุกครั้งที่ deploy
 async function checkForAppUpdate(){
   try{
     const res = await fetch('./version.json?t=' + Date.now(), { cache: 'no-store' });
@@ -1921,7 +1921,12 @@ async function init(){
     state.classes = classSnap.docs.map(d=>({id:d.id, ...d.data()}));
     renderClassGrid();
     state.dataReady = true;
-    await tryRestoreSession(); // ลอง login ต่อจากที่ค้างไว้ในแท็บนี้ก่อน (sessionStorage) — ถ้าสำเร็จจะข้ามหน้าต้อนรับเข้าแอปให้เองอัตโนมัติ ไม่ต้องกดปุ่มซ้ำ
+    // ถ้ามาจาก checklabel.html พร้อม PIN ที่ยืนยันแล้ว (?claimKiosk=1) ให้ auto-login ข้ามหน้า login ไปเลย
+    // เช็คก่อน tryRestoreSession() เสมอ เพราะ session ปกติอาจยังไม่มี (ยังไม่เคย login ในแท็บนี้)
+    const autoLoggedIn = await tryAutoLoginFromKioskClaim();
+    if(!autoLoggedIn){
+      await tryRestoreSession(); // ลอง login ต่อจากที่ค้างไว้ในแท็บนี้ก่อน (sessionStorage) — ถ้าสำเร็จจะข้ามหน้าต้อนรับเข้าแอปให้เองอัตโนมัติ ไม่ต้องกดปุ่มซ้ำ
+    }
   }catch(e){
     state.dataLoadError = e.message;
     console.error(e);
@@ -4913,6 +4918,31 @@ function touchSession(){
     sessionStorage.setItem(SESSION_KEY, JSON.stringify(data));
   }catch(e){}
 }
+/* ---- Auto-login เมื่อมาจากหน้าตรวจฉลากร้านค้า (checklabel.html) พร้อม PIN ที่ยืนยันแล้ว ---- */
+/* ต้องเรียกก่อน tryRestoreSession() เสมอ เพื่อข้ามหน้า login ปกติไปเลยเมื่อมี claimKiosk=1 */
+async function tryAutoLoginFromKioskClaim(){
+  const params = new URLSearchParams(window.location.search);
+  if(params.get('claimKiosk') !== '1') return false;
+  let payload;
+  try{ payload = JSON.parse(sessionStorage.getItem('saltSmartKioskClaim') || 'null'); }catch(e){ payload = null; }
+  if(!payload || !payload.studentId) return false;
+
+  try{
+    const studentSnap = await db.collection('students').doc(payload.studentId).get();
+    if(!studentSnap.exists) return false;
+    const classSnap = await db.collection('classes').doc(payload.classId).get();
+    state.selectedStudent = { id: studentSnap.id, ...studentSnap.data() };
+    state.selectedClassId = payload.classId;
+    state.selectedClassName = classSnap.exists ? classSnap.data().name : '';
+    saveSession(); // บันทึก session ปกติด้วย กันหลุดถ้า refresh ซ้ำ
+    await enterApp(); // ข้ามหน้าจอ login ทั้งหมด เข้าแอปตรงเลย (handleKioskClaim() จะทำงานต่อในนี้เองหลัง enterApp เสร็จ อยู่แล้ว ไม่ต้องแก้จุดนั้น)
+    return true;
+  }catch(e){
+    console.error('tryAutoLoginFromKioskClaim error:', e);
+    return false;
+  }
+}
+
 async function tryRestoreSession(){
   try{
     const raw = sessionStorage.getItem(SESSION_KEY);
