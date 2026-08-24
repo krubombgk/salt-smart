@@ -159,7 +159,7 @@
 
         <div class="card" style="margin-top:20px;">
           <h3 style="margin-top:0;">🤖 สถิติ AI Vision อ่านฉลาก</h3>
-          <p style="font-size:12.5px; color:#9aa8ab; margin-top:-6px;">เทียบว่านักเรียนใช้ AI ช่วยอ่านฉลากกี่ครั้ง เทียบกับพิมพ์เอง และค่าที่ AI อ่านตรงกับค่าที่บันทึกจริงแค่ไหน (นับเฉพาะรายการที่บันทึกหลังอัปเดตระบบครั้งนี้ รายการเก่าก่อนหน้าไม่มีข้อมูลที่มา)</p>
+          <p style="font-size:12.5px; color:#9aa8ab; margin-top:-6px;">เทียบว่านักเรียนใช้ AI ช่วยอ่านฉลากกี่ครั้ง เทียบกับพิมพ์เอง และค่าที่ AI อ่านตรงกับค่าที่บันทึกจริงแค่ไหน (นับเฉพาะรายการที่บันทึกหลังอัปเดตระบบครั้งนี้ รายการเก่าก่อนหน้าไม่มีข้อมูลที่มา) · <b>นับเฉพาะรายการที่กดบันทึกในแอปแล้วเท่านั้น</b> ไม่รวมการสแกนที่หน้าตรวจฉลากร้านค้า (checklabel.html) ที่ยังไม่ถูกเคลม/บันทึกต่อ — ดูยอดสแกนรวมทั้งหมดของจุดร้านค้าได้ที่แท็บ "ฐานข้อมูลสินค้า"</p>
           <div id="aiVisionStats"><div class="empty-note">กำลังโหลด…</div></div>
         </div>
 
@@ -370,8 +370,10 @@
 
         <div class="card" style="max-width:420px;">
           <h3 style="margin-top:0;">🏪 หน้าตรวจฉลากร้านค้า (checklabel.html)</h3>
-          <p style="font-size:12.5px; color:#9aa8ab; margin-top:-6px;">ติดตั้งไว้ที่เครื่องของร้านค้าได้เลย ไม่ต้องล็อกอินก่อนใช้ จำกัดรวมกันวันละ 300 ครั้งกันค่าใช้จ่ายพุ่งโดยไม่ตั้งใจ</p>
-          <div id="kioskUsageInfo" style="font-size:13px; color:#4c5c60; margin-bottom:10px;">กำลังโหลด…</div>
+          <p style="font-size:12.5px; color:#9aa8ab; margin-top:-6px;">ติดตั้งไว้ที่เครื่องของร้านค้าได้เลย ไม่ต้องล็อกอินก่อนใช้ จำกัดรวมกันวันละ 300 ครั้งกันค่าใช้จ่ายพุ่งโดยไม่ตั้งใจ · ตัวเลขด้านล่างนับ<b>ทุกครั้งที่สแกน</b>จริง ไม่ว่าจะมีคนเคลมเป็นของตัวเองหรือกดบันทึกต่อหรือไม่ก็ตาม (คนละยอดกับการ์ด "สถิติ AI Vision อ่านฉลาก" ด้านบนที่นับเฉพาะรายการที่บันทึกในแอปแล้ว)</p>
+          <div id="kioskUsageInfo" style="font-size:13px; color:#4c5c60; margin-bottom:10px; line-height:1.7;">กำลังโหลด…</div>
+          <div style="font-size:12.5px; font-weight:600; color:var(--deep-sea); margin-bottom:6px;">หมวดหมู่ที่ตรวจบ่อยที่สุดที่จุดนี้</div>
+          <div id="kioskCategorySummary" style="margin-bottom:10px;"><div class="empty-note">กำลังโหลด…</div></div>
           <button class="btn btn-danger" style="padding:8px 14px; font-size:12.5px;" onclick="resetKioskUsageBtn()">🔄 รีเซ็ตตัวนับวันนี้</button>
           <div class="msg" id="kioskResetMsg"></div>
         </div>
@@ -653,7 +655,7 @@
    ใช้ version.json ไฟล์เดียวกับ index.html (แก้เลขคู่กันทุกครั้งที่ deploy)
    เจอเวอร์ชันใหม่แล้วรีเฟรชอัตโนมัติทันที ยกเว้นกำลังพิมพ์อะไรอยู่ (เช่น เหตุผลไม่ผ่านภารกิจ) จะรอรอบถัดไปก่อน
    ========================================================= */
-const APP_VERSION = "2026-08-24-1"; // ต้องตรงกับใน version.json เสมอ แก้คู่กันทุกครั้งที่ deploy
+const APP_VERSION = "2026-08-20-1"; // ต้องตรงกับใน version.json เสมอ แก้คู่กันทุกครั้งที่ deploy
 async function checkForAppUpdate(){
   try{
     const res = await fetch('./version.json?t=' + Date.now(), { cache: 'no-store' });
@@ -1806,17 +1808,55 @@ async function deleteAllMissions(){
 /* ---- หน้าตรวจฉลากร้านค้า (checklabel.html) — ดูสถิติ/รีเซ็ตตัวนับรวมของวันนี้ ---- */
 async function loadKioskUsageInfo(){
   const el = document.getElementById('kioskUsageInfo');
+  const catWrap = document.getElementById('kioskCategorySummary');
   try{
     const todayStr = new Date().toLocaleDateString('sv-SE'); // YYYY-MM-DD ตามเวลาเครื่อง ใกล้เคียงพอสำหรับโชว์ให้แอดมินดูคร่าวๆ
     const snap = await db.collection('settings').doc('kioskUsage').get();
     const usage = snap.exists ? snap.data() : {};
     const count = usage.date === todayStr ? (usage.count||0) : 0;
+
     const totalSnap = await db.collection('kioskChecks').get();
-    const claimedCount = totalSnap.docs.filter(d=>d.data().claimedByStudentId).length;
-    el.innerHTML = `วันนี้ใช้ไปแล้ว <b>${count} / 300</b> ครั้ง · ตรวจสะสมทั้งหมด <b>${totalSnap.size}</b> รายการ (มีคนเคลมเป็นของตัวเองแล้ว ${claimedCount} รายการ)`;
+    const docs = totalSnap.docs.map(d=>d.data());
+    const claimedCount = docs.filter(d=>d.claimedByStudentId).length;
+    const foundCount = docs.filter(d=>d.found).length;
+    const notFoundCount = docs.length - foundCount;
+
+    el.innerHTML = `
+      วันนี้ใช้ไปแล้ว <b>${count} / 300</b> ครั้ง · ตรวจสะสมทั้งหมด <b>${totalSnap.size}</b> รายการ<br>
+      AI อ่านเจอค่าโซเดียม <b>${foundCount}</b> รายการ (อ่านไม่เจอ ${notFoundCount} รายการ) · มีคนเคลมเป็นของตัวเองแล้ว <b>${claimedCount}</b> รายการ
+    `;
+
+    // หมวดหมู่สินค้าที่ตรวจบ่อยที่สุดที่จุดร้านค้า — นับทุกครั้งที่ AI อ่านเจอค่า ไม่ว่าจะมีคนเคลม/บันทึกต่อหรือไม่
+    if(catWrap){
+      const counts = {};
+      let total = 0;
+      docs.forEach(d=>{
+        if(!d.found) return; // ไม่นับรายการที่ AI อ่านไม่เจอค่าเลย กันหมวด "ไม่ระบุ" ท่วมโดยไม่มีความหมาย
+        const cat = d.category || 'ไม่ระบุหมวดหมู่';
+        counts[cat] = (counts[cat]||0) + 1;
+        total++;
+      });
+      if(total===0){
+        catWrap.innerHTML = '<div class="empty-note">ยังไม่มีข้อมูล</div>';
+      } else {
+        const sorted = Object.entries(counts).sort((a,b)=>b[1]-a[1]);
+        catWrap.innerHTML = sorted.map(([cat,c])=>{
+          const pct = Math.round(c/total*100);
+          return `<div style="margin-bottom:8px;">
+            <div style="display:flex; justify-content:space-between; font-size:12.5px; margin-bottom:3px;">
+              <span>${cat}</span><span style="color:#9aa8ab;">${c} ครั้ง (${pct}%)</span>
+            </div>
+            <div style="background:#F2EEE1; border-radius:6px; height:7px; overflow:hidden;">
+              <div style="background:var(--coral); height:100%; width:${pct}%;"></div>
+            </div>
+          </div>`;
+        }).join('');
+      }
+    }
   }catch(e){
     console.error(e);
     el.textContent = 'โหลดข้อมูลไม่สำเร็จ';
+    if(catWrap) catWrap.innerHTML = '<div class="empty-note">โหลดข้อมูลไม่สำเร็จ</div>';
   }
 }
 async function resetKioskUsageBtn(){
