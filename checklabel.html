@@ -49,9 +49,9 @@
   .btn-outline{background:#fff; color:var(--lagoon); border:1.5px solid var(--lagoon); margin-top:10px;}
   .status{font-size:13px; color:#6b7c80; text-align:center; margin-top:12px; line-height:1.6;}
   .result-hero{background:#fff; border-radius:14px; padding:16px 12px; box-shadow:0 2px 10px rgba(11,61,76,0.08); margin-top:6px;}
-  .sodium-num{font-family:'Kanit'; font-weight:800; font-size:38px; color:var(--lagoon); text-align:center; line-height:1.2;}
-  .sodium-label{font-size:12.5px; color:#6b7c80; text-align:center;}
-  .detail-line{font-size:14px; color:#4c5c60; text-align:center; line-height:1.7; margin-top:8px;}
+  .sodium-num{font-family:'Kanit'; font-weight:900; font-size:48px; color:var(--lagoon); text-align:center; line-height:1.15;}
+  .sodium-label{font-size:15px; font-weight:700; color:#3d4b4f; text-align:center;}
+  .detail-line{font-size:15px; color:#4c5c60; text-align:center; line-height:1.7; margin-top:8px;}
   .note-box{font-size:14px; color:#3d4b4f; background:var(--sand); border-radius:12px; padding:12px 14px; margin-top:12px; line-height:1.6;}
   .field{margin-bottom:14px;}
   .field label{display:block; font-size:13px; font-weight:600; color:var(--deep-sea); margin-bottom:6px;}
@@ -163,6 +163,16 @@ const functions = firebase.app().functions('asia-southeast1');
 let lastResult = null; // เก็บผลตรวจล่าสุดไว้ ใช้ตอน "เคลม" เป็นของตัวเอง
 let claimClasses = [], claimStudents = [], selectedClaimClass = null, selectedClaimStudent = null;
 
+// ขีดจำกัดโซเดียมที่แนะนำต่อวัน (มก.) ค่าเริ่มต้นเดียวกับแอปหลัก — ใช้ตอนยังไม่รู้ว่าเป็นใคร (ก่อนเคลมตัวตน)
+// หลังยืนยันตัวตนแล้วจะคำนวณใหม่ตามเป้าหมายส่วนตัวของนักเรียนคนนั้นแทน (ดูใน enterConfirmStep)
+const KIOSK_DEFAULT_SODIUM_GOAL = 2000;
+// เกณฑ์สีเขียว/เหลือง/แดง เดียวกับแอปหลักเป๊ะ (20%/40% ของขีดจำกัดต่อวัน)
+function sodiumVerdict(pct){
+  if(pct < 20) return { text: 'โซเดียมต่ำ 🟢 เลือกได้ดี!', color: 'var(--green-ok)' };
+  if(pct < 40) return { text: 'โซเดียมปานกลาง 🟡 กินได้ แต่ระวังมื้ออื่น', color: 'var(--amber-warn)' };
+  return { text: 'โซเดียมสูง 🔴 ระวัง กินแต่น้อย', color: 'var(--red-high)' };
+}
+
 /* ---- STEP 1: ถ่ายรูป/ประมวลผล/เรียก AI ---- */
 // ย่อ/บีบอัดรูปก่อนส่ง พร้อม fallback 3 ชั้น (เหมือนแอปหลัก) กัน Safari/iOS บางเวอร์ชันพัง
 function resizeImageForUpload(file){
@@ -249,9 +259,17 @@ function showResult(data){
 
   let heroHtml = '';
   if(data.found && data.sodium_mg != null){
-    heroHtml = `<div class="sodium-label">AI อ่านโซเดียมได้</div><div class="sodium-num">${data.sodium_mg}<span style="font-size:16px;font-weight:600;margin-left:3px;">มก.</span></div>`;
+    const pct = Math.min(Math.round((data.sodium_mg/KIOSK_DEFAULT_SODIUM_GOAL)*100),200);
+    const v = sodiumVerdict(pct);
+    heroHtml = `
+      <div class="sodium-label">AI อ่านโซเดียมได้</div>
+      <div class="sodium-num" style="color:${v.color};">${data.sodium_mg}<span style="font-size:20px;font-weight:700;margin-left:3px;">มก.</span></div>
+      <div class="detail-line" style="color:${v.color}; font-weight:700; margin-top:2px;">${v.text}</div>
+      <div class="detail-line">= ${pct}% ของขีดจำกัดโซเดียมที่แนะนำต่อวัน (${KIOSK_DEFAULT_SODIUM_GOAL.toLocaleString('th-TH')} มก.)</div>
+      <div style="font-size:11.5px; color:#9aa8ab; text-align:center; margin-top:4px;">*ใช้ขีดจำกัดกลางของคนทั่วไป ถ้ายืนยันตัวตนเป็นนักเรียน ระบบจะคำนวณใหม่ตามเป้าหมายส่วนตัวให้อีกที</div>
+    `;
   } else {
-    heroHtml = `<div style="text-align:center;font-size:14px;color:var(--red-high);padding:6px 0;">AI อ่านฉลากนี้ไม่เจอค่าโซเดียม ลองถ่ายให้ใกล้/ชัดขึ้น</div>`;
+    heroHtml = `<div style="text-align:center;font-size:15px;font-weight:700;color:var(--red-high);padding:6px 0;">AI อ่านฉลากนี้ไม่เจอค่าโซเดียม ลองถ่ายให้ใกล้/ชัดขึ้น</div>`;
   }
   let lines = [];
   if(data.product_name) lines.push(`📦 ชื่อสินค้า: <b>${data.product_name}</b>`);
@@ -361,20 +379,16 @@ function enterConfirmStep(){
     return;
   }
 
-  const goal = (selectedClaimStudent && selectedClaimStudent.sodiumGoal) || 2000;
+  const goal = (selectedClaimStudent && selectedClaimStudent.sodiumGoal) || KIOSK_DEFAULT_SODIUM_GOAL;
   const perUnit = data.sodium_mg;
   const pct = Math.min(Math.round((perUnit/goal)*100),200);
-  let verdictText, color;
-  // เกณฑ์สีเขียว/เหลือง/แดง คงเดิมไม่แตะ (20%/40%) ให้ตรงกับแอปหลัก
-  if(pct < 20){ verdictText='โซเดียมต่ำ 🟢 เลือกได้ดี!'; color='var(--green-ok)'; }
-  else if(pct < 40){ verdictText='โซเดียมปานกลาง 🟡 กินได้ แต่ระวังมื้ออื่น'; color='var(--amber-warn)'; }
-  else { verdictText='โซเดียมสูง 🔴 ระวัง กินแต่น้อย'; color='var(--red-high)'; }
+  const v = sodiumVerdict(pct); // เกณฑ์สีเขียว/เหลือง/แดง เดียวกับแอปหลัก (ใช้ helper ตัวเดียวกับ showResult())
 
   document.getElementById('confirmWelcome').textContent = `สวัสดี ${selectedClaimStudent.name}! นี่คือผลตรวจของสินค้านี้`;
   document.getElementById('confirmHero').innerHTML = `
     <div class="sodium-label">โซเดียมต่อหนึ่งหน่วยบริโภค</div>
-    <div class="sodium-num">${perUnit}<span style="font-size:16px;font-weight:600;margin-left:3px;">มก.</span></div>
-    <div class="detail-line" style="color:${color}; font-weight:700;">${verdictText}</div>
+    <div class="sodium-num" style="color:${v.color};">${perUnit}<span style="font-size:20px;font-weight:700;margin-left:3px;">มก.</span></div>
+    <div class="detail-line" style="color:${v.color}; font-weight:700; margin-top:2px;">${v.text}</div>
     <div class="detail-line">= ${pct}% ของขีดจำกัดโซเดียมที่แนะนำต่อวัน (${goal.toLocaleString('th-TH')} มก.)</div>
   `;
   document.getElementById('claimServings').value = '1';
@@ -402,7 +416,7 @@ async function saveKioskSodiumCheck(consumed){
     const servings = (!isNaN(servingsInput) && servingsInput > 0) ? servingsInput : 1;
     const perUnitSodium = data.sodium_mg;
     const totalSodium = Math.round(perUnitSodium * servings);
-    const goal = student.sodiumGoal || 2000;
+    const goal = student.sodiumGoal || KIOSK_DEFAULT_SODIUM_GOAL;
     const totalPct = Math.min(Math.round((totalSodium/goal)*100),200);
     const category = data.category || null;
     const productName = (data.product_name || '').trim() || 'ไม่ทราบชื่อสินค้า';

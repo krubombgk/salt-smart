@@ -2722,15 +2722,19 @@ async function handleLabelPhoto(event){
     let sodiumHeroHtml = '';
     if(data.found && data.sodium_mg){
       document.getElementById('ciSodium').value = data.sodium_mg;
+      // สีเข้มขึ้นตาม % ของขีดจำกัดโซเดียมต่อวัน (เกณฑ์เดียวกับมาตรวัด 20%/40%) ให้อ่านง่าย เห็นชัดตั้งแต่แวบแรก
+      const heroPct = Math.min(Math.round((data.sodium_mg/getSodiumGoal())*100),200);
+      const heroColor = heroPct < 20 ? 'var(--green-ok)' : (heroPct < 40 ? 'var(--amber-warn)' : 'var(--red-high)');
       sodiumHeroHtml = `
         <div style="text-align:center; padding:4px 0 2px;">
-          <div style="font-size:12.5px; color:#6b7c80;">AI อ่านโซเดียมได้</div>
-          <div style="font-family:'Kanit',sans-serif; font-weight:800; font-size:34px; color:var(--lagoon); line-height:1.2;">
-            ${data.sodium_mg}<span style="font-size:16px; font-weight:600; margin-left:3px;">มก.</span>
+          <div style="font-size:15px; font-weight:700; color:#3d4b4f;">AI อ่านโซเดียมได้</div>
+          <div style="font-family:'Kanit',sans-serif; font-weight:900; font-size:48px; color:${heroColor}; line-height:1.15;">
+            ${data.sodium_mg}<span style="font-size:20px; font-weight:700; margin-left:3px;">มก.</span>
           </div>
+          <div style="font-size:16px; font-weight:700; color:${heroColor}; margin-top:2px;">= ${heroPct}% ของขีดจำกัดที่แนะนำต่อวัน</div>
         </div>`;
     } else {
-      sodiumHeroHtml = `<div style="text-align:center; font-size:14px; color:var(--red-high); padding:6px 0;">AI อ่านฉลากนี้ไม่เจอค่าโซเดียม ลองถ่ายให้ใกล้/ชัดขึ้น หรือพิมพ์ตัวเลขเองจากฉลากได้เลย</div>`;
+      sodiumHeroHtml = `<div style="text-align:center; font-size:16px; font-weight:700; color:var(--red-high); padding:6px 0;">AI อ่านฉลากนี้ไม่เจอค่าโซเดียม ลองถ่ายให้ใกล้/ชัดขึ้น หรือพิมพ์ตัวเลขเองจากฉลากได้เลย</div>`;
     }
 
     let detailLines = [];
@@ -2743,7 +2747,7 @@ async function handleLabelPhoto(event){
       detailLines.push(`🏷️ หมวดหมู่: <b>${data.category}</b>`);
     }
     const detailHtml = detailLines.length
-      ? `<div style="text-align:center; font-size:14px; color:#4c5c60; margin-top:6px; line-height:1.7;">${detailLines.join('<br>')}</div>`
+      ? `<div style="text-align:center; font-size:15px; font-weight:500; color:#3d4b4f; margin-top:6px; line-height:1.7;">${detailLines.join('<br>')}</div>`
       : '';
 
     let healthyChoiceHtml = '';
@@ -2774,6 +2778,12 @@ async function handleLabelPhoto(event){
       ${noteHtml}
       <div style="text-align:center; margin-top:8px;"><span style="color:#aab5b8; font-size:12px;">(เหลือ ${data.remainingToday} ครั้งวันนี้)</span></div>
     `;
+
+    // มีทั้งชื่อและค่าโซเดียมพร้อมแล้ว → คำนวณมาตรวัดขีดจำกัดโซเดียมต่อวันให้ทันทีเลย ไม่ต้องรอกดปุ่ม "คำนวณ" เอง
+    // (ถ้า AI ไม่เจอชื่อสินค้า ให้พิมพ์เองแล้วกดปุ่มคำนวณตามปกติ กันเคส calcSodium() เตือนกรอกชื่อไม่ครบ)
+    if(data.found && data.sodium_mg && document.getElementById('ciName').value.trim()){
+      calcSodium();
+    }
   }catch(e){
     console.error('checkSodiumLabel error:', e);
     const detail = (e && (e.message || e.code)) || 'ไม่ทราบสาเหตุ';
