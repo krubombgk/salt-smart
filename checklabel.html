@@ -119,8 +119,30 @@
     <input type="password" id="claimPinInput" maxlength="4" inputmode="numeric" placeholder="••••">
   </div>
 
-  <button class="btn btn-primary hidden" id="claimSubmitBtn" onclick="submitClaim()">ยืนยันและไปหน้าบันทึก</button>
+  <button class="btn btn-primary hidden" id="claimSubmitBtn" onclick="submitClaim()">ยืนยันตัวตน</button>
   <div class="status" id="claimStatus"></div>
+</div>
+
+<!-- STEP 4: ยืนยันการบันทึก (กินแล้ว/แค่ตรวจดู) — ทำจบในหน้านี้เลย ไม่ต้องไป index.html -->
+<div class="card hidden" id="cardConfirm">
+  <div class="title">ยืนยันการบันทึก</div>
+  <p class="sub" id="confirmWelcome"></p>
+  <div class="result-hero" id="confirmHero"></div>
+  <div class="field" style="margin-top:14px;">
+    <label>กินกี่หน่วย? (ถ้ากินมากกว่า 1 หน่วยบริโภคตามฉลาก)</label>
+    <input type="number" id="claimServings" value="1" min="1" step="1" inputmode="numeric">
+  </div>
+  <button class="btn btn-primary" style="margin-top:6px;" onclick="saveKioskSodiumCheck(true)">🍽️ กินแล้ว เพิ่มเข้าโซเดียมวันนี้</button>
+  <button class="btn btn-outline" onclick="saveKioskSodiumCheck(false)">🔍 บันทึกไว้ แค่ตรวจดู (ยังไม่ได้กิน)</button>
+  <span class="backlink" style="display:block; text-align:center; margin-top:10px;" onclick="resetScan()">ยกเลิก เริ่มใหม่</span>
+  <div class="status" id="confirmStatus"></div>
+</div>
+
+<!-- STEP 5: เสร็จสิ้น -->
+<div class="card hidden" id="cardDone">
+  <div class="title">✅ เรียบร้อย!</div>
+  <p class="sub" id="doneMsg"></p>
+  <button class="btn btn-primary" onclick="resetScan()">🔄 ตรวจสินค้าชิ้นถัดไป</button>
 </div>
 
 <div class="footer-note">เครื่องนี้ใช้สำหรับตรวจฉลากอาหารที่ร้านค้าโรงเรียนโดยเฉพาะ · โครงงาน อย.น้อย Smart Project</div>
@@ -246,8 +268,11 @@ function showResult(data){
 
 function resetScan(){
   lastResult = null;
+  selectedClaimClass = null; selectedClaimStudent = null;
   document.getElementById('cardResult').classList.add('hidden');
   document.getElementById('cardClaim').classList.add('hidden');
+  document.getElementById('cardConfirm').classList.add('hidden');
+  document.getElementById('cardDone').classList.add('hidden');
   document.getElementById('cardScan').classList.remove('hidden');
   document.getElementById('scanStatus').textContent = '';
 }
@@ -308,20 +333,174 @@ async function submitClaim(){
     await db.collection('students').doc(selectedClaimStudent.id).update({ pin });
   }
 
-  // ส่งผลตรวจ + ตัวตนนักเรียนไปทาง sessionStorage แล้วเด้งเข้าแอปหลักให้ไปจบขั้นตอนบันทึกต่อ (ใช้ระบบเดิมที่ทดสอบมาแล้วทั้งหมด ไม่เขียนซ้ำ)
-  sessionStorage.setItem('saltSmartKioskClaim', JSON.stringify({
-    studentId: selectedClaimStudent.id,
-    classId: selectedClaimClass,
-    result: lastResult,
-    kioskCheckId: lastResult ? lastResult.kioskCheckId : null,
-  }));
-  statusEl.textContent = 'สำเร็จ! กำลังพาไปหน้าบันทึก...';
-  setTimeout(()=>{ window.location.href = './index.html?claimKiosk=1'; }, 600);
+  statusEl.textContent = '';
+  enterConfirmStep(); // ยืนยันตัวตนสำเร็จแล้ว → ไปหน้ายืนยัน "ทานแล้ว/แค่ตรวจดู" ต่อในหน้านี้เลย ไม่ย้ายไป index.html
 }
 
 function backToResult(){
   document.getElementById('cardClaim').classList.add('hidden');
   document.getElementById('cardResult').classList.remove('hidden');
+}
+
+/* ---- STEP 3->4: หลัง PIN ผ่านแล้ว โชว์ผลตรวจ + ให้เลือก "ทานแล้ว/แค่ตรวจดู" ทันที ---- */
+function kioskTodayStr(){
+  const d = new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+// ต้องตรงกับ SODIUM_CHECK_DAILY_POINT_CAP ใน index.html เสมอ (ถ้าแก้ที่นึงต้องแก้อีกที่ด้วย)
+const KIOSK_SODIUM_CHECK_DAILY_POINT_CAP = 5;
+
+function enterConfirmStep(){
+  document.getElementById('cardClaim').classList.add('hidden');
+  const data = lastResult;
+
+  // ถ้ารอบนี้ AI ไม่เจอค่าโซเดียม ไม่มีอะไรให้บันทึกต่อ แค่ยืนยันตัวตน (ตั้ง/เช็ค PIN) เสร็จแล้วจบเลย
+  if(!data || !data.found || data.sodium_mg == null){
+    document.getElementById('doneMsg').textContent = 'ยืนยันตัวตนเรียบร้อย! รอบนี้ AI ไม่เจอค่าโซเดียมในฉลาก เลยไม่มีอะไรให้บันทึกเพิ่มนะ ลองถ่ายรูปที่ชัดกว่านี้ดูใหม่ได้เลย';
+    document.getElementById('cardDone').classList.remove('hidden');
+    return;
+  }
+
+  const goal = (selectedClaimStudent && selectedClaimStudent.sodiumGoal) || 2000;
+  const perUnit = data.sodium_mg;
+  const pct = Math.min(Math.round((perUnit/goal)*100),200);
+  let verdictText, color;
+  // เกณฑ์สีเขียว/เหลือง/แดง คงเดิมไม่แตะ (20%/40%) ให้ตรงกับแอปหลัก
+  if(pct < 20){ verdictText='โซเดียมต่ำ 🟢 เลือกได้ดี!'; color='var(--green-ok)'; }
+  else if(pct < 40){ verdictText='โซเดียมปานกลาง 🟡 กินได้ แต่ระวังมื้ออื่น'; color='var(--amber-warn)'; }
+  else { verdictText='โซเดียมสูง 🔴 ระวัง กินแต่น้อย'; color='var(--red-high)'; }
+
+  document.getElementById('confirmWelcome').textContent = `สวัสดี ${selectedClaimStudent.name}! นี่คือผลตรวจของสินค้านี้`;
+  document.getElementById('confirmHero').innerHTML = `
+    <div class="sodium-label">โซเดียมต่อหนึ่งหน่วยบริโภค</div>
+    <div class="sodium-num">${perUnit}<span style="font-size:16px;font-weight:600;margin-left:3px;">มก.</span></div>
+    <div class="detail-line" style="color:${color}; font-weight:700;">${verdictText}</div>
+    <div class="detail-line">= ${pct}% ของขีดจำกัดโซเดียมที่แนะนำต่อวัน (${goal.toLocaleString('th-TH')} มก.)</div>
+  `;
+  document.getElementById('claimServings').value = '1';
+  document.getElementById('confirmStatus').textContent = '';
+  document.getElementById('cardConfirm').classList.remove('hidden');
+}
+
+let kioskSaveBusy = false;
+async function saveKioskSodiumCheck(consumed){
+  if(kioskSaveBusy) return;
+  kioskSaveBusy = true;
+  const statusEl = document.getElementById('confirmStatus');
+  const btns = document.querySelectorAll('#cardConfirm .btn');
+  btns.forEach(b=>b.disabled = true);
+  statusEl.textContent = 'กำลังบันทึก...';
+
+  try{
+    const student = selectedClaimStudent;
+    const data = lastResult;
+    const today = kioskTodayStr();
+    const logId = student.id + '_' + today;
+    const logRef = db.collection('dailyLogs').doc(logId);
+
+    const servingsInput = parseInt(document.getElementById('claimServings').value);
+    const servings = (!isNaN(servingsInput) && servingsInput > 0) ? servingsInput : 1;
+    const perUnitSodium = data.sodium_mg;
+    const totalSodium = Math.round(perUnitSodium * servings);
+    const goal = student.sodiumGoal || 2000;
+    const totalPct = Math.min(Math.round((totalSodium/goal)*100),200);
+    const category = data.category || null;
+    const productName = (data.product_name || '').trim() || 'ไม่ทราบชื่อสินค้า';
+    const normalizedName = productName.trim().toLowerCase();
+
+    // โหลดบันทึกวันนี้ล่าสุดจาก Firestore ตรงๆ ก่อนบันทึกทับ (กันข้อมูลเก่าหายถ้ามีรายการอื่นถูกบันทึกไปก่อนหน้าในวันเดียวกัน)
+    const logSnap = await logRef.get();
+    const existingChecks = (logSnap.exists && logSnap.data().sodiumChecks) || [];
+
+    // กันฟาร์มคะแนน: กติกาเดียวกับแอปหลักเป๊ะ — ชื่อสินค้าเดียวกันได้คะแนนแค่ครั้งแรกของวัน + จำกัดจำนวนครั้งที่ได้คะแนนต่อวัน
+    const alreadyCheckedTodaySameName = existingChecks.some(c => (c.name||'').trim().toLowerCase() === normalizedName);
+    const pointsAwardedSoFarToday = existingChecks.filter(c=>c.pointsAwarded).length;
+    const eligibleForPoints = !alreadyCheckedTodaySameName && pointsAwardedSoFarToday < KIOSK_SODIUM_CHECK_DAILY_POINT_CAP;
+
+    const newCheck = {
+      name: productName, sodium: totalSodium, pct: totalPct, perUnitSodium, servings, consumed: !!consumed,
+      category, time: new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'}),
+      pointsAwarded: eligibleForPoints, source: 'ai', aiSodiumMg: perUnitSodium
+    };
+
+    await logRef.set({
+      studentId: student.id, classId: selectedClaimClass, date: today,
+      sodiumChecks: [...existingChecks, newCheck]
+    }, {merge:true});
+
+    // อัปเดตฐานข้อมูลสินค้าที่ระบบจำไว้ (ไม่ให้ error ตรงนี้ทำให้บันทึกหลักล้มเหลว เหมือน upsertVerifiedProduct ในแอปหลัก)
+    try{
+      const prodSnap = await db.collection('verifiedProducts').where('name','==', productName).limit(1).get();
+      if(!prodSnap.empty){
+        const doc = prodSnap.docs[0];
+        await db.collection('verifiedProducts').doc(doc.id).update({
+          sodiumMg: perUnitSodium, timesChecked: (doc.data().timesChecked||1)+1, lastCheckedAt: new Date().toISOString(),
+          ...(data.energy_kcal!=null ? {energyKcal:data.energy_kcal} : {}),
+          ...(data.sugar_g!=null ? {sugarG:data.sugar_g} : {}),
+          ...(data.fat_g!=null ? {fatG:data.fat_g} : {}),
+          ...(category!=null ? {category} : {})
+        });
+      } else {
+        await db.collection('verifiedProducts').add({
+          name: productName, sodiumMg: perUnitSodium, timesChecked: 1, lastCheckedAt: new Date().toISOString(),
+          energyKcal: data.energy_kcal ?? null, sugarG: data.sugar_g ?? null, fatG: data.fat_g ?? null, category
+        });
+      }
+    }catch(e){ console.error('upsertVerifiedProduct (kiosk) failed', e); }
+
+    // ให้คะแนน + นับสถิติ Label Detective (เหมือน addPoints + incrementSodiumCheckCount ในแอปหลัก)
+    let pointsMsg;
+    const studentRef = db.collection('students').doc(student.id);
+    if(eligibleForPoints){
+      await db.runTransaction(async (tx)=>{
+        const doc = await tx.get(studentRef);
+        const cur = doc.data();
+        const newPoints = (cur.totalPoints||0) + 3;
+        const update = { totalPoints: newPoints };
+        update['pointsByCategory.labelCheck'] = ((cur.pointsByCategory && cur.pointsByCategory.labelCheck) || 0) + 3;
+        tx.update(studentRef, update);
+      });
+      await db.runTransaction(async (tx)=>{
+        const doc = await tx.get(studentRef);
+        const cur = (doc.data().sodiumCheckCount || 0) + 1;
+        tx.update(studentRef, {sodiumCheckCount: cur});
+      });
+      pointsMsg = consumed ? 'บันทึกแล้ว! เพิ่มเข้าโซเดียมวันนี้ +3 คะแนน' : 'บันทึกการตรวจแล้ว +3 คะแนน';
+    } else if(alreadyCheckedTodaySameName){
+      pointsMsg = 'บันทึกแล้ว (ตรวจซ้ำชื่อนี้แล้ววันนี้ ไม่ได้คะแนนเพิ่ม ลองตรวจของอื่นดูนะ)';
+    } else {
+      pointsMsg = `บันทึกแล้ว (ครบโควตาคะแนนตรวจฉลากวันนี้แล้ว ${KIOSK_SODIUM_CHECK_DAILY_POINT_CAP} ครั้ง พรุ่งนี้ได้คะแนนใหม่นะ)`;
+    }
+
+    // นับ streak การเก็บข้อมูลโซเดียมของวันนี้ (คนละเรื่องกับโควตาคะแนน เหมือน updateSodiumTrackStreak ในแอปหลัก)
+    try{
+      await db.runTransaction(async (tx)=>{
+        const doc = await tx.get(studentRef);
+        const cur = doc.data();
+        const last = cur.lastSodiumTrackDate || '';
+        if(last === today) return; // เก็บข้อมูลไปแล้ววันนี้ ไม่นับซ้ำ
+        const d = new Date(today+'T00:00:00'); d.setDate(d.getDate()-1);
+        const yesterday = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+        const streak = (last === yesterday) ? (cur.sodiumTrackStreak||0) + 1 : 1;
+        const longest = Math.max(cur.sodiumTrackLongestStreak||0, streak);
+        tx.update(studentRef, { sodiumTrackStreak: streak, sodiumTrackLongestStreak: longest, lastSodiumTrackDate: today });
+      });
+    }catch(e){ console.error('updateSodiumTrackStreak (kiosk) failed', e); }
+
+    // มาร์คว่ารายการนี้ถูกเคลมแล้ว (ไว้ตรวจสอบย้อนหลังเฉยๆ ไม่กระทบการบันทึกจริงถ้าล้มเหลว)
+    if(data.kioskCheckId){
+      db.collection('kioskChecks').doc(data.kioskCheckId).update({ claimedByStudentId: student.id }).catch(e=>console.error('มาร์ค kioskChecks ไม่สำเร็จ:', e));
+    }
+
+    document.getElementById('cardConfirm').classList.add('hidden');
+    document.getElementById('doneMsg').textContent = pointsMsg;
+    document.getElementById('cardDone').classList.remove('hidden');
+  }catch(e){
+    console.error('saveKioskSodiumCheck error:', e);
+    statusEl.textContent = '⚠️ บันทึกไม่สำเร็จ ลองใหม่อีกครั้ง: ' + ((e&&e.message)||'ไม่ทราบสาเหตุ');
+  }
+  btns.forEach(b=>b.disabled = false);
+  kioskSaveBusy = false;
 }
 </script>
 </body>

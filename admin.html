@@ -201,6 +201,7 @@
         <div class="card">
           <h3 style="margin-top:0;">ห้องเรียนทั้งหมด</h3>
           <p style="font-size:12px; color:#9aa8ab; margin-top:-6px;">ลบห้องได้เฉพาะห้องที่ไม่มีนักเรียนอยู่แล้ว (กันลบพลาดทำข้อมูลนักเรียนหลุดห้อง) — ถ้าจะลบห้องที่มีคนอยู่ ให้ลบนักเรียนในห้องนั้นออกให้หมดก่อน</p>
+          <p style="font-size:12px; color:#9aa8ab; margin-top:-2px;">ใช้ปุ่ม ▲▼ เพื่อสลับลำดับกับห้องที่อยู่ติดกัน หรือพิมพ์เลขลำดับเองในช่องได้เลย</p>
           <table><thead><tr><th>ลำดับ</th><th>ไอคอน</th><th>ชื่อห้อง</th><th>จำนวนนักเรียน</th><th></th></tr></thead><tbody id="classTable"></tbody></table>
         </div>
         <div class="card" style="border-color:var(--red-high);">
@@ -220,6 +221,7 @@
             </label>
             <button class="btn btn-danger" style="padding:8px 14px; font-size:12.5px; margin-bottom:10px;" onclick="deleteAllInactiveShown()">🗑️ ลบ inactive ที่แสดงอยู่ทั้งหมด</button>
           </div>
+          <p style="font-size:12px; color:#9aa8ab; margin-top:-2px;">ใช้ปุ่ม ▲▼ เพื่อสลับลำดับ (เลขที่) กับนักเรียนที่อยู่ติดกันในรายการที่กรองอยู่ตอนนี้ หรือพิมพ์เลขที่เองในช่องได้เลย — แนะนำให้กรองตามห้องก่อนจัดลำดับ กันสลับข้ามห้องโดยไม่ตั้งใจ</p>
           <table><thead><tr><th>เลขที่</th><th>ชื่อ</th><th>ห้อง</th><th>คะแนน</th><th>Streak</th><th>PIN</th><th>ล็อกอินล่าสุด</th><th></th></tr></thead><tbody id="studentTable"></tbody></table>
         </div>
       </div>
@@ -651,7 +653,7 @@
    ใช้ version.json ไฟล์เดียวกับ index.html (แก้เลขคู่กันทุกครั้งที่ deploy)
    เจอเวอร์ชันใหม่แล้วรีเฟรชอัตโนมัติทันที ยกเว้นกำลังพิมพ์อะไรอยู่ (เช่น เหตุผลไม่ผ่านภารกิจ) จะรอรอบถัดไปก่อน
    ========================================================= */
-const APP_VERSION = "2026-08-24-1"; // ต้องตรงกับใน version.json เสมอ แก้คู่กันทุกครั้งที่ deploy
+const APP_VERSION = "2026-08-20-1"; // ต้องตรงกับใน version.json เสมอ แก้คู่กันทุกครั้งที่ deploy
 async function checkForAppUpdate(){
   try{
     const res = await fetch('./version.json?t=' + Date.now(), { cache: 'no-store' });
@@ -1366,11 +1368,17 @@ async function loadClasses(){
 function loadClassTable(){
   const el = document.getElementById('classTable');
   if(!el) return; // ยังไม่โหลด studentsCache ตอนแรกสุด ไม่เป็นไร เดี๋ยว loadStudentsCache() เรียกซ้ำให้เอง
-  el.innerHTML = classesCache.map(c=>{
+  el.innerHTML = classesCache.map((c,idx)=>{
     const count = (studentsCache||[]).filter(s=>s.classId===c.id).length;
     return `
     <tr>
-      <td>${c.order||'-'}</td>
+      <td>
+        <input type="number" value="${c.order||0}" id="classOrder_${c.id}" style="width:56px; padding:5px; text-align:center; border:1px solid #ddd; border-radius:6px;" onchange="saveClassOrder('${c.id}')">
+        <div style="display:flex; gap:2px; margin-top:4px;">
+          <button class="btn btn-ghost" style="padding:2px 8px; font-size:12px;" onclick="moveClass('${c.id}',-1)" ${idx===0?'disabled':''}>▲</button>
+          <button class="btn btn-ghost" style="padding:2px 8px; font-size:12px;" onclick="moveClass('${c.id}',1)" ${idx===classesCache.length-1?'disabled':''}>▼</button>
+        </div>
+      </td>
       <td><input type="text" value="${c.icon||'🏫'}" id="classIcon_${c.id}" style="width:44px; padding:5px; text-align:center; border:1px solid #ddd; border-radius:6px;" onchange="saveClassIcon('${c.id}')"></td>
       <td>${c.name}</td><td>${count} คน</td>
       <td><button class="btn btn-danger" style="padding:6px 10px;font-size:12px;" onclick="deleteClass('${c.id}','${(c.name||'').replace(/'/g,"\\'")}')">ลบ</button></td>
@@ -1380,6 +1388,22 @@ function loadClassTable(){
 async function saveClassIcon(id){
   const val = document.getElementById('classIcon_'+id).value.trim() || '🏫';
   await db.collection('classes').doc(id).update({icon: val});
+  await loadClasses();
+}
+// สลับลำดับห้องกับห้องที่อยู่ติดกัน (direction: -1 = เลื่อนขึ้น, +1 = เลื่อนลง) — สลับแค่ค่า order ของ 2 ห้องนี้ ห้องอื่นไม่กระทบ
+async function moveClass(id, direction){
+  const idx = classesCache.findIndex(c=>c.id===id);
+  const swapIdx = idx + direction;
+  if(idx<0 || swapIdx<0 || swapIdx>=classesCache.length) return;
+  const a = classesCache[idx], b = classesCache[swapIdx];
+  await db.collection('classes').doc(a.id).update({order: b.order});
+  await db.collection('classes').doc(b.id).update({order: a.order});
+  await loadClasses();
+}
+async function saveClassOrder(id){
+  const val = parseInt(document.getElementById('classOrder_'+id).value);
+  if(isNaN(val)){ await loadClasses(); return; }
+  await db.collection('classes').doc(id).update({order: val});
   await loadClasses();
 }
 async function deleteClass(id, name){
@@ -1490,16 +1514,27 @@ function daysInactiveInfo(s){
   const days = Math.floor((Date.now() - new Date(s.lastLoginAt).getTime()) / 86400000);
   return { label: days===0 ? 'วันนี้' : `${days} วันก่อน`, isInactive: days >= 5, days };
 }
-function loadStudentTable(){
+function currentStudentTableList(){
   const filter = document.getElementById('filterClassSelect').value;
   const inactiveOnly = document.getElementById('filterInactiveOnly') && document.getElementById('filterInactiveOnly').checked;
   let list = filter ? studentsCache.filter(s=>s.classId===filter) : studentsCache;
   if(inactiveOnly) list = list.filter(s=>daysInactiveInfo(s).isInactive);
-  document.getElementById('studentTable').innerHTML = list.sort((a,b)=>a.studentNo-b.studentNo).map(s=>{
+  return list.sort((a,b)=>a.studentNo-b.studentNo);
+}
+function loadStudentTable(){
+  const list = currentStudentTableList();
+  document.getElementById('studentTable').innerHTML = list.map((s,idx)=>{
     const inact = daysInactiveInfo(s);
     return `
     <tr>
-      <td>${s.studentNo}</td><td>${s.name}</td><td>${classNameOf(s.classId)}</td>
+      <td>
+        <input type="number" value="${s.studentNo}" id="studentNo_${s.id}" style="width:52px; padding:5px; text-align:center; border:1px solid #ddd; border-radius:6px;" onchange="saveStudentNo('${s.id}')">
+        <div style="display:flex; gap:2px; margin-top:4px;">
+          <button class="btn btn-ghost" style="padding:2px 8px; font-size:12px;" onclick="moveStudent('${s.id}',-1)" ${idx===0?'disabled':''}>▲</button>
+          <button class="btn btn-ghost" style="padding:2px 8px; font-size:12px;" onclick="moveStudent('${s.id}',1)" ${idx===list.length-1?'disabled':''}>▼</button>
+        </div>
+      </td>
+      <td>${s.name}</td><td>${classNameOf(s.classId)}</td>
       <td>${s.totalPoints||0}</td><td>${s.currentStreak||0}</td>
       <td>${s.pin ? '<span class="pill">ตั้งแล้ว</span>' : '<span class="pill">ยังไม่ตั้ง</span>'}</td>
       <td style="${inact.isInactive?'color:var(--red-high);font-weight:600;':''}">${inact.label}</td>
@@ -1510,6 +1545,25 @@ function loadStudentTable(){
       </td>
     </tr>`;
   }).join('');
+}
+// สลับเลขที่กับนักเรียนที่อยู่ติดกันในรายการที่กรองอยู่ตอนนี้ (direction: -1 = เลื่อนขึ้น, +1 = เลื่อนลง) — สลับแค่ค่า studentNo ของ 2 คนนี้ คนอื่นไม่กระทบ
+async function moveStudent(id, direction){
+  const list = currentStudentTableList();
+  const idx = list.findIndex(s=>s.id===id);
+  const swapIdx = idx + direction;
+  if(idx<0 || swapIdx<0 || swapIdx>=list.length) return;
+  const a = list[idx], b = list[swapIdx];
+  await db.collection('students').doc(a.id).update({studentNo: b.studentNo});
+  await db.collection('students').doc(b.id).update({studentNo: a.studentNo});
+  await loadStudentsCache();
+  loadStudentTable();
+}
+async function saveStudentNo(id){
+  const val = parseInt(document.getElementById('studentNo_'+id).value);
+  if(isNaN(val)){ loadStudentTable(); return; }
+  await db.collection('students').doc(id).update({studentNo: val});
+  await loadStudentsCache();
+  loadStudentTable();
 }
 async function deleteAllInactiveShown(){
   const filter = document.getElementById('filterClassSelect').value;
