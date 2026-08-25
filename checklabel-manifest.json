@@ -1,0 +1,16 @@
+{
+  "name": "จุดตรวจฉลากอาหาร Salt Smart",
+  "short_name": "จุดตรวจฉลาก",
+  "description": "จุดตรวจฉลากโภชนาการที่ร้านค้าโรงเรียน ไม่ต้องล็อกอินก่อนใช้ โครงการ Salt Smart 2569",
+  "start_url": "./checklabel.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#FDFBF6",
+  "theme_color": "#2A9D8F",
+  "lang": "th",
+  "icons": [
+    { "src": "checklabel-icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "checklabel-icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
