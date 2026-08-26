@@ -171,7 +171,7 @@
 
         <div class="card" style="margin-top:20px;">
           <h3 style="margin-top:0;">🗂️ หมวดหมู่สินค้าที่ตรวจบ่อยที่สุด</h3>
-          <p style="font-size:12.5px; color:#9aa8ab; margin-top:-6px;">นับจากการตรวจฉลากด้วย AI Vision ทั้งหมด (จัดหมวดโดย AI อัตโนมัติ)</p>
+          <p style="font-size:12.5px; color:#9aa8ab; margin-top:-6px;">นับทุกครั้งที่เรียก AI Vision จริง ไม่ว่าจะกดบันทึกต่อ ("กินแล้ว"/"แค่ตรวจดู") หรือไม่ก็ตาม — รวมทั้งจากแอปหลักและจุดตรวจฉลากร้านค้า (checklabel.html) เพราะถือว่าใช้ AI ไปแล้วตั้งแต่ตอนนั้น (เริ่มนับตั้งแต่วันที่อัปเดตระบบรอบนี้เป็นต้นไป)</p>
           <div id="categorySummary"><div class="empty-note">กำลังโหลด…</div></div>
         </div>
 
@@ -1219,18 +1219,22 @@ async function loadOverview(){
 async function loadCategorySummary(){
   const wrap = document.getElementById('categorySummary');
   try{
-    const allLogsSnap = await db.collection('dailyLogs').get();
+    // นับจาก raw log ของทุกครั้งที่เรียก AI จริง (ไม่ใช่ dailyLogs ที่มีแค่รายการที่กดบันทึกต่อแล้ว)
+    // รวม 2 แหล่ง: aiVisionCalls (แอปหลัก index.html) + kioskChecks (จุดตรวจฉลากร้านค้า checklabel.html)
+    const [aiCallsSnap, kioskSnap] = await Promise.all([
+      db.collection('aiVisionCalls').get(),
+      db.collection('kioskChecks').get()
+    ]);
     const counts = {};
     let total = 0;
-    allLogsSnap.docs.forEach(d=>{
-      const checks = d.data().sodiumChecks || [];
-      checks.forEach(c=>{
-        const cat = c.category || 'ไม่ระบุหมวดหมู่';
-        counts[cat] = (counts[cat]||0) + 1;
-        total++;
-      });
+    [...aiCallsSnap.docs, ...kioskSnap.docs].forEach(d=>{
+      const data = d.data();
+      if(!data.found) return; // นับเฉพาะที่ AI อ่านเจอค่าจริง กันหมวด "ไม่ระบุ" ท่วมจากรายการที่อ่านไม่ออกเลย
+      const cat = data.category || 'ไม่ระบุหมวดหมู่';
+      counts[cat] = (counts[cat]||0) + 1;
+      total++;
     });
-    if(total===0){ wrap.innerHTML = '<div class="empty-note">ยังไม่มีข้อมูลการตรวจฉลาก</div>'; return; }
+    if(total===0){ wrap.innerHTML = '<div class="empty-note">ยังไม่มีข้อมูล (เริ่มนับตั้งแต่วันที่อัปเดตระบบรอบนี้เป็นต้นไป — ถ้าเพิ่งอัปเดต Cloud Function อาจต้องรอให้มีการใช้งานใหม่ก่อน)</div>'; return; }
     const sorted = Object.entries(counts).sort((a,b)=>b[1]-a[1]);
     wrap.innerHTML = sorted.map(([cat,count])=>{
       const pct = Math.round(count/total*100);
