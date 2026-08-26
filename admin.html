@@ -164,8 +164,8 @@
         </div>
 
         <div class="card" style="margin-top:20px;">
-          <h3 style="margin-top:0;">📞 จำนวนครั้งที่เรียก AI จริง (แอปหลัก index.html)</h3>
-          <p style="font-size:12.5px; color:#9aa8ab; margin-top:-6px;"><b>นับทุกครั้งที่เรียก AI สำเร็จจริง</b> ไม่ว่าจะกดบันทึกต่อหรือไม่ (คนละยอดกับการ์ดด้านบนที่นับเฉพาะรายการที่บันทึกแล้ว) · เริ่มนับตั้งแต่วันที่อัปเดตระบบรอบนี้เป็นต้นไปเท่านั้น ยอดก่อนหน้ากู้คืนไม่ได้ ต้องเช็คจาก Anthropic Console หรือ Firebase Console → Functions → Invocations แทน</p>
+          <h3 style="margin-top:0;">📞 จำนวนครั้งที่เรียก AI จริงทั้งหมด</h3>
+          <p style="font-size:12.5px; color:#9aa8ab; margin-top:-6px;"><b>นับทุกครั้งที่เรียก AI สำเร็จจริง</b> รวมทั้งจากแอปหลัก (index.html) และจุดตรวจฉลากร้านค้า (checklabel.html) เข้าด้วยกัน ไม่ว่าจะกดบันทึกต่อหรือไม่ก็ตาม — ใช้เลขนี้อ้างอิงกับกรรมการได้เลยว่า AI ถูกใช้ไปกี่ครั้งจริง (คนละยอดกับการ์ดด้านบนที่นับเฉพาะรายการที่บันทึกแล้ว) · เริ่มนับฝั่งแอปหลักตั้งแต่วันที่อัปเดตระบบรอบนี้เป็นต้นไปเท่านั้น ยอดก่อนหน้ากู้คืนไม่ได้ ต้องเช็คจาก Anthropic Console หรือ Firebase Console → Functions → Invocations แทน (ฝั่งจุดตรวจร้านค้านับมาตั้งแต่ต้นแล้ว)</p>
           <div id="aiVisionCallLog"><div class="empty-note">กำลังโหลด…</div></div>
         </div>
 
@@ -1304,36 +1304,62 @@ async function loadAiVisionCallLog(){
   const wrap = document.getElementById('aiVisionCallLog');
   if(!wrap) return;
   try{
-    const callsSnap = await db.collection('aiVisionCalls').get();
-    const total = callsSnap.size;
-    if(total === 0){
-      wrap.innerHTML = '<div class="empty-note">ยังไม่มีข้อมูล — ระบบเริ่มเก็บ log นี้หลังอัปเดตรอบล่าสุด ยอดเรียกก่อนหน้านี้ตรวจสอบย้อนหลังไม่ได้แล้ว (เช็คได้จาก Anthropic Console หรือ Firebase Console → Functions → Invocations แทน)</div>';
-      return;
+    // รวม 2 แหล่ง: aiVisionCalls (แอปหลัก index.html) + kioskChecks (จุดตรวจฉลากร้านค้า checklabel.html)
+    // แยก try ต่อแหล่งข้อมูล กันกรณี rules/permission มีปัญหาแค่แหล่งเดียว ไม่ให้ทั้งการ์ดพังไปด้วย
+    let mainCalls = [], mainErr = null;
+    try{
+      const snap = await db.collection('aiVisionCalls').get();
+      mainCalls = snap.docs.map(d=>d.data());
+    }catch(e){ console.error('โหลด aiVisionCalls ไม่สำเร็จ:', e); mainErr = e; }
+
+    let kioskCalls = [], kioskErr = null;
+    try{
+      const snap = await db.collection('kioskChecks').get();
+      kioskCalls = snap.docs.map(d=>d.data());
+    }catch(e){ console.error('โหลด kioskChecks ไม่สำเร็จ:', e); kioskErr = e; }
+
+    if(mainErr && kioskErr){
+      throw mainErr; // ทั้งสองแหล่งพังพร้อมกัน ให้ตกไป catch ข้างล่างโชว์ error รวม
     }
-    let foundCount = 0;
-    callsSnap.docs.forEach(d=>{ if(d.data().found) foundCount++; });
+
+    const total = mainCalls.length + kioskCalls.length;
+    const mainFound = mainCalls.filter(d=>d.found).length;
+    const kioskFound = kioskCalls.filter(d=>d.found).length;
+    const foundCount = mainFound + kioskFound;
     const notFoundCount = total - foundCount;
 
     // เทียบกับจำนวนที่ถูกกดบันทึกต่อจริงในแอป (source:'ai' ใน dailyLogs) ว่าคิดเป็นกี่ % ของที่เรียก AI ทั้งหมด
-    const allLogsSnap = await db.collection('dailyLogs').get();
     let savedAiCount = 0;
-    allLogsSnap.docs.forEach(d=>{
-      (d.data().sodiumChecks||[]).forEach(c=>{ if(c.source==='ai') savedAiCount++; });
-    });
-    const savedPct = Math.round(Math.min(savedAiCount,total)/total*100);
+    try{
+      const allLogsSnap = await db.collection('dailyLogs').get();
+      allLogsSnap.docs.forEach(d=>{
+        (d.data().sodiumChecks||[]).forEach(c=>{ if(c.source==='ai') savedAiCount++; });
+      });
+    }catch(e){ console.error('โหลด dailyLogs (เทียบยอดบันทึกจริง) ไม่สำเร็จ:', e); }
+    const savedPct = total>0 ? Math.round(Math.min(savedAiCount,total)/total*100) : 0;
+
+    const warnHtml = (mainErr || kioskErr)
+      ? `<p style="font-size:11.5px; color:var(--red-high); margin-top:8px;">⚠️ โหลดข้อมูลได้ไม่ครบ: ${mainErr ? 'แอปหลัก (index.html) โหลดไม่สำเร็จ — ' + (mainErr.message||mainErr.code) : ''}${kioskErr ? 'จุดตรวจร้านค้า (checklabel.html) โหลดไม่สำเร็จ — ' + (kioskErr.message||kioskErr.code) : ''} (เลขที่โชว์ด้านบนเป็นแค่ส่วนที่โหลดได้เท่านั้น ไม่ใช่ยอดจริงทั้งหมด — ถ้าขึ้น "Missing or insufficient permissions" ต้องไปแก้ firestore.rules ให้แอดมินอ่าน collection นี้ได้)</p>`
+      : `<p style="font-size:11.5px; color:#aab5b8; margin-top:8px;">*ฝั่งแอปหลักนับตั้งแต่วันที่อัปเดตระบบรอบนี้เป็นต้นไปเท่านั้น ฝั่งจุดตรวจร้านค้านับมาตั้งแต่ต้น</p>`;
+
+    if(total===0 && !mainErr && !kioskErr){
+      wrap.innerHTML = '<div class="empty-note">ยังไม่มีข้อมูล — ระบบเริ่มเก็บ log นี้หลังอัปเดตรอบล่าสุด ยอดเรียกก่อนหน้านี้ตรวจสอบย้อนหลังไม่ได้แล้ว (เช็คได้จาก Anthropic Console หรือ Firebase Console → Functions → Invocations แทน)</div>';
+      return;
+    }
 
     wrap.innerHTML = `
       <div class="row" style="margin-top:0;">
         <div class="kpi"><div class="n">${total}</div><div class="l">เรียก AI จริงทั้งหมด</div></div>
-        <div class="kpi"><div class="n">${foundCount}</div><div class="l">อ่านเจอค่า</div></div>
-        <div class="kpi"><div class="n">${notFoundCount}</div><div class="l">อ่านไม่เจอค่า</div></div>
-        <div class="kpi"><div class="n">${savedPct}%</div><div class="l">กดบันทึกต่อจริง (${savedAiCount}/${total})</div></div>
+        <div class="kpi"><div class="n">${mainCalls.length}</div><div class="l">จากแอปหลัก</div></div>
+        <div class="kpi"><div class="n">${kioskCalls.length}</div><div class="l">จากจุดตรวจร้านค้า</div></div>
+        <div class="kpi"><div class="n">${foundCount}</div><div class="l">อ่านเจอค่า (${notFoundCount} ไม่เจอ)</div></div>
       </div>
-      <p style="font-size:11.5px; color:#aab5b8; margin-top:8px;">*นับตั้งแต่วันที่อัปเดตระบบรอบนี้เป็นต้นไปเท่านั้น</p>
+      <p style="font-size:11.5px; color:#aab5b8; margin-top:8px;">กดบันทึกต่อจริงในแอป ${savedAiCount} จาก ${total} ครั้ง (${savedPct}%)</p>
+      ${warnHtml}
     `;
   }catch(e){
     console.error(e);
-    wrap.innerHTML = '<div class="empty-note">โหลดข้อมูลไม่สำเร็จ</div>';
+    wrap.innerHTML = `<div class="empty-note">โหลดข้อมูลไม่สำเร็จ: ${(e&&(e.message||e.code))||'ไม่ทราบสาเหตุ'}${(e&&e.code==='permission-denied')?' (ต้องแก้ firestore.rules ให้แอดมินอ่าน collection นี้ได้)':''}</div>`;
   }
 }
 function classNameOf(id){ const c = classesCache.find(c=>c.id===id); return c?c.name:'-'; }
