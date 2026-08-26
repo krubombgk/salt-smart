@@ -265,7 +265,9 @@
   .quick-action:active{transform:scale(0.96); box-shadow:0 1px 4px rgba(11,61,76,0.10);}
   .quick-action.qa-check{background:#E4F5F3; border-color:rgba(42,157,143,0.35);}
   .quick-action.qa-add{background:#FCEFDC; border-color:rgba(244,162,97,0.4);}
-  .quick-action.qa-tiktok{background:#FDEAF0; border-color:rgba(233,30,99,0.25);}
+  .tiktok-banner{display:flex; align-items:center; gap:10px; background:#FDEAF0; border:1px solid rgba(233,30,99,0.25); border-radius:14px; padding:12px 14px; margin-bottom:14px; cursor:pointer;}
+  .tiktok-banner:active{transform:scale(0.98);}
+  .tiktok-banner img{width:36px; height:36px; border-radius:9px; flex-shrink:0; display:block;}
   .quick-action-arrow{margin-left:auto; color:var(--deep-sea); opacity:0.45; font-size:16px; flex-shrink:0;}
   .quick-action-icon{font-size:24px; flex-shrink:0;}
   .quick-action-icon img{width:40px; height:40px; object-fit:contain; display:block;}
@@ -901,6 +903,15 @@
 
     <!-- TAB: HOME (ย้ายมาจาก screen-home เดิม เพื่อรวมเป็นแท็บเดียวในระบบเดียวกับแท็บอื่น) -->
     <div class="tabpanel" id="tab-home">
+      <div class="tiktok-banner" onclick="openTiktokClips()">
+        <img src="icon-tiktok.png" alt="">
+        <div style="flex:1;">
+          <div style="font-family:'Kanit'; font-weight:700; font-size:13.5px; color:var(--deep-sea);">คลิป TikTok โครงการ</div>
+          <div style="font-size:11px; color:#6b7c80;">ดูคลิปกิจกรรมของเรา</div>
+        </div>
+        <div style="color:var(--deep-sea); opacity:0.45; font-size:16px; flex-shrink:0;">›</div>
+      </div>
+
       <div class="section-title" id="homeGreeting" style="font-size:16px; margin-top:0;">สวัสดี! 👋</div>
       <div style="text-align:right; margin:-6px 0 8px;"><span style="color:var(--lagoon); font-family:'Kanit'; font-weight:600; font-size:12px; cursor:pointer;" onclick="openAnnounceHistory()">📋 ดูประกาศทั้งหมด</span></div>
 
@@ -983,11 +994,6 @@
         <div class="quick-action qa-add" onclick="switchTab('tab-sodium-hub'); toggleMealPicker();">
           <div class="quick-action-icon"><img src="icon-addmenu.png" alt=""></div>
           <div><div class="quick-action-title">เพิ่มอาหาร</div><div class="quick-action-sub">บันทึกที่ทานวันนี้</div></div>
-          <div class="quick-action-arrow">›</div>
-        </div>
-        <div class="quick-action qa-tiktok" style="grid-column:1 / -1;" onclick="openTiktokClips()">
-          <div class="quick-action-icon" style="font-size:22px; display:flex; align-items:center; justify-content:center;">🎬</div>
-          <div><div class="quick-action-title">คลิป TikTok โครงการ</div><div class="quick-action-sub">ดูคลิปกิจกรรมของเรา</div></div>
           <div class="quick-action-arrow">›</div>
         </div>
       </div>
@@ -1601,7 +1607,7 @@
    ถ้าเจอเวอร์ชันใหม่กว่าที่ฝังมากับโค้ดตอนนี้ จะรีเฟรชอัตโนมัติทันที (ไม่ต้องรอให้ใครกดเอง กันเครื่องค้างเวอร์ชันเก่าไม่รู้ตัว)
    ยกเว้นตอนกำลังพิมพ์อะไรอยู่ในช่องกรอกข้อความ (เช่น เขียนสะท้อนตัวเอง) จะรอรอบถัดไปก่อน กันข้อมูลที่พิมพ์ค้างอยู่หายกะทันหัน
    ========================================================= */
-const APP_VERSION = "2026-08-26-1"; // ต้องตรงกับใน version.json เสมอ แก้คู่กันทุกครั้งที่ deploy
+const APP_VERSION = "2026-08-26-2"; // ต้องตรงกับใน version.json เสมอ แก้คู่กันทุกครั้งที่ deploy
 async function checkForAppUpdate(){
   try{
     const res = await fetch('./version.json?t=' + Date.now(), { cache: 'no-store' });
@@ -1684,9 +1690,7 @@ const SODIUM_CHECK_DAILY_POINT_CAP = 5;
 // คลิป TikTok ของโครงการ (10 คลิปทั้งหมด ทำเสร็จเพิ่มก็มาเพิ่มบรรทัดในนี้ได้เลย ไม่ต้องแก้ที่อื่น)
 // title = ชื่อคลิปที่โชว์ในแอป, url = ลิงก์ TikTok เต็ม (เปิดแท็บใหม่ตอนกด)
 const TIKTOK_CLIPS = [
-  { title: "รู้จักกับโซเดียม", url: "https://www.tiktok.com/@oryornoi.kanlaya/video/7673888974389251346" },
-  { title: "เริ่ม 21 Days Challenge", url: "https://www.tiktok.com/@oryornoi.kanlaya/video/7674999622825184520" },
-  { title: "โซเดียมแฝง", url: "https://www.tiktok.com/@oryornoi.kanlaya/video/7677985081452956946" },
+  // { title: "ตัวอย่างชื่อคลิป", url: "https://www.tiktok.com/@username/video/xxxxxxxxxxxxxxxxx" },
 ];
 
 // เป้าหมายโซเดียมต่อวันของนักเรียนคนนี้ (ปรับเองได้ในแท็บโซเดียม) — ถ้ายังไม่เคยตั้งจะ fallback เป็นค่า default ด้านบน
@@ -2182,13 +2186,8 @@ function initNotifyOptIn(){
 
   const savedToken = localStorage.getItem(NOTIFY_TOKEN_KEY);
   if(Notification.permission === 'granted' && savedToken){
-    // เปิดแจ้งเตือนอยู่แล้วบนเครื่องนี้ — โชว์เป็นสถานะ "เปิดอยู่" พร้อมปุ่มปิด แทนที่จะซ่อนการ์ดไปเลย
-    title.textContent = '🔔 เปิดแจ้งเตือนอยู่';
-    desc.textContent = 'เครื่องนี้จะได้รับแจ้งเตือนภารกิจ/บันทึกประจำวัน';
-    btn.textContent = 'ปิด';
-    btn.className = 'btn btn-ghost';
-    btn.style.cssText = 'width:auto; padding:8px 14px; font-size:12.5px;';
-    card.style.display = 'block';
+    // เปิดแจ้งเตือนอยู่แล้วบนเครื่องนี้ — ซ่อนการ์ดไปเลยเพื่อประหยัดพื้นที่หน้าจอ (ปิดแจ้งเตือนได้จากตั้งค่าเครื่อง/เบราว์เซอร์แทน)
+    card.style.display = 'none';
     return;
   }
 
@@ -4548,19 +4547,45 @@ function closeAnnounceHistory(){
 }
 
 /* ---- คลิป TikTok ของโครงการ (ดึงจาก TIKTOK_CLIPS ด้านบน — เพิ่มคลิปใหม่แค่เพิ่มบรรทัดในนั้น) ---- */
+const tiktokThumbCache = {}; // เก็บ thumbnail ที่ดึงมาแล้วไว้ในหน่วยความจำ กันดึงซ้ำทุกครั้งที่เปิด popup รอบเดียวกัน
+async function fetchTiktokThumb(url){
+  if(url in tiktokThumbCache) return tiktokThumbCache[url];
+  try{
+    const res = await fetch('https://www.tiktok.com/oembed?url=' + encodeURIComponent(url));
+    if(!res.ok) throw new Error('oembed fetch failed: ' + res.status);
+    const data = await res.json();
+    tiktokThumbCache[url] = data.thumbnail_url || null;
+  }catch(e){
+    console.error('โหลด thumbnail TikTok ไม่สำเร็จ (โชว์ไอคอนเริ่มต้นแทน):', e);
+    tiktokThumbCache[url] = null;
+  }
+  return tiktokThumbCache[url];
+}
 function openTiktokClips(){
   document.getElementById('tiktokOverlay').style.display = 'flex';
   const listEl = document.getElementById('tiktokList');
-  listEl.innerHTML = TIKTOK_CLIPS.length>0
-    ? TIKTOK_CLIPS.map((c,i)=>`
-        <div class="rw-history-item" style="display:flex; align-items:center; gap:10px; cursor:pointer;" onclick="window.open('${c.url}','_blank','noopener')">
-          <div style="width:36px; height:36px; border-radius:10px; background:#FDEAF0; display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0;">🎬</div>
-          <div style="flex:1;">
-            <div class="rw-history-name">${c.title}</div>
-            <div style="font-size:11px; color:var(--lagoon); font-weight:600;">ดูใน TikTok ▶</div>
-          </div>
-        </div>`).join('')
-    : '<div class="empty-note">เร็วๆ นี้! ครูกำลังทำคลิปอยู่นะ 🎥</div>';
+  if(TIKTOK_CLIPS.length===0){
+    listEl.innerHTML = '<div class="empty-note">เร็วๆ นี้! ครูกำลังทำคลิปอยู่นะ 🎥</div>';
+    return;
+  }
+  // โชว์รายชื่อคลิปพร้อมไอคอนตั้งต้นก่อนทันที ไม่รอ thumbnail โหลดเสร็จ กันหน้าจอค้าง
+  listEl.innerHTML = TIKTOK_CLIPS.map((c,i)=>`
+    <div class="rw-history-item" style="display:flex; align-items:center; gap:10px; cursor:pointer;" onclick="window.open('${c.url}','_blank','noopener')">
+      <div id="tiktokThumb${i}" style="width:44px; height:44px; border-radius:10px; background:#FDEAF0; display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0; overflow:hidden;">🎬</div>
+      <div style="flex:1;">
+        <div class="rw-history-name">${c.title}</div>
+        <div style="font-size:11px; color:var(--lagoon); font-weight:600;">ดูใน TikTok ▶</div>
+      </div>
+    </div>`).join('');
+
+  // ดึง thumbnail จริงจาก TikTok มาแทนที่ไอคอนตั้งต้นทีหลัง (ทีละคลิป ไม่บล็อกกัน ถ้าคลิปไหนดึงไม่ได้ก็ปล่อยไอคอนเดิมไว้)
+  TIKTOK_CLIPS.forEach((c,i)=>{
+    fetchTiktokThumb(c.url).then(thumbUrl=>{
+      if(!thumbUrl) return;
+      const el = document.getElementById('tiktokThumb'+i);
+      if(el) el.innerHTML = `<img src="${thumbUrl}" alt="" style="width:100%; height:100%; object-fit:cover;" onerror="this.parentElement.innerHTML='🎬'">`;
+    });
+  });
 }
 function closeTiktokClips(){
   document.getElementById('tiktokOverlay').style.display = 'none';
