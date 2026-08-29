@@ -1607,7 +1607,7 @@
    ถ้าเจอเวอร์ชันใหม่กว่าที่ฝังมากับโค้ดตอนนี้ จะรีเฟรชอัตโนมัติทันที (ไม่ต้องรอให้ใครกดเอง กันเครื่องค้างเวอร์ชันเก่าไม่รู้ตัว)
    ยกเว้นตอนกำลังพิมพ์อะไรอยู่ในช่องกรอกข้อความ (เช่น เขียนสะท้อนตัวเอง) จะรอรอบถัดไปก่อน กันข้อมูลที่พิมพ์ค้างอยู่หายกะทันหัน
    ========================================================= */
-const APP_VERSION = "2026-08-26-2"; // ต้องตรงกับใน version.json เสมอ แก้คู่กันทุกครั้งที่ deploy
+const APP_VERSION = "2026-08-27-2"; // ต้องตรงกับใน version.json เสมอ แก้คู่กันทุกครั้งที่ deploy
 async function checkForAppUpdate(){
   try{
     const res = await fetch('./version.json?t=' + Date.now(), { cache: 'no-store' });
@@ -1690,9 +1690,7 @@ const SODIUM_CHECK_DAILY_POINT_CAP = 5;
 // คลิป TikTok ของโครงการ (10 คลิปทั้งหมด ทำเสร็จเพิ่มก็มาเพิ่มบรรทัดในนี้ได้เลย ไม่ต้องแก้ที่อื่น)
 // title = ชื่อคลิปที่โชว์ในแอป, url = ลิงก์ TikTok เต็ม (เปิดแท็บใหม่ตอนกด)
 const TIKTOK_CLIPS = [
-  { title: "รู้จักกับโซเดียม", url: "https://www.tiktok.com/@oryornoi.kanlaya/video/7673888974389251346" },
-  { title: "เริ่ม 21 Days Challenge", url: "https://www.tiktok.com/@oryornoi.kanlaya/video/7674999622825184520" },
-  { title: "โซเดียมแฝง", url: "https://www.tiktok.com/@oryornoi.kanlaya/video/7677985081452956946" },
+  // { title: "ตัวอย่างชื่อคลิป", url: "https://www.tiktok.com/@username/video/xxxxxxxxxxxxxxxxx" },
 ];
 
 // เป้าหมายโซเดียมต่อวันของนักเรียนคนนี้ (ปรับเองได้ในแท็บโซเดียม) — ถ้ายังไม่เคยตั้งจะ fallback เป็นค่า default ด้านบน
@@ -2669,11 +2667,9 @@ function applyLogLockState(){
   }
 }
 
-/* ---- Sodium checker: AI Vision (Claude Haiku ผ่าน Cloud Function) ---- */
-function resizeImageForUpload(file){
+/* ---- ตัวช่วยย่อรูปทั่วไป: คืนค่าเป็น Blob (JPEG) ใช้ร่วมกันทั้งตรวจฉลากและส่งหลักฐานภารกิจ ---- */
+function resizeImageToBlob(file, maxDim, quality){
   return new Promise((resolve, reject)=>{
-    const maxDim = 1568;
-
     function drawAndResolve(source, w0, h0, cleanup){
       try{
         const scale = Math.min(1, maxDim / Math.max(w0, h0));
@@ -2684,11 +2680,9 @@ function resizeImageForUpload(file){
         canvas.getContext('2d').drawImage(source, 0, 0, w, h);
         if (cleanup) cleanup();
         canvas.toBlob(blob=>{
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result.split(',')[1]);
-          reader.onerror = reject;
-          reader.readAsDataURL(blob);
-        }, 'image/jpeg', 0.88);
+          if(!blob){ reject(new Error('สร้างไฟล์รูปไม่สำเร็จ')); return; }
+          resolve(blob);
+        }, 'image/jpeg', quality);
       }catch(e){ reject(e); }
     }
 
@@ -2714,6 +2708,18 @@ function resizeImageForUpload(file){
     } else {
       fallbackViaImageElement();
     }
+  });
+}
+
+/* ---- Sodium checker: AI Vision (Claude Haiku ผ่าน Cloud Function) — ต้องการ base64 ---- */
+function resizeImageForUpload(file){
+  return resizeImageToBlob(file, 1568, 0.88).then(blob=>{
+    return new Promise((resolve, reject)=>{
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result.split(',')[1]);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
   });
 }
 
@@ -3482,10 +3488,18 @@ async function submitMission(){
   try{
     const photoUrls = [];
     for (let i=0; i<photoFiles.length; i++){
+      msgEl.textContent = `กำลังย่อรูป (${i+1}/${photoFiles.length})...`;
+      let uploadBlob;
+      try{
+        uploadBlob = await resizeImageToBlob(photoFiles[i], 1568, 0.85); // ย่อก่อนอัปโหลดเสมอ กันไฟล์ใหญ่จากกล้องมือถือ/แท็บเล็ตทำให้อัปโหลดช้าจนตัดการเชื่อมต่อ (timeout)
+      }catch(e){
+        console.error('resizeImageToBlob (mission) error:', e); // ย่อไม่สำเร็จ (เช่นไฟล์เพี้ยน) ใช้ไฟล์ต้นฉบับแทน ดีกว่าอัปโหลดไม่ได้เลย
+        uploadBlob = photoFiles[i];
+      }
       msgEl.textContent = `กำลังอัปโหลดรูป (${i+1}/${photoFiles.length})...`;
       const path = `missionEvidence/${state.selectedStudent.id}/${state.missionTargetDate}_${Date.now()}_${i}.jpg`;
       const ref = storage.ref().child(path);
-      await withTimeout(ref.put(photoFiles[i]), 25000, 'อัปโหลดรูป'); // เผื่อรูปใหญ่/เน็ตช้า ให้เวลานานกว่าปกติหน่อย แต่ต้องไม่ค้างตลอดไปแบบไม่มี timeout เหมือนเดิม
+      await withTimeout(ref.put(uploadBlob), 25000, 'อัปโหลดรูป'); // เผื่อรูปใหญ่/เน็ตช้า ให้เวลานานกว่าปกติหน่อย แต่ต้องไม่ค้างตลอดไปแบบไม่มี timeout เหมือนเดิม
       const url = await withTimeout(ref.getDownloadURL(), 15000, 'ดึงลิงก์รูป');
       photoUrls.push(url);
     }
@@ -3944,7 +3958,9 @@ async function submitDailyLog(){
     } else {
       showToast('⚠️ บันทึกไม่สำเร็จ: ' + e.message + ' — ลองใหม่อีกครั้ง');
     }
-    btn.disabled = false; btn.textContent = 'บันทึก'; // คืนปุ่มให้กดใหม่ได้ เฉพาะตอนบันทึกไม่สำเร็จจริง
+  } finally {
+    // ต้องคืนปุ่มทุกครั้งไม่ว่าสำเร็จหรือไม่ — เดิมคืนปุ่มแค่ตอน error เท่านั้น ทำให้พอบันทึกสำเร็จแล้วเปลี่ยนไปเลือกวันอื่น ปุ่มยังค้าง disabled+"กำลังบันทึก..." จากรอบก่อนอยู่ กดยังไงก็ไม่ทำงาน ต้อง refresh หน้าถึงจะหาย
+    btn.disabled = false; btn.textContent = 'บันทึก';
   }
 }
 
