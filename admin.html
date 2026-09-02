@@ -628,6 +628,37 @@
             <button class="btn btn-ghost" onclick="exportAssessmentCsv('knowledgeTests')">⬇️ Export Pre/Post Test (CSV)</button>
           </div>
         </div>
+
+        <div class="card">
+          <h3 style="margin-top:0;">📥 Import คะแนนจากกระดาษ (สำหรับคนที่ทำ Online ไม่ได้)</h3>
+          <p style="font-size:12.5px; color:#9aa8ab; margin-top:-6px;">ใช้เมื่อมีคนตอบแบบสอบถาม/แบบทดสอบบนกระดาษแทนการทำผ่านเว็บ — ดาวน์โหลดเทมเพลต กรอกตามคำตอบบนกระดาษ แล้วอัปโหลดกลับเข้ามา ระบบจะคำนวณคะแนนด้วยสูตรเดียวกับตอนทำผ่านเว็บทุกอย่าง เช็คตัวอย่างที่จับคู่ได้ก่อน ระบบจะยังไม่บันทึกจนกว่าจะกดยืนยัน (ถ้าคนคนนั้นมีข้อมูลของ phase เดียวกันอยู่แล้ว แถวนั้นจะถูกข้าม ไม่เขียนทับ/ซ้ำ)</p>
+
+          <div style="margin-bottom:22px; padding-bottom:18px; border-bottom:1px solid #EFE9D9;">
+            <div style="font-weight:700; margin-bottom:6px;">Baseline/Post Behavior Survey (15 ข้อ)</div>
+            <p style="font-size:12px; color:#6b7c80; line-height:1.8;">
+              คอลัมน์ <b>q1-q10</b> (พฤติกรรมความถี่) กรอกเลข 0-4: <b>0</b>=0 วัน, <b>1</b>=1–2 วัน, <b>2</b>=3–4 วัน, <b>3</b>=5–6 วัน, <b>4</b>=7 วัน<br>
+              คอลัมน์ <b>q11-q15</b> (พฤติกรรมอ่านฉลาก) กรอกเลข 0-5: <b>0</b>=ไม่มีโอกาส, <b>1</b>=ไม่เคย, <b>2</b>=น้อยกว่าครึ่ง, <b>3</b>=ประมาณครึ่ง, <b>4</b>=มากกว่าครึ่ง, <b>5</b>=ทุกครั้ง<br>
+              คอลัมน์ <b>phase</b> กรอก <code>pre</code> (ก่อนเริ่มโครงการ) หรือ <code>post</code> (หลังจบ 21 วัน)<br>
+              คอลัมน์ <b>ชื่อ</b> และ <b>ห้อง</b> ต้องตรงกับชื่อ/ห้องที่มีอยู่แล้วในระบบเป๊ะ (ระบบจับคู่ให้อัตโนมัติ ถ้าไม่ตรงจะแจ้งเตือน)
+            </p>
+            <button class="btn btn-ghost" style="width:auto; padding:8px 14px; font-size:12.5px;" onclick="downloadBehaviorImportTemplate()">⬇️ ดาวน์โหลดเทมเพลต CSV</button>
+            <input type="file" id="behaviorImportFile" accept=".csv" style="display:block; margin-top:10px;" onchange="parseBehaviorImportFile(event)">
+            <div id="behaviorImportPreview" style="margin-top:12px;"></div>
+          </div>
+
+          <div>
+            <div style="font-weight:700; margin-bottom:6px;">Pre/Post Knowledge Test (20 ข้อ)</div>
+            <p style="font-size:12px; color:#6b7c80; line-height:1.8;">
+              คอลัมน์ <b>q1-q20</b> กรอกเลข 0-3 ตามลำดับตัวเลือกในข้อสอบต้นฉบับ (ก=0, ข=1, ค=2, ง=3) — ดาวน์โหลด "เฉลยตัวเลือก" ด้านล่างเพื่อดูว่าแต่ละข้อ ก/ข/ค/ง คืออะไรบ้าง<br>
+              คอลัมน์ <b>phase</b> กรอก <code>pre</code> หรือ <code>post</code>
+            </p>
+            <button class="btn btn-ghost" style="width:auto; padding:8px 14px; font-size:12.5px;" onclick="downloadTestAnswerReference()">📄 ดาวน์โหลดเฉลยตัวเลือก (ก/ข/ค/ง)</button>
+            <button class="btn btn-ghost" style="width:auto; padding:8px 14px; font-size:12.5px;" onclick="downloadTestImportTemplate()">⬇️ ดาวน์โหลดเทมเพลต CSV</button>
+            <input type="file" id="testImportFile" accept=".csv" style="display:block; margin-top:10px;" onchange="parseTestImportFile(event)">
+            <div id="testImportPreview" style="margin-top:12px;"></div>
+          </div>
+        </div>
+
         <div class="card">
           <table>
             <thead><tr><th>ชื่อ</th><th>ห้อง</th><th>Baseline (A/B/C)</th><th>Post Survey (A/B/C)</th><th>Pre-test</th><th>Post-test</th><th>เปลี่ยนแปลง</th></tr></thead>
@@ -661,7 +692,7 @@
    ใช้ version.json ไฟล์เดียวกับ index.html (แก้เลขคู่กันทุกครั้งที่ deploy)
    เจอเวอร์ชันใหม่แล้วรีเฟรชอัตโนมัติทันที ยกเว้นกำลังพิมพ์อะไรอยู่ (เช่น เหตุผลไม่ผ่านภารกิจ) จะรอรอบถัดไปก่อน
    ========================================================= */
-const APP_VERSION = "2026-08-29-1"; // ต้องตรงกับใน version.json เสมอ แก้คู่กันทุกครั้งที่ deploy
+const APP_VERSION = "2026-08-29-2"; // ต้องตรงกับใน version.json เสมอ แก้คู่กันทุกครั้งที่ deploy
 async function checkForAppUpdate(){
   try{
     const res = await fetch('./version.json?t=' + Date.now(), { cache: 'no-store' });
@@ -2545,6 +2576,305 @@ async function exportAssessmentCsv(collectionName){
   a.href = url; a.download = collectionName + '_' + new Date().toISOString().slice(0,10) + '.csv';
   a.click();
   URL.revokeObjectURL(url);
+}
+
+/* =========================================================
+   IMPORT คะแนนจากกระดาษ — Baseline/Post Survey + Pre/Post Test
+   ต้องใช้สูตรคำนวณคะแนนเดียวกับ assessment.html เป๊ะ (คัดลอกมาจากที่นั่น) — ถ้าแก้คำถาม/เกณฑ์ในนั้น ต้องแก้ที่นี่ด้วยเสมอ
+   ========================================================= */
+
+// เมทาดาต้าของแบบสำรวจพฤติกรรม 15 ข้อ (domain + scale + reverse) — คัดลอกจาก BEHAVIOR_ITEMS ใน assessment.html
+const IMPORT_BEHAVIOR_META = [
+  {n:1,domain:'A',scale:'freq',reverse:true},{n:2,domain:'A',scale:'freq',reverse:true},{n:3,domain:'A',scale:'freq',reverse:true},
+  {n:4,domain:'A',scale:'freq',reverse:true},{n:5,domain:'A',scale:'freq',reverse:true},
+  {n:6,domain:'B',scale:'freq',reverse:true},{n:7,domain:'B',scale:'freq',reverse:true},{n:8,domain:'B',scale:'freq',reverse:true},
+  {n:9,domain:'B',scale:'freq',reverse:false},{n:10,domain:'B',scale:'freq',reverse:false},
+  {n:11,domain:'C',scale:'opp',reverse:false},{n:12,domain:'C',scale:'opp',reverse:false},{n:13,domain:'C',scale:'opp',reverse:false},
+  {n:14,domain:'C',scale:'opp',reverse:false},{n:15,domain:'C',scale:'opp',reverse:false},
+];
+// คำถาม+ตัวเลือก 20 ข้อ (เรียงลำดับต้นฉบับ ไม่สุ่ม) — คัดลอกจาก TEST_ITEMS_RAW ใน assessment.html ใช้เป็นเฉลย+ให้คะแนน
+const IMPORT_TEST_ITEMS = [
+  {id:'q1', text:'ข้อใดเป็นตัวอย่างของโรคไม่ติดต่อเรื้อรัง (NCDs)', choices:['ไข้หวัดใหญ่','ความดันโลหิตสูง','ไข้เลือดออก','อีสุกอีใส'], correct:1},
+  {id:'q2', text:'การได้รับโซเดียมมากเกินไปเป็นประจำสัมพันธ์กับความเสี่ยงต่อข้อใดมากที่สุด', choices:['ความดันโลหิตสูง','ตาแดง','ไข้หวัด','อีสุกอีใส'], correct:0},
+  {id:'q3', text:'โดยทั่วไปควรจำกัดการบริโภคโซเดียมไว้ที่ประมาณเท่าใดต่อวัน', choices:['500 มก.','1,000 มก.','น้อยกว่า 2,000 มก.','5,000 มก.'], correct:2},
+  {id:'q4', text:'โซเดียมประมาณ 2,000 มก. สัมพันธ์กับเกลือประมาณเท่าใดตามคำแนะนำทั่วไปที่เผยแพร่โดยหน่วยงานสาธารณสุข', choices:['½ กรัม','1 กรัม','2 กรัม','ประมาณ 5 กรัม หรือน้อยกว่านั้น'], correct:3},
+  {id:'q5', text:'ข้อใดกล่าวถูกต้องเกี่ยวกับแหล่งของโซเดียม', choices:['พบเฉพาะในเกลือแกง','พบได้จากเกลือ เครื่องปรุง และส่วนประกอบ/สารปรุงแต่งหลายชนิด','พบเฉพาะอาหารที่มีรสเค็มจัด','ขนมบรรจุซองไม่มีโซเดียม'], correct:1},
+  {id:'q6', text:'ถ้าต้องการลดโซเดียมจากอาหาร วิธีใดเหมาะสมที่สุด', choices:['ชิมก่อนปรุง และลดการจิ้ม ซด หรือเติมเครื่องปรุงเมื่อไม่จำเป็น','เติมน้ำปลาก่อนชิม','เติมเครื่องปรุงหลายชนิดแต่ลดชนิดละเล็กน้อย','เลือกจากสีของอาหาร'], correct:0},
+  {id:'q7', text:'ฉลาก GDA หรือ "หวาน มัน เค็ม" แสดงข้อมูลหลักข้อใด', choices:['โปรตีน วิตามิน แคลเซียม เหล็ก','ราคา น้ำหนัก วันผลิต วันหมดอายุ','พลังงาน น้ำตาล ไขมัน และโซเดียม','โซเดียมเพียงอย่างเดียว'], correct:2},
+  {id:'q8', text:'บน GDA ปริมาณโซเดียมมักแสดงเป็นหน่วยใด', choices:['ลิตร','กิโลแคลอรี','กรัมต่อกิโลกรัมเสมอ','มิลลิกรัม'], correct:3},
+  {id:'q9', text:'ถ้าอาหารหนึ่งรายการให้โซเดียม 500 มก. คิดเป็นประมาณกี่เปอร์เซ็นต์ของ 2,000 มก.', choices:['25%','40%','50%','75%'], correct:0},
+  {id:'q10', text:'วันนี้ได้รับโซเดียมไปแล้ว 500 มก. ถ้าใช้ 2,000 มก. เป็นกรอบอ้างอิง จะเหลือประมาณเท่าใด', choices:['500 มก.','1,500 มก.','2,000 มก.','2,500 มก.'], correct:1},
+  {id:'q11', text:'ฉลากระบุโซเดียม 400 มก. ต่อหนึ่งหน่วยบริโภค หากกิน 2 หน่วย จะได้รับโซเดียมประมาณเท่าใด', choices:['200 มก.','400 มก.','800 มก.','2,000 มก.'], correct:2},
+  {id:'q12', text:'ผลิตภัณฑ์ A และ B เป็นอาหารชนิดเดียวกันและเปรียบเทียบที่ปริมาณเท่ากัน A มีโซเดียม 300 มก. ส่วน B มี 600 มก. หากต้องการลดโซเดียมควรเลือกข้อใด', choices:['B เพราะตัวเลขสูงกว่า','เลือกจากราคาก่อน','เท่ากัน','A'], correct:3},
+  {id:'q13', text:'ผลิตภัณฑ์ A มีโซเดียม 300 มก. ต่อ 30 กรัม ส่วน B มี 400 มก. ต่อ 60 กรัม หากจะกิน 60 กรัมเท่ากัน ผลิตภัณฑ์ใดให้โซเดียมน้อยกว่า', choices:['A เพราะเห็นตัวเลข 300 ต่ำกว่า 400','B เพราะ 60 กรัมของ A ให้ 600 มก. แต่ B ให้ 400 มก.','เท่ากัน','เปรียบเทียบไม่ได้แม้รู้ปริมาณที่จะกิน'], correct:1},
+  {id:'q14', text:'อาหารหนึ่งซองมี 2 หน่วยบริโภค หากกินหมดทั้งซอง ควรคิดข้อมูลโภชนาการอย่างไร', choices:['คิดตามปริมาณทั้งหมดที่กิน ไม่ใช่เพียงหนึ่งหน่วย','ใช้ค่าหนึ่งหน่วยเสมอ','โซเดียมจะลดครึ่งหนึ่ง','ไม่ต้องสนใจจำนวนหน่วย'], correct:0},
+  {id:'q15', text:'ข้อใดอธิบายสัญลักษณ์ "ทางเลือกสุขภาพ" ได้ถูกต้องที่สุด', choices:['หมายความว่าผลิตภัณฑ์ไม่มีโซเดียม','หมายความว่ากินได้ไม่จำกัด','หมายความว่าดีกว่าอาหารทุกชนิดทุกกลุ่ม','เป็นเครื่องหมายช่วยเลือกอาหารที่ผ่านหลักเกณฑ์โภชนาการที่กำหนดสำหรับกลุ่มผลิตภัณฑ์นั้น'], correct:3},
+  {id:'q16', text:'เหตุใดจึงควรระวังการเปรียบเทียบ Healthier Choice ข้ามอาหารคนละประเภท', choices:['เพราะใช้ได้เฉพาะเครื่องดื่ม','เพราะใช้ได้เฉพาะอาหารเด็ก','เพราะเกณฑ์สารอาหารกำหนดตามกลุ่มอาหาร จึงเหมาะกับการใช้เป็นตัวช่วยเลือกภายในบริบทของกลุ่มนั้น','เพราะเครื่องหมายไม่ได้เกี่ยวกับโภชนาการ'], correct:2},
+  {id:'q17', text:'ถ้าอาหารมีสัญลักษณ์ Healthier Choice หมายความว่ากินได้ไม่จำกัดหรือไม่', choices:['ไม่ใช่ ยังควรคำนึงถึงปริมาณที่กินและอาหารรวมทั้งวัน','ใช่ เพราะไม่มีโซเดียม','ใช่ ถ้าเป็นนักเรียน','ใช่ ถ้ากินหลังออกกำลังกาย'], correct:0},
+  {id:'q18', text:'ข้อใดเป็นชุดผลิตภัณฑ์ที่อยู่ภายใต้ความรับผิดชอบของ อย.', choices:['เสื้อผ้า รองเท้า หนังสือ เครื่องเขียน','อาหาร ยา เครื่องสำอาง และเครื่องมือแพทย์','รถยนต์ โทรศัพท์ เฟอร์นิเจอร์ เครื่องใช้ไฟฟ้าทุกชนิด','หนังสือเรียน อุปกรณ์กีฬา และเครื่องแบบนักเรียน'], correct:1},
+  {id:'q19', text:'นักเรียนต้องการเลือกขนมเพื่อลดโซเดียม วิธีใดให้ข้อมูลดีที่สุด', choices:['เลือกซองที่เขียนว่า "อร่อย"','เลือกยี่ห้อที่เพื่อนกินมากที่สุด','ดูปริมาณที่จะกินจริง อ่านค่าโซเดียม/GDA และเปรียบเทียบกับผลิตภัณฑ์ที่เทียบกันได้','เลือกจากสีซอง'], correct:2},
+  {id:'q20', text:'วันนี้โรงเรียนมีก๋วยเตี๋ยว นักเรียนต้องการลดการได้รับโซเดียม วิธีใดเหมาะสมที่สุด', choices:['เติมน้ำปลาก่อนชิมเพื่อให้รู้ว่าจะต้องเติมเพิ่มอีกไหม','เติมน้ำปลาและซีอิ๊วอย่างละครึ่งหนึ่ง','ซดน้ำซุปให้หมดแต่ไม่เติมน้ำปลา','ชิมก่อนปรุง ลดหรือไม่เติมเครื่องปรุงเพิ่ม และไม่จำเป็นต้องซดน้ำซุปจนหมด'], correct:3},
+];
+
+// พาร์ส CSV ง่ายๆ รองรับฟิลด์ที่ครอบด้วย " " (เผื่อมีคอมมาในข้อความ) — ตัด BOM ออกด้วย
+function parseCsvSimple(text){
+  text = text.replace(/^\uFEFF/, '').replace(/\r\n/g,'\n').replace(/\r/g,'\n');
+  const lines = text.split('\n').filter(l=>l.length>0);
+  return lines.map(line=>{
+    const cells = []; let cur=''; let inQuotes=false;
+    for(let i=0;i<line.length;i++){
+      const ch = line[i];
+      if(inQuotes){
+        if(ch==='"'){ if(line[i+1]==='"'){ cur+='"'; i++; } else inQuotes=false; }
+        else cur+=ch;
+      } else {
+        if(ch==='"') inQuotes=true;
+        else if(ch===','){ cells.push(cur); cur=''; }
+        else cur+=ch;
+      }
+    }
+    cells.push(cur);
+    return cells.map(c=>c.trim());
+  });
+}
+
+function findStudentByNameClass(name, className){
+  name = (name||'').trim(); className = (className||'').trim();
+  const candidates = studentsCache.filter(s=>(s.name||'').trim()===name);
+  if(candidates.length===0) return {error:`ไม่พบชื่อ "${name}" ในระบบ`};
+  if(candidates.length===1) return {student:candidates[0]};
+  const exact = candidates.filter(s=>classNameOf(s.classId).trim()===className);
+  if(exact.length===1) return {student:exact[0]};
+  return {error:`ชื่อ "${name}" ซ้ำกันหลายคน กรุณาระบุห้องให้ตรง (พบ ${candidates.length} คนชื่อนี้)`};
+}
+
+function downloadBehaviorImportTemplate(){
+  const header = ['ชื่อ','ห้อง','phase', ...Array.from({length:15},(_,i)=>'q'+(i+1))];
+  const example = ['ตัวอย่าง เด็กดี','ป.4/1','pre', 2,3,1,0,2, 3,2,1,4,3, 0,1,2,3,4];
+  downloadCSV('behavior_survey_import_template.csv', [header, example]);
+}
+function downloadTestImportTemplate(){
+  const header = ['ชื่อ','ห้อง','phase', ...IMPORT_TEST_ITEMS.map(q=>q.id)];
+  const example = ['ตัวอย่าง เด็กดี','ป.4/1','pre', ...IMPORT_TEST_ITEMS.map(q=>q.correct)];
+  downloadCSV('knowledge_test_import_template.csv', [header, example]);
+}
+function downloadTestAnswerReference(){
+  const rows = [['ข้อ','คำถาม','ก (0)','ข (1)','ค (2)','ง (3)','เฉลย']];
+  IMPORT_TEST_ITEMS.forEach((q,i)=>{
+    rows.push([i+1, q.text, q.choices[0], q.choices[1], q.choices[2], q.choices[3], ['ก','ข','ค','ง'][q.correct]]);
+  });
+  downloadCSV('pre_post_test_answer_reference.csv', rows);
+}
+
+function scoreBehaviorDomainFromAnswers(items, answers){
+  let sum=0, count=0;
+  items.forEach(item=>{
+    const raw = answers[item.n];
+    if(raw===undefined || raw===null || raw==='') return;
+    let score;
+    if(item.scale==='freq'){ score = item.reverse ? (4-raw) : raw; }
+    else { if(raw===0) return; score = raw-1; }
+    sum += score; count++;
+  });
+  return { count, avg: count>0 ? sum/count : null };
+}
+
+let pendingBehaviorImportRows = [];
+async function parseBehaviorImportFile(event){
+  const file = event.target.files[0];
+  const previewEl = document.getElementById('behaviorImportPreview');
+  if(!file) return;
+  previewEl.innerHTML = '<div class="empty-note">กำลังตรวจสอบ…</div>';
+  try{
+    const text = await file.text();
+    const rows = parseCsvSimple(text);
+    const header = rows[0].map(h=>h.trim());
+    const dataRows = rows.slice(1);
+
+    // เช็คว่าคนนี้มีข้อมูล phase นี้อยู่แล้วหรือยัง กันนำเข้าซ้ำ
+    const existingSnap = await db.collection('behaviorSurveys').get();
+    const existingKeys = new Set(existingSnap.docs.map(d=>d.data().studentId+'_'+d.data().phase));
+
+    const results = [];
+    dataRows.forEach((cells, idx)=>{
+      const rowNum = idx+2; // +2 เพราะแถวที่ 1 คือ header (นับแบบไฟล์ Excel เริ่มที่ 1)
+      const get = (col)=> { const i = header.indexOf(col); return i>=0 ? cells[i] : undefined; };
+      const name = get('ชื่อ'), className = get('ห้อง'), phase = (get('phase')||'').trim();
+      if(!name){ results.push({rowNum, error:'ไม่มีชื่อ (แถวว่าง?)'}); return; }
+      if(phase!=='pre' && phase!=='post'){ results.push({rowNum, name, error:`phase ต้องเป็น pre หรือ post เท่านั้น (พบ "${phase}")`}); return; }
+      const match = findStudentByNameClass(name, className);
+      if(match.error){ results.push({rowNum, name, error:match.error}); return; }
+      const student = match.student;
+      if(existingKeys.has(student.id+'_'+phase)){ results.push({rowNum, name, student, phase, skip:`มีข้อมูล ${phase} ของคนนี้อยู่แล้ว จะข้าม`}); return; }
+
+      const answers = {};
+      let missing = [];
+      for(let n=1;n<=15;n++){
+        const v = get('q'+n);
+        if(v===undefined || v===''){ missing.push(n); continue; }
+        const num = parseInt(v);
+        const maxVal = n<=10 ? 4 : 5;
+        if(isNaN(num) || num<0 || num>maxVal){ results.push({rowNum, name, error:`q${n} ต้องเป็นเลข 0-${maxVal} (พบ "${v}")`}); return; }
+        answers[n] = num;
+      }
+      const domA = scoreBehaviorDomainFromAnswers(IMPORT_BEHAVIOR_META.filter(i=>i.domain==='A'), answers);
+      const domB = scoreBehaviorDomainFromAnswers(IMPORT_BEHAVIOR_META.filter(i=>i.domain==='B'), answers);
+      const domC = scoreBehaviorDomainFromAnswers(IMPORT_BEHAVIOR_META.filter(i=>i.domain==='C'), answers);
+      const domainScore = (d)=> d.avg!==null ? Math.round((d.avg/4)*100) : null;
+      results.push({
+        rowNum, name, student, phase, answers, missingCount: missing.length,
+        domainA_score:domainScore(domA), domainA_validCount:domA.count,
+        domainB_score:domainScore(domB), domainB_validCount:domB.count,
+        domainC_score:domainScore(domC), domainC_validCount:domC.count,
+      });
+    });
+
+    pendingBehaviorImportRows = results.filter(r=>!r.error && !r.skip);
+    const errRows = results.filter(r=>r.error);
+    const skipRows = results.filter(r=>r.skip);
+    let html = `<div style="font-size:12.5px; margin-bottom:8px;">พร้อม import <b>${pendingBehaviorImportRows.length}</b> รายการ`
+      + (skipRows.length? ` · ข้าม ${skipRows.length} รายการ (มีอยู่แล้ว)`:'')
+      + (errRows.length? ` · <span style="color:var(--red-high);">มีปัญหา ${errRows.length} รายการ</span>`:'') + `</div>`;
+    if(errRows.length){
+      html += '<div style="font-size:12px; color:var(--red-high); margin-bottom:8px;">' + errRows.map(r=>`แถว ${r.rowNum}${r.name?' ('+r.name+')':''}: ${r.error}`).join('<br>') + '</div>';
+    }
+    if(skipRows.length){
+      html += '<div style="font-size:12px; color:#9aa8ab; margin-bottom:8px;">' + skipRows.map(r=>`แถว ${r.rowNum} (${r.name}): ${r.skip}`).join('<br>') + '</div>';
+    }
+    if(pendingBehaviorImportRows.length>0){
+      html += `<table style="font-size:12px;"><thead><tr><th>ชื่อ</th><th>ห้อง</th><th>phase</th><th>A</th><th>B</th><th>C</th></tr></thead><tbody>`
+        + pendingBehaviorImportRows.map(r=>`<tr><td>${r.name}</td><td>${classNameOf(r.student.classId)}</td><td>${r.phase}</td><td>${r.domainA_score??'-'}</td><td>${r.domainB_score??'-'}</td><td>${r.domainC_score??'-'}</td></tr>`).join('') + `</tbody></table>`;
+      html += `<button class="btn btn-primary" style="width:auto; padding:10px 18px; margin-top:10px;" onclick="confirmBehaviorImport()">✅ ยืนยัน Import ${pendingBehaviorImportRows.length} รายการ</button>`;
+    }
+    previewEl.innerHTML = html;
+  }catch(e){
+    console.error(e);
+    previewEl.innerHTML = `<div class="empty-note">อ่านไฟล์ไม่สำเร็จ: ${e.message}</div>`;
+  }
+  event.target.value = '';
+}
+
+async function confirmBehaviorImport(){
+  const previewEl = document.getElementById('behaviorImportPreview');
+  previewEl.innerHTML = '<div class="empty-note">กำลังบันทึก…</div>';
+  try{
+    const chunks = [];
+    for(let i=0;i<pendingBehaviorImportRows.length;i+=450) chunks.push(pendingBehaviorImportRows.slice(i,i+450));
+    for(const chunk of chunks){
+      const batch = db.batch();
+      chunk.forEach(r=>{
+        const ref = db.collection('behaviorSurveys').doc();
+        batch.set(ref, {
+          studentId:r.student.id, studentName:r.student.name, classId:r.student.classId, className:classNameOf(r.student.classId),
+          phase:r.phase, submittedAt: firebase.firestore.FieldValue.serverTimestamp(), answers:r.answers,
+          domainA_score:r.domainA_score, domainA_validCount:r.domainA_validCount,
+          domainB_score:r.domainB_score, domainB_validCount:r.domainB_validCount,
+          domainC_score:r.domainC_score, domainC_validCount:r.domainC_validCount,
+          source:'paper_import',
+        });
+      });
+      await batch.commit();
+    }
+    previewEl.innerHTML = `<div class="empty-note">✅ Import สำเร็จ ${pendingBehaviorImportRows.length} รายการ</div>`;
+    pendingBehaviorImportRows = [];
+    loadAssessmentResults();
+  }catch(e){
+    console.error(e);
+    previewEl.innerHTML = `<div class="empty-note">บันทึกไม่สำเร็จ: ${e.message}</div>`;
+  }
+}
+
+let pendingTestImportRows = [];
+async function parseTestImportFile(event){
+  const file = event.target.files[0];
+  const previewEl = document.getElementById('testImportPreview');
+  if(!file) return;
+  previewEl.innerHTML = '<div class="empty-note">กำลังตรวจสอบ…</div>';
+  try{
+    const text = await file.text();
+    const rows = parseCsvSimple(text);
+    const header = rows[0].map(h=>h.trim());
+    const dataRows = rows.slice(1);
+
+    const existingSnap = await db.collection('knowledgeTests').get();
+    const existingKeys = new Set(existingSnap.docs.map(d=>d.data().studentId+'_'+d.data().phase));
+
+    const results = [];
+    dataRows.forEach((cells, idx)=>{
+      const rowNum = idx+2;
+      const get = (col)=> { const i = header.indexOf(col); return i>=0 ? cells[i] : undefined; };
+      const name = get('ชื่อ'), className = get('ห้อง'), phase = (get('phase')||'').trim();
+      if(!name){ results.push({rowNum, error:'ไม่มีชื่อ (แถวว่าง?)'}); return; }
+      if(phase!=='pre' && phase!=='post'){ results.push({rowNum, name, error:`phase ต้องเป็น pre หรือ post เท่านั้น (พบ "${phase}")`}); return; }
+      const match = findStudentByNameClass(name, className);
+      if(match.error){ results.push({rowNum, name, error:match.error}); return; }
+      const student = match.student;
+      if(existingKeys.has(student.id+'_'+phase)){ results.push({rowNum, name, student, phase, skip:`มีข้อมูล ${phase} ของคนนี้อยู่แล้ว จะข้าม`}); return; }
+
+      const answers = []; let score = 0; let errFound = null;
+      IMPORT_TEST_ITEMS.forEach((item)=>{
+        const v = get(item.id);
+        if(v===undefined || v===''){ errFound = `${item.id} ไม่มีคำตอบ`; return; }
+        const num = parseInt(v);
+        if(isNaN(num) || num<0 || num>3){ errFound = `${item.id} ต้องเป็นเลข 0-3 (พบ "${v}")`; return; }
+        const correct = num===item.correct;
+        if(correct) score++;
+        answers.push({questionId:item.id, selectedIndex:num, correct});
+      });
+      if(errFound){ results.push({rowNum, name, error:errFound}); return; }
+      results.push({rowNum, name, student, phase, answers, score, total:IMPORT_TEST_ITEMS.length});
+    });
+
+    pendingTestImportRows = results.filter(r=>!r.error && !r.skip);
+    const errRows = results.filter(r=>r.error);
+    const skipRows = results.filter(r=>r.skip);
+    let html = `<div style="font-size:12.5px; margin-bottom:8px;">พร้อม import <b>${pendingTestImportRows.length}</b> รายการ`
+      + (skipRows.length? ` · ข้าม ${skipRows.length} รายการ (มีอยู่แล้ว)`:'')
+      + (errRows.length? ` · <span style="color:var(--red-high);">มีปัญหา ${errRows.length} รายการ</span>`:'') + `</div>`;
+    if(errRows.length){
+      html += '<div style="font-size:12px; color:var(--red-high); margin-bottom:8px;">' + errRows.map(r=>`แถว ${r.rowNum}${r.name?' ('+r.name+')':''}: ${r.error}`).join('<br>') + '</div>';
+    }
+    if(skipRows.length){
+      html += '<div style="font-size:12px; color:#9aa8ab; margin-bottom:8px;">' + skipRows.map(r=>`แถว ${r.rowNum} (${r.name}): ${r.skip}`).join('<br>') + '</div>';
+    }
+    if(pendingTestImportRows.length>0){
+      html += `<table style="font-size:12px;"><thead><tr><th>ชื่อ</th><th>ห้อง</th><th>phase</th><th>คะแนน</th></tr></thead><tbody>`
+        + pendingTestImportRows.map(r=>`<tr><td>${r.name}</td><td>${classNameOf(r.student.classId)}</td><td>${r.phase}</td><td>${r.score}/${r.total}</td></tr>`).join('') + `</tbody></table>`;
+      html += `<button class="btn btn-primary" style="width:auto; padding:10px 18px; margin-top:10px;" onclick="confirmTestImport()">✅ ยืนยัน Import ${pendingTestImportRows.length} รายการ</button>`;
+    }
+    previewEl.innerHTML = html;
+  }catch(e){
+    console.error(e);
+    previewEl.innerHTML = `<div class="empty-note">อ่านไฟล์ไม่สำเร็จ: ${e.message}</div>`;
+  }
+  event.target.value = '';
+}
+
+async function confirmTestImport(){
+  const previewEl = document.getElementById('testImportPreview');
+  previewEl.innerHTML = '<div class="empty-note">กำลังบันทึก…</div>';
+  try{
+    const chunks = [];
+    for(let i=0;i<pendingTestImportRows.length;i+=450) chunks.push(pendingTestImportRows.slice(i,i+450));
+    for(const chunk of chunks){
+      const batch = db.batch();
+      chunk.forEach(r=>{
+        const ref = db.collection('knowledgeTests').doc();
+        batch.set(ref, {
+          studentId:r.student.id, studentName:r.student.name, classId:r.student.classId, className:classNameOf(r.student.classId),
+          phase:r.phase, submittedAt: firebase.firestore.FieldValue.serverTimestamp(),
+          answers:r.answers, score:r.score, total:r.total, source:'paper_import',
+        });
+      });
+      await batch.commit();
+    }
+    previewEl.innerHTML = `<div class="empty-note">✅ Import สำเร็จ ${pendingTestImportRows.length} รายการ</div>`;
+    pendingTestImportRows = [];
+    loadAssessmentResults();
+  }catch(e){
+    console.error(e);
+    previewEl.innerHTML = `<div class="empty-note">บันทึกไม่สำเร็จ: ${e.message}</div>`;
+  }
 }
 
 async function resetAllActivityData(){
