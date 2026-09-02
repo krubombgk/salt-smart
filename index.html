@@ -1691,7 +1691,7 @@
    ถ้าเจอเวอร์ชันใหม่กว่าที่ฝังมากับโค้ดตอนนี้ จะรีเฟรชอัตโนมัติทันที (ไม่ต้องรอให้ใครกดเอง กันเครื่องค้างเวอร์ชันเก่าไม่รู้ตัว)
    ยกเว้นตอนกำลังพิมพ์อะไรอยู่ในช่องกรอกข้อความ (เช่น เขียนสะท้อนตัวเอง) จะรอรอบถัดไปก่อน กันข้อมูลที่พิมพ์ค้างอยู่หายกะทันหัน
    ========================================================= */
-const APP_VERSION = "2026-08-28-2"; // ต้องตรงกับใน version.json เสมอ แก้คู่กันทุกครั้งที่ deploy
+const APP_VERSION = "2026-08-29-1"; // ต้องตรงกับใน version.json เสมอ แก้คู่กันทุกครั้งที่ deploy
 async function checkForAppUpdate(){
   try{
     const res = await fetch('./version.json?t=' + Date.now(), { cache: 'no-store' });
@@ -1774,10 +1774,7 @@ const SODIUM_CHECK_DAILY_POINT_CAP = 5;
 // คลิป TikTok ของโครงการ (10 คลิปทั้งหมด ทำเสร็จเพิ่มก็มาเพิ่มบรรทัดในนี้ได้เลย ไม่ต้องแก้ที่อื่น)
 // title = ชื่อคลิปที่โชว์ในแอป, url = ลิงก์ TikTok เต็ม (เปิดแท็บใหม่ตอนกด)
 const TIKTOK_CLIPS = [
-  { title: "รู้จักกับโซเดียม", url: "https://www.tiktok.com/@oryornoi.kanlaya/video/7673888974389251346" },
-  { title: "เริ่ม 21 Days Challenge", url: "https://www.tiktok.com/@oryornoi.kanlaya/video/7674999622825184520" },
-  { title: "โซเดียมแฝง", url: "https://www.tiktok.com/@oryornoi.kanlaya/video/7677985081452956946" },
-  { title: "อ่านฉลาก GDA", url: "https://www.tiktok.com/@oryornoi.kanlaya/video/7679667435045145864" },
+  // { title: "ตัวอย่างชื่อคลิป", url: "https://www.tiktok.com/@username/video/xxxxxxxxxxxxxxxxx" },
 ];
 
 // เป้าหมายโซเดียมต่อวันของนักเรียนคนนี้ (ปรับเองได้ในแท็บโซเดียม) — ถ้ายังไม่เคยตั้งจะ fallback เป็นค่า default ด้านบน
@@ -2242,6 +2239,7 @@ async function enterApp(){
     refreshMissionHub();
     refreshSodiumHub();
     checkAndGrantDailyCard(); // เผื่อครบเงื่อนไขไปแล้วตั้งแต่ก่อนรีเฟรชหน้า แต่ยังไม่เคยได้การ์ด (มี flag กันซ้ำอยู่แล้ว ปลอดภัย)
+    checkSpecialCardUnlock(); // เผื่อเก็บการ์ดปกติครบทุกใบไปแล้วตั้งแต่ก่อนอัปเดตนี้ แต่ยังไม่เคยถูกเช็คให้ปลดล็อกการ์ดพิเศษ (แก้บั๊กเดิมให้ย้อนหลังด้วย)
     handleKioskClaim(); // ถ้ามาจากหน้าตรวจฉลากร้านค้า (checklabel.html) แล้วเลือกตัวเองมา ให้พาไปหน้าบันทึกพร้อมข้อมูลที่ตรวจไว้แล้วเลย
     switchTab('tab-home', true); // ตั้งค่าแท็บเริ่มต้น ไม่ push history ตรงนี้ ให้ goScreen ด้านล่าง push รวมทีเดียว
     goScreen('screen-main');
@@ -4107,6 +4105,28 @@ async function showKnowledgeCard(){
   }catch(e){ console.error(e); }
 }
 
+// เช็คเฉพาะว่าการ์ดพิเศษ SALT SMART MASTER ปลดล็อกได้หรือยัง (เก็บการ์ดปกติครบทุกใบแล้ว) — แยกออกมาจาก showKnowledgeCard()
+// เพราะ showKnowledgeCard() เดิมจะสุ่มแจกการ์ดปกติเพิ่มด้วยถ้ายังเก็บไม่ครบ ซึ่งไม่ควรเกิดขึ้นตอน login/หลังเก็บการ์ด (การ์ดปกติต้องผูกกับการทำภารกิจ/บันทึกของวันนั้นเท่านั้น วันละไม่เกิน 1 ใบ)
+// ฟังก์ชันนี้จะ "ไม่ทำอะไรเลย" ถ้ายังเก็บการ์ดปกติไม่ครบ ปลอดภัยเรียกซ้ำได้เสมอ
+async function checkSpecialCardUnlock(){
+  try{
+    const snap = await db.collection('knowledgeCards').where('active','==',true).get();
+    const allCards = snap.docs.map(d=>({id:d.id, ...d.data()}));
+    const regularCards = allCards.filter(c=>!c.isSpecial);
+    const specialCard = allCards.find(c=>c.isSpecial);
+    if(!specialCard) return;
+    const collectedIds = await getCollectedCardIds();
+    if(collectedIds.includes(specialCard.id)) return; // เก็บไปแล้ว
+    const queuedIds = (state.pendingCardQueue||[]).map(q=>q.card.id);
+    if(queuedIds.includes(specialCard.id)) return; // อยู่ในคิวรอโชว์อยู่แล้ว
+    const uncollectedRegular = regularCards.filter(c=>!collectedIds.includes(c.id));
+    if(uncollectedRegular.length>0) return; // ยังเก็บการ์ดปกติไม่ครบ ยังไม่ปลดล็อก
+    state.pendingCardQueue = state.pendingCardQueue || [];
+    state.pendingCardQueue.push({card: specialCard, isSpecial:true});
+    processCardQueue();
+  }catch(e){ console.error(e); }
+}
+
 // โชว์ป็อปอัพทีละใบจากคิว — ถ้ามี popup โชว์อยู่แล้วจะไม่แทรก รอให้กดเก็บใบปัจจุบันก่อน
 function processCardQueue(){
   if(state.cardModalShowing) return;
@@ -4247,7 +4267,14 @@ async function collectKnowledgeCard(event){
   document.getElementById('kcardOverlay').style.display = 'none';
   state.cardModalShowing = false;
   if(state.pendingCardQueue && state.pendingCardQueue.length>0) state.pendingCardQueue.shift(); // เก็บใบนี้แล้ว เอาออกจากคิว
-  processCardQueue(); // เด้งใบถัดไปในคิวต่ออัตโนมัติ (ถ้ามี) ให้กดเก็บได้ทีละใบจนครบ
+  if(state.pendingCardQueue && state.pendingCardQueue.length>0){
+    processCardQueue(); // ยังมีใบอื่นรอในคิว โชว์ต่อเลย
+  } else {
+    // คิวว่างแล้ว เช็คทันทีว่าเก็บการ์ดปกติครบทุกใบหรือยัง ถ้าครบ ปลดล็อกการ์ดพิเศษให้เลยในตอนนี้ ไม่ต้องรอบันทึกของวันถัดไปก่อน
+    // (เดิมเป็นบั๊ก: การเช็คการ์ดพิเศษผูกอยู่กับ checkAndGrantDailyCard() ซึ่งทำงานแค่ตอนบันทึก "วันใหม่" เท่านั้น
+    //  ถ้าการ์ดปกติใบสุดท้ายถูกเก็บไปแล้ว จะไม่มีจังหวะไหนมาเช็คซ้ำให้อีก จนกว่าจะบันทึกวันถัดไป)
+    checkSpecialCardUnlock();
+  }
 }
 
 /* ---- Points / streak ---- */
