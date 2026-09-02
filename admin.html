@@ -661,7 +661,7 @@
    ใช้ version.json ไฟล์เดียวกับ index.html (แก้เลขคู่กันทุกครั้งที่ deploy)
    เจอเวอร์ชันใหม่แล้วรีเฟรชอัตโนมัติทันที ยกเว้นกำลังพิมพ์อะไรอยู่ (เช่น เหตุผลไม่ผ่านภารกิจ) จะรอรอบถัดไปก่อน
    ========================================================= */
-const APP_VERSION = "2026-08-27-3"; // ต้องตรงกับใน version.json เสมอ แก้คู่กันทุกครั้งที่ deploy
+const APP_VERSION = "2026-08-28-2"; // ต้องตรงกับใน version.json เสมอ แก้คู่กันทุกครั้งที่ deploy
 async function checkForAppUpdate(){
   try{
     const res = await fetch('./version.json?t=' + Date.now(), { cache: 'no-store' });
@@ -2225,7 +2225,7 @@ function previewCard(id){
   boxEl.style.borderColor = isSpecial ? '' : catColor;
   const tagEl = document.getElementById('cpvTag');
   tagEl.style.background = isSpecial ? 'linear-gradient(90deg,#F4A261,#E76F51)' : catColor;
-  tagEl.textContent = isSpecial ? '🌟 การ์ดพิเศษ' : (card.category || 'ความรู้');
+  tagEl.textContent = isSpecial ? 'SALT SMART MASTER' : (card.category || 'ความรู้');
   document.getElementById('cpvImgWrap').innerHTML = card.imageUrl
     ? `<img src="${card.imageUrl}" alt="" onerror="this.parentElement.innerHTML='<div class=&quot;cpv-emoji&quot;>${isSpecial?'🏆':'💡'}</div><div style=&quot;font-size:11px;color:var(--red-high);margin-top:6px;&quot;>⚠️ ลิงก์รูปนี้เปิดไม่ขึ้น</div>'">`
     : `<div class="cpv-emoji">${isSpecial?'🏆':'💡'}</div>`;
