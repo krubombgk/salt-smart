@@ -631,7 +631,7 @@
 
         <div class="card">
           <h3 style="margin-top:0;">📥 Import คะแนนจากกระดาษ (สำหรับคนที่ทำ Online ไม่ได้)</h3>
-          <p style="font-size:12.5px; color:#9aa8ab; margin-top:-6px;">ใช้เมื่อมีคนตอบแบบสอบถาม/แบบทดสอบบนกระดาษแทนการทำผ่านเว็บ — ดาวน์โหลดเทมเพลต กรอกตามคำตอบบนกระดาษ แล้วอัปโหลดกลับเข้ามา ระบบจะคำนวณคะแนนด้วยสูตรเดียวกับตอนทำผ่านเว็บทุกอย่าง เช็คตัวอย่างที่จับคู่ได้ก่อน ระบบจะยังไม่บันทึกจนกว่าจะกดยืนยัน (ถ้าคนคนนั้นมีข้อมูลของ phase เดียวกันอยู่แล้ว แถวนั้นจะถูกข้าม ไม่เขียนทับ/ซ้ำ)</p>
+          <p style="font-size:12.5px; color:#9aa8ab; margin-top:-6px;">ใช้เมื่อมีคนตอบแบบสอบถาม/แบบทดสอบบนกระดาษแทนการทำผ่านเว็บ — <b>ดาวน์โหลดเทมเพลตจะได้รายชื่อนักเรียนทุกคนในระบบมาให้เลย (พร้อมรหัสจับคู่ที่ถูกต้อง) แค่เติมคะแนนต่อท้ายชื่อคนที่ทำกระดาษ ไม่ต้องพิมพ์ชื่อใหม่เอง</b> แถวที่ไม่ได้กรอกอะไรจะถูกข้ามอัตโนมัติ อัปโหลดกลับมา ระบบคำนวณคะแนนด้วยสูตรเดียวกับตอนทำผ่านเว็บทุกอย่าง เช็คตัวอย่างที่จับคู่ได้ก่อน ระบบจะยังไม่บันทึกจนกว่าจะกดยืนยัน (ถ้าคนคนนั้นมีข้อมูลของ phase เดียวกันอยู่แล้ว แถวนั้นจะถูกข้าม ไม่เขียนทับ/ซ้ำ)</p>
 
           <div style="margin-bottom:22px; padding-bottom:18px; border-bottom:1px solid #EFE9D9;">
             <div style="font-weight:700; margin-bottom:6px;">Baseline/Post Behavior Survey (15 ข้อ)</div>
@@ -639,7 +639,7 @@
               คอลัมน์ <b>q1-q10</b> (พฤติกรรมความถี่) กรอกเลข 0-4: <b>0</b>=0 วัน, <b>1</b>=1–2 วัน, <b>2</b>=3–4 วัน, <b>3</b>=5–6 วัน, <b>4</b>=7 วัน<br>
               คอลัมน์ <b>q11-q15</b> (พฤติกรรมอ่านฉลาก) กรอกเลข 0-5: <b>0</b>=ไม่มีโอกาส, <b>1</b>=ไม่เคย, <b>2</b>=น้อยกว่าครึ่ง, <b>3</b>=ประมาณครึ่ง, <b>4</b>=มากกว่าครึ่ง, <b>5</b>=ทุกครั้ง<br>
               คอลัมน์ <b>phase</b> กรอก <code>pre</code> (ก่อนเริ่มโครงการ) หรือ <code>post</code> (หลังจบ 21 วัน)<br>
-              คอลัมน์ <b>ชื่อ</b> และ <b>ห้อง</b> ต้องตรงกับชื่อ/ห้องที่มีอยู่แล้วในระบบเป๊ะ (ระบบจับคู่ให้อัตโนมัติ ถ้าไม่ตรงจะแจ้งเตือน)
+              <b>ไม่ต้องแก้คอลัมน์ studentId/ชื่อ/ห้อง</b> — เทมเพลตดึงมาให้ถูกต้องแล้ว แค่เติม phase+คะแนนต่อท้ายชื่อคนที่ทำกระดาษเท่านั้น
             </p>
             <button class="btn btn-ghost" style="width:auto; padding:8px 14px; font-size:12.5px;" onclick="downloadBehaviorImportTemplate()">⬇️ ดาวน์โหลดเทมเพลต CSV</button>
             <input type="file" id="behaviorImportFile" accept=".csv" style="display:block; margin-top:10px;" onchange="parseBehaviorImportFile(event)">
@@ -650,7 +650,8 @@
             <div style="font-weight:700; margin-bottom:6px;">Pre/Post Knowledge Test (20 ข้อ)</div>
             <p style="font-size:12px; color:#6b7c80; line-height:1.8;">
               คอลัมน์ <b>q1-q20</b> กรอกเลข 0-3 ตามลำดับตัวเลือกในข้อสอบต้นฉบับ (ก=0, ข=1, ค=2, ง=3) — ดาวน์โหลด "เฉลยตัวเลือก" ด้านล่างเพื่อดูว่าแต่ละข้อ ก/ข/ค/ง คืออะไรบ้าง<br>
-              คอลัมน์ <b>phase</b> กรอก <code>pre</code> หรือ <code>post</code>
+              คอลัมน์ <b>phase</b> กรอก <code>pre</code> หรือ <code>post</code><br>
+              <b>ไม่ต้องแก้คอลัมน์ studentId/ชื่อ/ห้อง</b> — เทมเพลตดึงมาให้ถูกต้องแล้ว แค่เติม phase+คำตอบต่อท้ายชื่อคนที่ทำกระดาษเท่านั้น
             </p>
             <button class="btn btn-ghost" style="width:auto; padding:8px 14px; font-size:12.5px;" onclick="downloadTestAnswerReference()">📄 ดาวน์โหลดเฉลยตัวเลือก (ก/ข/ค/ง)</button>
             <button class="btn btn-ghost" style="width:auto; padding:8px 14px; font-size:12.5px;" onclick="downloadTestImportTemplate()">⬇️ ดาวน์โหลดเทมเพลต CSV</button>
@@ -692,7 +693,7 @@
    ใช้ version.json ไฟล์เดียวกับ index.html (แก้เลขคู่กันทุกครั้งที่ deploy)
    เจอเวอร์ชันใหม่แล้วรีเฟรชอัตโนมัติทันที ยกเว้นกำลังพิมพ์อะไรอยู่ (เช่น เหตุผลไม่ผ่านภารกิจ) จะรอรอบถัดไปก่อน
    ========================================================= */
-const APP_VERSION = "2026-08-29-2"; // ต้องตรงกับใน version.json เสมอ แก้คู่กันทุกครั้งที่ deploy
+const APP_VERSION = "2026-08-29-3"; // ต้องตรงกับใน version.json เสมอ แก้คู่กันทุกครั้งที่ deploy
 async function checkForAppUpdate(){
   try{
     const res = await fetch('./version.json?t=' + Date.now(), { cache: 'no-store' });
@@ -2638,25 +2639,36 @@ function parseCsvSimple(text){
   });
 }
 
-function findStudentByNameClass(name, className){
+function findStudentByIdOrNameClass(studentId, name, className){
+  studentId = (studentId||'').trim();
+  if(studentId){
+    const byId = studentsCache.find(s=>s.id===studentId);
+    if(byId) return {student:byId};
+    return {error:`ไม่พบ studentId "${studentId}" ในระบบ (แถวนี้อาจถูกแก้ไอดีผิดพลาด)`};
+  }
+  // ไม่มี studentId (แถวเก่า/พิมพ์เพิ่มเอง) — fallback ไปจับคู่ด้วยชื่อ+ห้องแทน (เสี่ยงพลาดถ้าพิมพ์ชื่อเพี้ยน/encoding ไม่ตรง)
   name = (name||'').trim(); className = (className||'').trim();
   const candidates = studentsCache.filter(s=>(s.name||'').trim()===name);
-  if(candidates.length===0) return {error:`ไม่พบชื่อ "${name}" ในระบบ`};
+  if(candidates.length===0) return {error:`ไม่พบชื่อ "${name}" ในระบบ (แนะนำ: ใช้เทมเพลตที่ดาวน์โหลดใหม่ ซึ่งมีคอลัมน์ studentId ให้แล้ว จะจับคู่แม่นกว่านี้)`};
   if(candidates.length===1) return {student:candidates[0]};
   const exact = candidates.filter(s=>classNameOf(s.classId).trim()===className);
   if(exact.length===1) return {student:exact[0]};
-  return {error:`ชื่อ "${name}" ซ้ำกันหลายคน กรุณาระบุห้องให้ตรง (พบ ${candidates.length} คนชื่อนี้)`};
+  return {error:`ชื่อ "${name}" ซ้ำกันหลายคน กรุณาใช้เทมเพลตที่มีคอลัมน์ studentId แทน (พบ ${candidates.length} คนชื่อนี้)`};
 }
 
 function downloadBehaviorImportTemplate(){
-  const header = ['ชื่อ','ห้อง','phase', ...Array.from({length:15},(_,i)=>'q'+(i+1))];
-  const example = ['ตัวอย่าง เด็กดี','ป.4/1','pre', 2,3,1,0,2, 3,2,1,4,3, 0,1,2,3,4];
-  downloadCSV('behavior_survey_import_template.csv', [header, example]);
+  const header = ['studentId','ชื่อ','ห้อง','phase', ...Array.from({length:15},(_,i)=>'q'+(i+1))];
+  const rows = [header, ...studentsCache
+    .slice().sort((a,b)=>(a.name||'').localeCompare(b.name||'','th'))
+    .map(s=>[s.id, s.name, classNameOf(s.classId), '', ...Array(15).fill('')])];
+  downloadCSV('behavior_survey_import_template.csv', rows);
 }
 function downloadTestImportTemplate(){
-  const header = ['ชื่อ','ห้อง','phase', ...IMPORT_TEST_ITEMS.map(q=>q.id)];
-  const example = ['ตัวอย่าง เด็กดี','ป.4/1','pre', ...IMPORT_TEST_ITEMS.map(q=>q.correct)];
-  downloadCSV('knowledge_test_import_template.csv', [header, example]);
+  const header = ['studentId','ชื่อ','ห้อง','phase', ...IMPORT_TEST_ITEMS.map(q=>q.id)];
+  const rows = [header, ...studentsCache
+    .slice().sort((a,b)=>(a.name||'').localeCompare(b.name||'','th'))
+    .map(s=>[s.id, s.name, classNameOf(s.classId), '', ...Array(20).fill('')])];
+  downloadCSV('knowledge_test_import_template.csv', rows);
 }
 function downloadTestAnswerReference(){
   const rows = [['ข้อ','คำถาม','ก (0)','ข (1)','ค (2)','ง (3)','เฉลย']];
@@ -2699,10 +2711,12 @@ async function parseBehaviorImportFile(event){
     dataRows.forEach((cells, idx)=>{
       const rowNum = idx+2; // +2 เพราะแถวที่ 1 คือ header (นับแบบไฟล์ Excel เริ่มที่ 1)
       const get = (col)=> { const i = header.indexOf(col); return i>=0 ? cells[i] : undefined; };
-      const name = get('ชื่อ'), className = get('ห้อง'), phase = (get('phase')||'').trim();
+      const studentId = get('studentId'), name = get('ชื่อ'), className = get('ห้อง'), phase = (get('phase')||'').trim();
+      const anyAnswerFilled = Array.from({length:15},(_,i)=>get('q'+(i+1))).some(v=>v!==undefined && v!=='');
+      if(!phase && !anyAnswerFilled) return; // แถวว่าง (คนที่ยังไม่ได้กรอก) — ข้ามเงียบๆ ไม่นับเป็นปัญหา เพราะเทมเพลตมีรายชื่อทุกคนในระบบ
       if(!name){ results.push({rowNum, error:'ไม่มีชื่อ (แถวว่าง?)'}); return; }
       if(phase!=='pre' && phase!=='post'){ results.push({rowNum, name, error:`phase ต้องเป็น pre หรือ post เท่านั้น (พบ "${phase}")`}); return; }
-      const match = findStudentByNameClass(name, className);
+      const match = findStudentByIdOrNameClass(studentId, name, className);
       if(match.error){ results.push({rowNum, name, error:match.error}); return; }
       const student = match.student;
       if(existingKeys.has(student.id+'_'+phase)){ results.push({rowNum, name, student, phase, skip:`มีข้อมูล ${phase} ของคนนี้อยู่แล้ว จะข้าม`}); return; }
@@ -2803,10 +2817,12 @@ async function parseTestImportFile(event){
     dataRows.forEach((cells, idx)=>{
       const rowNum = idx+2;
       const get = (col)=> { const i = header.indexOf(col); return i>=0 ? cells[i] : undefined; };
-      const name = get('ชื่อ'), className = get('ห้อง'), phase = (get('phase')||'').trim();
+      const studentId = get('studentId'), name = get('ชื่อ'), className = get('ห้อง'), phase = (get('phase')||'').trim();
+      const anyAnswerFilled = IMPORT_TEST_ITEMS.some(item=>{ const v = get(item.id); return v!==undefined && v!==''; });
+      if(!phase && !anyAnswerFilled) return; // แถวว่าง (คนที่ยังไม่ได้กรอก) — ข้ามเงียบๆ ไม่นับเป็นปัญหา เพราะเทมเพลตมีรายชื่อทุกคนในระบบ
       if(!name){ results.push({rowNum, error:'ไม่มีชื่อ (แถวว่าง?)'}); return; }
       if(phase!=='pre' && phase!=='post'){ results.push({rowNum, name, error:`phase ต้องเป็น pre หรือ post เท่านั้น (พบ "${phase}")`}); return; }
-      const match = findStudentByNameClass(name, className);
+      const match = findStudentByIdOrNameClass(studentId, name, className);
       if(match.error){ results.push({rowNum, name, error:match.error}); return; }
       const student = match.student;
       if(existingKeys.has(student.id+'_'+phase)){ results.push({rowNum, name, student, phase, skip:`มีข้อมูล ${phase} ของคนนี้อยู่แล้ว จะข้าม`}); return; }
