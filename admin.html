@@ -503,7 +503,7 @@
 
         <div class="card" style="border-color:var(--red-high); margin-top:24px;">
           <h3 style="margin-top:0;">🧹 ปรับคะแนนหลังแคมเปญจบ</h3>
-          <p style="font-size:12.5px; color:#9aa8ab; margin-top:-6px;">หาบันทึกพฤติกรรม/ภารกิจที่ทำ<b>หลังวันสิ้นสุดแคมเปญ</b> (ตั้งไว้ในแท็บ "ตั้งค่าแคมเปญ") — <b>ขั้นแรกแค่สแกนดูก่อน ยังไม่แก้อะไรทั้งนั้น</b> ต้องกดยืนยันอีกครั้งถึงจะปรับจริง<br><br><b>ไม่ลบข้อมูลดิบออกจากระบบ</b> (มาตรการภารกิจตั้งใจล็อกไว้ไม่ให้ลบได้อยู่แล้ว เพื่อรักษาประวัติการตรวจ) — แค่คำนวณคะแนนสะสม/จำนวนวันที่บันทึก/Streak ใหม่ โดยไม่นับกิจกรรมหลังวันจบแคมเปญ</p>
+          <p style="font-size:12.5px; color:#9aa8ab; margin-top:-6px;">หาบันทึกพฤติกรรม/ภารกิจที่ทำ<b>หลังวันสิ้นสุดแคมเปญ</b> (ตั้งไว้ในแท็บ "ตั้งค่าแคมเปญ") <b>และไม่ได้อยู่ในรายการ "วันที่บันทึกย้อนหลังได้" ที่เปิดพิเศษไว้</b> — ถ้าเปิดวันไหนไว้ในนั้น ถือว่าตั้งใจให้ทำ นับคะแนนให้ตามปกติ ไม่ถือเป็นของเกิน — <b>ขั้นแรกแค่สแกนดูก่อน ยังไม่แก้อะไรทั้งนั้น</b> ต้องกดยืนยันอีกครั้งถึงจะปรับจริง<br><br><b>ไม่ลบข้อมูลดิบออกจากระบบ</b> (มาตรการภารกิจตั้งใจล็อกไว้ไม่ให้ลบได้อยู่แล้ว เพื่อรักษาประวัติการตรวจ) — แค่คำนวณคะแนนสะสม/จำนวนวันที่บันทึก/Streak ใหม่ โดยไม่นับกิจกรรมหลังวันจบแคมเปญที่ไม่ได้รับอนุญาต</p>
           <p style="font-size:11.5px; color:var(--red-high);">⚠️ <b>ข้อจำกัดที่ควรรู้:</b> ไม่ได้ตรวจสอบโบนัสหลักไมล์ Streak ย้อนหลัง (3/7/14/21 วัน) — ถ้ามีใครได้โบนัสหลักไมล์จากการทำวันที่เกินมาพอดี ตัวเลขอาจสูงกว่าความเป็นจริงเล็กน้อย แนะนำเช็คคนที่มีคะแนนเปลี่ยนเยอะๆ ในตารางด้านล่างด้วยตาอีกที</p>
           <button class="btn btn-primary" onclick="scanPostCampaignActivity()">🔍 สแกนหาข้อมูลที่เกินมา</button>
           <div class="msg" id="cleanupScanMsg"></div>
@@ -701,15 +701,22 @@
         <h2>🎁 สรุปสถิติสำหรับแจกรางวัล</h2>
         <p style="font-size:12.5px; color:#9aa8ab; margin-top:-8px;">คำนวณสดจากข้อมูลปัจจุบันในระบบทุกครั้งที่เปิดหน้านี้ ไม่ต้องกดรีเฟรชเอง</p>
 
+        <div class="card" style="max-width:320px;">
+          <div class="field"><label>ดูผลที่เกณฑ์จำนวนวัน ≥</label>
+            <select id="prizeDaysThreshold" onchange="loadPrizeStats()"></select>
+          </div>
+          <p style="font-size:11.5px; color:#9aa8ab; margin-top:4px;">ปรับตรงนี้เพื่อดูว่าถ้าเปลี่ยนเกณฑ์ จะมีคนเข้าเกณฑ์กี่คน — ใช้ตัวเลือกนี้ค่าเดียวกันทั้งการ์ดปากกา/พวงกุญแจด้านล่าง</p>
+        </div>
+
         <div class="card">
           <h3 style="margin-top:0;">🖊️ ปากกา + เข็มกลัด</h3>
-          <p style="font-size:12.5px; color:#9aa8ab; margin-top:-6px;">เกณฑ์: บันทึกพฤติกรรมประจำวันสะสม ≥ 14 วัน</p>
+          <p style="font-size:12.5px; color:#9aa8ab; margin-top:-6px;">เกณฑ์: บันทึกพฤติกรรมประจำวันสะสม ≥ <span id="prizePenThresholdLabel">14</span> วัน</p>
           <div id="prizePenList"><div class="empty-note">กำลังโหลด…</div></div>
         </div>
 
         <div class="card">
           <h3 style="margin-top:0;">🔑 พวงกุญแจ</h3>
-          <p style="font-size:12.5px; color:#9aa8ab; margin-top:-6px;">เกณฑ์: ส่งภารกิจสะสม ≥ 14 วัน (นับทุกสถานะ รวมที่ยังไม่ผ่านด้วย — นับความพยายาม ไม่ใช่แค่ที่ผ่าน)</p>
+          <p style="font-size:12.5px; color:#9aa8ab; margin-top:-6px;">เกณฑ์: ส่งภารกิจสะสม ≥ <span id="prizeKeychainThresholdLabel">14</span> วัน (นับทุกสถานะ รวมที่ยังไม่ผ่านด้วย — นับความพยายาม ไม่ใช่แค่ที่ผ่าน)</p>
           <div id="prizeKeychainList"><div class="empty-note">กำลังโหลด…</div></div>
         </div>
 
@@ -721,7 +728,7 @@
 
         <div class="card">
           <h3 style="margin-top:0;">🏅 Top 10 Achievement</h3>
-          <p style="font-size:12.5px; color:#9aa8ab; margin-top:-6px;">จัดอันดับตามจำนวน Badge ที่ปลดล็อกแล้ว ใช้เกณฑ์ชุดเดียวกับที่นักเรียนเห็นในแอปหลักเป๊ะ (Consistency Star, Sodium Tracker, Label Detective, Quiz Master, Mission Explorer, Healthy Choice, 21-Day Finisher) — คนละเกณฑ์กับปากกา/พวงกุญแจด้านบน เพราะเป็นระบบเกมที่ตั้งไว้ในแอปตั้งแต่ต้น ไม่ได้ปรับตามที่คุยกันวันนี้</p>
+          <p style="font-size:12.5px; color:#9aa8ab; margin-top:-6px;">จัดอันดับตามจำนวน Badge ที่ปลดล็อกแล้ว ใช้เกณฑ์ชุดเดียวกับที่นักเรียนเห็นในแอปหลักเป๊ะ (Consistency Star, Sodium Tracker, Label Detective, Quiz Master, Mission Explorer, Healthy Choice, 21-Day Finisher) — คนละเกณฑ์กับปากกา/พวงกุญแจด้านบน เพราะเป็นระบบเกมที่ตั้งไว้ในแอปตั้งแต่ต้น ไม่ได้ปรับตามที่คุยกันวันนี้ · อันดับที่เท่ากันจะได้เลขอันดับเดียวกัน (เช่น 1,1,3) และถ้ามีคนเสมอกันพอดีที่อันดับ 10 จะโชว์ให้ครบทุกคนที่เสมอกัน เพื่อความยุติธรรม</p>
           <div id="prizeAchievementList"><div class="empty-note">กำลังโหลด…</div></div>
         </div>
       </div>
@@ -750,7 +757,7 @@
    ใช้ version.json ไฟล์เดียวกับ index.html (แก้เลขคู่กันทุกครั้งที่ deploy)
    เจอเวอร์ชันใหม่แล้วรีเฟรชอัตโนมัติทันที ยกเว้นกำลังพิมพ์อะไรอยู่ (เช่น เหตุผลไม่ผ่านภารกิจ) จะรอรอบถัดไปก่อน
    ========================================================= */
-const APP_VERSION = "2026-08-29-7"; // ต้องตรงกับใน version.json เสมอ แก้คู่กันทุกครั้งที่ deploy
+const APP_VERSION = "2026-08-29-8"; // ต้องตรงกับใน version.json เสมอ แก้คู่กันทุกครั้งที่ deploy
 async function checkForAppUpdate(){
   try{
     const res = await fetch('./version.json?t=' + Date.now(), { cache: 'no-store' });
@@ -1290,6 +1297,7 @@ async function scanPostCampaignActivity(){
   try{
     const campSnap = await db.collection('settings').doc('campaign').get();
     const endDate = campSnap.exists ? campSnap.data().endDate : null;
+    const holidays = (campSnap.exists && campSnap.data().holidays) || []; // วันที่แอดมินเปิดพิเศษไว้ (เช่นให้โอกาสเพิ่มหลังแคมเปญจบ) — ต้องไม่นับเป็น "เกินมา"
     if(!endDate){
       msgEl.style.color = 'var(--red-high)';
       msgEl.textContent = 'ยังไม่ได้ตั้งวันสิ้นสุดแคมเปญ (แท็บ "ตั้งค่าแคมเปญ") — ต้องตั้งก่อนถึงจะรู้ว่าอะไร "เกินมา"';
@@ -1310,16 +1318,19 @@ async function scanPostCampaignActivity(){
       (missionsByStudent[data.studentId] = missionsByStudent[data.studentId] || []).push({ref:d.ref, data});
     });
 
+    // "เกินมา" = วันหลังแคมเปญจบ และไม่ได้อยู่ในรายการวันที่แอดมินเปิดพิเศษไว้ (ถ้าเปิดไว้ ถือว่าตั้งใจให้ทำ ไม่ใช่ของเกิน)
+    const isOutOfRange = (dateStr) => dateStr > endDate && !holidays.includes(dateStr);
+
     const targets = [];
     studentsCache.forEach(student=>{
       const allLogs = logsByStudent[student.id] || [];
       const allMissions = missionsByStudent[student.id] || [];
-      const badLogs = allLogs.filter(l=>l.data.date > endDate);
-      const badMissions = allMissions.filter(m=>m.data.date > endDate);
+      const badLogs = allLogs.filter(l=>isOutOfRange(l.data.date));
+      const badMissions = allMissions.filter(m=>isOutOfRange(m.data.date));
       if(badLogs.length===0 && badMissions.length===0) return;
 
-      const goodLogsData = allLogs.filter(l=>l.data.date <= endDate).map(l=>l.data);
-      const goodMissionsData = allMissions.filter(m=>m.data.date <= endDate).map(m=>m.data);
+      const goodLogsData = allLogs.filter(l=>!isOutOfRange(l.data.date)).map(l=>l.data);
+      const goodMissionsData = allMissions.filter(m=>!isOutOfRange(m.data.date)).map(m=>m.data);
       const allLogsData = allLogs.map(l=>l.data);
       const allMissionsData = allMissions.map(m=>m.data);
 
@@ -3143,22 +3154,34 @@ async function confirmTestImport(){
 }
 
 /* =========================================================
-   สรุปสถิติสำหรับแจกรางวัล — ปากกา+เข็มกลัด / พวงกุญแจ / แก้วเก็บความเย็น
+   สรุปสถิติสำหรับแจกรางวัล — ปากกา+เข็มกลัด / พวงกุญแจ / คะแนน Quiz / Achievement
    ========================================================= */
-// เกณฑ์รางวัล — แก้ตรงนี้ที่เดียวถ้าจะปรับเกณฑ์วันในอนาคต (แยกจากเกณฑ์ badge ในแอปหลักโดยตั้งใจ เพราะเป็นคนละเรื่องกัน)
-const PRIZE_DAYS_THRESHOLD = 14;
-
 async function loadPrizeStats(){
-  // 1. ปากกา+เข็มกลัด: daysCompleted >= เกณฑ์ (ใช้ค่าที่มีอยู่แล้วใน studentsCache ไม่ต้อง query เพิ่ม)
-  const penList = studentsCache.filter(s=>(s.daysCompleted||0)>=PRIZE_DAYS_THRESHOLD).sort((a,b)=>(b.daysCompleted||0)-(a.daysCompleted||0));
+  const selectEl = document.getElementById('prizeDaysThreshold');
+  if(selectEl.options.length === 0){
+    const { totalDays } = await getCampaignDateInfo();
+    const max = totalDays || 21;
+    for(let i=1;i<=max;i++){
+      const opt = document.createElement('option');
+      opt.value = i; opt.textContent = i;
+      if(i===14) opt.selected = true;
+      selectEl.appendChild(opt);
+    }
+  }
+  const threshold = parseInt(selectEl.value) || 14;
+  document.getElementById('prizePenThresholdLabel').textContent = threshold;
+  document.getElementById('prizeKeychainThresholdLabel').textContent = threshold;
+
+  // 1. ปากกา+เข็มกลัด: daysCompleted >= เกณฑ์ที่เลือก (ใช้ค่าที่มีอยู่แล้วใน studentsCache ไม่ต้อง query เพิ่ม)
+  const penList = studentsCache.filter(s=>(s.daysCompleted||0)>=threshold).sort((a,b)=>(b.daysCompleted||0)-(a.daysCompleted||0));
   document.getElementById('prizePenList').innerHTML = penList.length
     ? `<table><thead><tr><th>ชื่อ</th><th>ห้อง</th><th>จำนวนวันที่บันทึก</th></tr></thead><tbody>${
         penList.map(s=>`<tr><td>${s.name}</td><td>${classNameOf(s.classId)}</td><td>${s.daysCompleted||0}</td></tr>`).join('')
-      }</tbody></table><p style="font-size:12px; color:#9aa8ab; margin-top:8px;">รวม ${penList.length} คน (เกณฑ์ ≥ ${PRIZE_DAYS_THRESHOLD} วัน)</p>`
+      }</tbody></table><p style="font-size:12px; color:#9aa8ab; margin-top:8px;">รวม ${penList.length} คน (เกณฑ์ ≥ ${threshold} วัน)</p>`
     : '<div class="empty-note">ยังไม่มีใครเข้าเกณฑ์</div>';
 
   // 2. พวงกุญแจ: นับจำนวน "วันที่แตกต่างกัน" ที่มี missionSubmissions อยู่ (ไม่ว่าสถานะไหน) — ยังไม่มีตัวนับสำเร็จรูป ต้อง query รวมมาคำนวณเอง
-  //    ดึงมาใช้ต่อกับ achievement ranking (ข้อ 4) ด้วยเลย กันไม่ต้อง query ซ้ำ
+  //    ดึงมาใช้ต่อกับ achievement ranking ด้วยเลย กันไม่ต้อง query ซ้ำ
   document.getElementById('prizeKeychainList').innerHTML = '<div class="empty-note">กำลังคำนวณ…</div>';
   document.getElementById('prizeAchievementList').innerHTML = '<div class="empty-note">กำลังคำนวณ…</div>';
   try{
@@ -3185,25 +3208,40 @@ async function loadPrizeStats(){
     const anyMissionCount = allMissionDayCounts.filter(n=>n>0).length;
     const keychainList = studentsCache
       .map(s=>({student:s, days:(byStudent[s.id] ? byStudent[s.id].size : 0)}))
-      .filter(r=>r.days>=PRIZE_DAYS_THRESHOLD)
+      .filter(r=>r.days>=threshold)
       .sort((a,b)=>b.days-a.days);
 
-    // สรุปไว้ให้เช็คว่านับถูกไหม: ยอดรวมเอกสารทุกสถานะ ควรเท่ากับ pending+approved+rejected+other เป๊ะ (ไม่มีการกรองตกหล่นระหว่างทาง)
-    const diagHtml = `<p style="font-size:11.5px; color:#9aa8ab; margin-bottom:8px;">
+    // ---- ตรวจสอบยอดรวมให้เอง: ผลรวมจำนวนวันของทุกคน ต้องเท่ากับยอดเอกสารทั้งหมดเป๊ะ (เพราะ 1 เอกสาร = 1 คน 1 วัน เสมอ) ----
+    // ถ้าไม่เท่ากัน แปลว่ามีเอกสารซ้ำวันเดียวกันของคนเดียวกันอยู่ (ผิดปกติ ควรเช็คเพิ่ม)
+    const sumOfDays = allMissionDayCounts.reduce((a,b)=>a+b,0);
+    const sumMatches = sumOfDays === allMissionsSnap.size;
+
+    // ---- การกระจายตัวแบบละเอียด (จำนวนวัน → จำนวนคน) ให้เห็นภาพรวมทั้งหมด ไม่ใช่แค่ตัวเลขที่เกณฑ์เดียว ----
+    const histogram = {};
+    allMissionDayCounts.forEach(n=>{ if(n>0) histogram[n] = (histogram[n]||0)+1; });
+    const sortedDayValues = Object.keys(histogram).map(Number).sort((a,b)=>b-a);
+    const histoRows = sortedDayValues.map(d=>`<tr><td>${d} วัน</td><td>${histogram[d]} คน</td></tr>`).join('');
+
+    const diagHtml = `<p style="font-size:11.5px; color:#9aa8ab; margin-bottom:4px;">
       🔍 ตรวจสอบยอดรวม: มีเอกสารส่งภารกิจทั้งหมด <b>${allMissionsSnap.size}</b> รายการ
       (รอตรวจ ${statusCounts.pending} / ผ่าน ${statusCounts.approved} / ไม่ผ่าน ${statusCounts.rejected}${statusCounts.other?` / อื่นๆ ${statusCounts.other}`:''})
       — มีคนส่งภารกิจอย่างน้อย 1 วัน <b>${anyMissionCount}</b> คน จาก ${studentsCache.length} คนทั้งหมด
-      (นับรวมทุกสถานะเป็น "1 วัน" ต่อคนต่อวัน ไม่ว่าจะผ่านหรือไม่ก็ตาม)
-    </p>`;
+    </p>
+    <p style="font-size:11.5px; color:${sumMatches?'#9aa8ab':'var(--red-high)'}; margin-bottom:8px;">
+      ${sumMatches?'✅':'⚠️'} ผลรวมจำนวนวันของทุกคนรวมกัน = <b>${sumOfDays}</b> ${sumMatches ? 'ตรงกับยอดเอกสารทั้งหมดพอดี (นับถูกต้อง)' : `<b>ไม่ตรงกับยอดเอกสาร (${allMissionsSnap.size})</b> ต่างกัน ${allMissionsSnap.size-sumOfDays} รายการ — อาจมีเอกสารไม่มี studentId/date หรือซ้ำวันเดียวกัน ควรเช็คเพิ่ม`}
+    </p>
+    <details style="margin-bottom:10px;"><summary style="cursor:pointer; font-size:12px; color:var(--lagoon);">ดูการกระจายตัวแบบละเอียด (จำนวนวัน → จำนวนคน) เพื่อเทียบกับเกณฑ์ที่เลือกด้านบน</summary>
+      <table style="margin-top:6px; font-size:12px;"><thead><tr><th>จำนวนวันที่ส่งภารกิจ</th><th>จำนวนคน</th></tr></thead><tbody>${histoRows}</tbody></table>
+    </details>`;
 
     document.getElementById('prizeKeychainList').innerHTML = diagHtml + (keychainList.length
       ? `<table><thead><tr><th>ชื่อ</th><th>ห้อง</th><th>จำนวนวันที่ส่งภารกิจ</th></tr></thead><tbody>${
           keychainList.map(r=>`<tr><td>${r.student.name}</td><td>${classNameOf(r.student.classId)}</td><td>${r.days}</td></tr>`).join('')
-        }</tbody></table><p style="font-size:12px; color:#9aa8ab; margin-top:8px;">รวม ${keychainList.length} คน (เกณฑ์ ≥ ${PRIZE_DAYS_THRESHOLD} วัน)</p>`
+        }</tbody></table><p style="font-size:12px; color:#9aa8ab; margin-top:8px;">รวม ${keychainList.length} คน (เกณฑ์ ≥ ${threshold} วัน)</p>`
       : '<div class="empty-note">ยังไม่มีใครเข้าเกณฑ์</div>');
 
-    // ---- 4. Top 10 Achievement — ใช้เกณฑ์ badge ชุดเดียวกับที่นักเรียนเห็นในแอปหลัก (BADGE_DEFS ใน index.html) ----
-    // เกณฑ์เหล่านี้เป็นกลไกเกมที่ล็อกไว้แล้วในแอป ไม่ได้ผูกกับ PRIZE_DAYS_THRESHOLD ด้านบน (คนละเรื่องกันโดยตั้งใจ)
+    // ---- Top 10 Achievement — ใช้เกณฑ์ badge ชุดเดียวกับที่นักเรียนเห็นในแอปหลัก (BADGE_DEFS ใน index.html) ----
+    // เกณฑ์เหล่านี้เป็นกลไกเกมที่ล็อกไว้แล้วในแอป ไม่ได้ผูกกับเกณฑ์วันด้านบน (คนละเรื่องกันโดยตั้งใจ)
     const { totalDays } = campInfo;
     const halfway = totalDays ? Math.ceil(totalDays/2) : 11;
 
@@ -3226,7 +3264,8 @@ async function loadPrizeStats(){
       if(data.status==='approved' && data.studentId) approvedMissionByStudent[data.studentId] = (approvedMissionByStudent[data.studentId]||0) + 1;
     });
 
-    const achievementList = studentsCache.map(s=>{
+    // เรียงจากมากไปน้อยก่อน แล้วค่อยให้อันดับ (แบบ "1,1,3" — เสมอกันได้อันดับเดียวกัน คนถัดไปข้ามเลขไปตามจำนวนคนที่อยู่เหนือกว่า)
+    let allRanked = studentsCache.map(s=>{
       const quiz = quizByStudent[s.id] || {correct:0, total:0};
       const quizAccuracy = quiz.total>0 ? quiz.correct/quiz.total : 0;
       const approvedMissionCount = approvedMissionByStudent[s.id] || 0;
@@ -3241,12 +3280,18 @@ async function loadPrizeStats(){
         { icon:'🏆', name:'21-Day Finisher', earned:(s.daysCompleted||0) >= (totalDays||21) },
       ].filter(b=>b.earned);
       return { student:s, badges, count: badges.length };
-    }).filter(r=>r.count>0).sort((a,b)=>b.count-a.count).slice(0,10);
+    }).filter(r=>r.count>0).sort((a,b)=>b.count-a.count);
+
+    allRanked.forEach((r,i)=>{
+      r.rank = (i>0 && allRanked[i-1].count === r.count) ? allRanked[i-1].rank : i+1;
+    });
+    // เอาทุกคนที่อันดับ <= 10 (ถ้ามีคนเสมอกันพอดีที่อันดับ 10 จะได้เกิน 10 แถว ตามที่ตั้งใจไว้เพื่อความยุติธรรม)
+    const achievementList = allRanked.filter(r=>r.rank<=10);
 
     document.getElementById('prizeAchievementList').innerHTML = achievementList.length
-      ? `<table><thead><tr><th>#</th><th>ชื่อ</th><th>ห้อง</th><th>รวม</th><th>ได้ Badge อะไรบ้าง</th></tr></thead><tbody>${
-          achievementList.map((r,i)=>`<tr><td>${i+1}</td><td>${r.student.name}</td><td>${classNameOf(r.student.classId)}</td><td><b>${r.count}</b></td><td>${r.badges.map(b=>b.icon+' '+b.name).join('<br>')}</td></tr>`).join('')
-        }</tbody></table>`
+      ? `<table><thead><tr><th>อันดับ</th><th>ชื่อ</th><th>ห้อง</th><th>รวม</th><th>ได้ Badge อะไรบ้าง</th></tr></thead><tbody>${
+          achievementList.map(r=>`<tr><td>${r.rank}</td><td>${r.student.name}</td><td>${classNameOf(r.student.classId)}</td><td><b>${r.count}</b></td><td>${r.badges.map(b=>b.icon+' '+b.name).join('<br>')}</td></tr>`).join('')
+        }</tbody></table>${achievementList.length>10 ? `<p style="font-size:11.5px; color:#9aa8ab; margin-top:8px;">*โชว์ทั้งหมด ${achievementList.length} คน เพราะมีคนได้ Badge เท่ากันพอดีที่อันดับ 10</p>` : ''}`
       : '<div class="empty-note">ยังไม่มีใครได้ Badge เลย</div>';
     if(!totalDays){
       document.getElementById('prizeAchievementList').innerHTML += '<p style="font-size:11.5px; color:var(--red-high); margin-top:8px;">⚠️ ยังไม่ได้ตั้งวันเริ่ม/สิ้นสุดแคมเปญ — เกณฑ์ Consistency Star/Sodium Tracker/21-Day Finisher อาจไม่แม่น</p>';
