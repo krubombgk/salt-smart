@@ -728,7 +728,7 @@
 
         <div class="card">
           <h3 style="margin-top:0;">🏅 Top 10 Achievement</h3>
-          <p style="font-size:12.5px; color:#9aa8ab; margin-top:-6px;">จัดอันดับตามจำนวน Badge ที่ปลดล็อกแล้ว ใช้เกณฑ์ชุดเดียวกับที่นักเรียนเห็นในแอปหลักเป๊ะ (Consistency Star, Sodium Tracker, Label Detective, Quiz Master, Mission Explorer, Healthy Choice, 21-Day Finisher) — คนละเกณฑ์กับปากกา/พวงกุญแจด้านบน เพราะเป็นระบบเกมที่ตั้งไว้ในแอปตั้งแต่ต้น ไม่ได้ปรับตามที่คุยกันวันนี้ · อันดับที่เท่ากันจะได้เลขอันดับเดียวกัน (เช่น 1,1,3) และถ้ามีคนเสมอกันพอดีที่อันดับ 10 จะโชว์ให้ครบทุกคนที่เสมอกัน เพื่อความยุติธรรม</p>
+          <p style="font-size:12.5px; color:#9aa8ab; margin-top:-6px;">จัดอันดับตามจำนวน Badge ที่ปลดล็อกแล้ว ใช้เกณฑ์ชุดเดียวกับที่นักเรียนเห็นในแอปหลักเป๊ะ (Consistency Star, Sodium Tracker, Label Detective, Quiz Master, Mission Explorer, Healthy Choice, 21-Day Finisher) — คนละเกณฑ์กับปากกา/พวงกุญแจด้านบน เพราะเป็นระบบเกมที่ตั้งไว้ในแอปตั้งแต่ต้น ไม่ได้ปรับตามที่คุยกันวันนี้ · อันดับที่เท่ากันจะได้เลขอันดับเดียวกัน (เช่น 1,1,3) และถ้ามีคนเสมอกันพอดีที่อันดับ 10 จะโชว์ให้ครบทุกคนที่เสมอกัน เพื่อความยุติธรรม · <b>ทีมผู้จัดทำโปรแกรม</b> (ครูบ็อม, Kati, นักเรียนผู้จัดทำ 4 คน) จะโชว์ชื่อ+อันดับตามจริงถ้าติดอันดับ แต่ไม่นับเป็นผู้มีสิทธิ์รับรางวัล ระบบจะขยายแสดงลงไปจนกว่าจะครบ 10 คนที่มีสิทธิ์รับรางวัลจริง</p>
           <div id="prizeAchievementList"><div class="empty-note">กำลังโหลด…</div></div>
         </div>
       </div>
@@ -757,7 +757,7 @@
    ใช้ version.json ไฟล์เดียวกับ index.html (แก้เลขคู่กันทุกครั้งที่ deploy)
    เจอเวอร์ชันใหม่แล้วรีเฟรชอัตโนมัติทันที ยกเว้นกำลังพิมพ์อะไรอยู่ (เช่น เหตุผลไม่ผ่านภารกิจ) จะรอรอบถัดไปก่อน
    ========================================================= */
-const APP_VERSION = "2026-08-29-8"; // ต้องตรงกับใน version.json เสมอ แก้คู่กันทุกครั้งที่ deploy
+const APP_VERSION = "2026-08-29-9"; // ต้องตรงกับใน version.json เสมอ แก้คู่กันทุกครั้งที่ deploy
 async function checkForAppUpdate(){
   try{
     const res = await fetch('./version.json?t=' + Date.now(), { cache: 'no-store' });
@@ -3156,6 +3156,9 @@ async function confirmTestImport(){
 /* =========================================================
    สรุปสถิติสำหรับแจกรางวัล — ปากกา+เข็มกลัด / พวงกุญแจ / คะแนน Quiz / Achievement
    ========================================================= */
+// รายชื่อทีมผู้จัดทำโปรแกรม — ให้ติดอันดับ/โชว์ชื่อได้ปกติ แต่ไม่นับเป็นผู้มีสิทธิ์รับรางวัล (ต้องตรงกับชื่อในระบบเป๊ะ ไม่งั้นจะไม่ถูกยกเว้น)
+const PROGRAM_CREATOR_NAMES = ['ครูบ็อม','Kati','กัญญาณัฐ ศรีกัลยา','สุวภัทร มากะเต','มุกดามณี นามไพลิน','ณัฏฐ์วริยา ชาวนาผือ'];
+
 async function loadPrizeStats(){
   const selectEl = document.getElementById('prizeDaysThreshold');
   if(selectEl.options.length === 0){
@@ -3284,14 +3287,23 @@ async function loadPrizeStats(){
 
     allRanked.forEach((r,i)=>{
       r.rank = (i>0 && allRanked[i-1].count === r.count) ? allRanked[i-1].rank : i+1;
+      r.isCreator = PROGRAM_CREATOR_NAMES.includes((r.student.name||'').trim());
     });
-    // เอาทุกคนที่อันดับ <= 10 (ถ้ามีคนเสมอกันพอดีที่อันดับ 10 จะได้เกิน 10 แถว ตามที่ตั้งใจไว้เพื่อความยุติธรรม)
-    const achievementList = allRanked.filter(r=>r.rank<=10);
+
+    // ไล่ลงไปเรื่อยๆ จนกว่าจะเจอ "ผู้มีสิทธิ์รับรางวัลจริง" ครบ 10 คน (ไม่นับทีมผู้จัดทำ) — ถ้าคนที่ทำให้ครบ 10 มีคนเสมออันดับเดียวกันอีก ก็รวมมาแสดงด้วย (ตัดที่ "อันดับ" ไม่ใช่ตำแหน่งในลิสต์)
+    let eligibleCount = 0, cutoffRank = null;
+    for(const r of allRanked){
+      if(!r.isCreator) eligibleCount++;
+      if(eligibleCount>=10){ cutoffRank = r.rank; break; }
+    }
+    const achievementList = cutoffRank!=null ? allRanked.filter(r=>r.rank<=cutoffRank) : allRanked;
+    const creatorsShown = achievementList.filter(r=>r.isCreator).length;
+    const eligibleShown = achievementList.length - creatorsShown;
 
     document.getElementById('prizeAchievementList').innerHTML = achievementList.length
-      ? `<table><thead><tr><th>อันดับ</th><th>ชื่อ</th><th>ห้อง</th><th>รวม</th><th>ได้ Badge อะไรบ้าง</th></tr></thead><tbody>${
-          achievementList.map(r=>`<tr><td>${r.rank}</td><td>${r.student.name}</td><td>${classNameOf(r.student.classId)}</td><td><b>${r.count}</b></td><td>${r.badges.map(b=>b.icon+' '+b.name).join('<br>')}</td></tr>`).join('')
-        }</tbody></table>${achievementList.length>10 ? `<p style="font-size:11.5px; color:#9aa8ab; margin-top:8px;">*โชว์ทั้งหมด ${achievementList.length} คน เพราะมีคนได้ Badge เท่ากันพอดีที่อันดับ 10</p>` : ''}`
+      ? `<table><thead><tr><th>อันดับ</th><th>ชื่อ</th><th>ห้อง</th><th>รวม</th><th>ได้ Badge อะไรบ้าง</th><th>สถานะ</th></tr></thead><tbody>${
+          achievementList.map(r=>`<tr${r.isCreator?' style="opacity:0.6;"':''}><td>${r.rank}</td><td>${r.student.name}</td><td>${classNameOf(r.student.classId)}</td><td><b>${r.count}</b></td><td>${r.badges.map(b=>b.icon+' '+b.name).join('<br>')}</td><td>${r.isCreator?'🚫 ทีมผู้จัดทำ (ไม่รับรางวัล)':'🏅 มีสิทธิ์รับรางวัล'}</td></tr>`).join('')
+        }</tbody></table>${(creatorsShown>0 || achievementList.length>10) ? `<p style="font-size:11.5px; color:#9aa8ab; margin-top:8px;">*แสดงทั้งหมด ${achievementList.length} คน${creatorsShown>0?` (รวมทีมผู้จัดทำ ${creatorsShown} คนที่ติดอันดับ แต่ไม่นับรับรางวัล)`:''} — ผู้มีสิทธิ์รับรางวัลจริง ${eligibleShown} คน</p>` : ''}`
       : '<div class="empty-note">ยังไม่มีใครได้ Badge เลย</div>';
     if(!totalDays){
       document.getElementById('prizeAchievementList').innerHTML += '<p style="font-size:11.5px; color:var(--red-high); margin-top:8px;">⚠️ ยังไม่ได้ตั้งวันเริ่ม/สิ้นสุดแคมเปญ — เกณฑ์ Consistency Star/Sodium Tracker/21-Day Finisher อาจไม่แม่น</p>';
