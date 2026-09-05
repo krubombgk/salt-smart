@@ -136,6 +136,7 @@
       <div class="navitem" data-p="p-audit" onclick="showPanel('p-audit')">🔎 ตรวจสอบคะแนนรายคน</div>
       <div class="navitem" data-p="p-campaign" onclick="showPanel('p-campaign')">⚙️ ตั้งค่าแคมเปญ</div>
       <div class="navitem" data-p="p-assessment" onclick="showPanel('p-assessment')">📋 ผล Baseline/Pre-Post</div>
+      <div class="navitem" data-p="p-prizes" onclick="showPanel('p-prizes')">🎁 สรุปแจกรางวัล</div>
     </div>
     <div class="content">
 
@@ -500,6 +501,22 @@
           <table><thead><tr><th>ชื่อ</th><th>ห้อง</th><th>คะแนนในระบบ</th><th>คะแนนที่ควรเป็น</th><th>ต่างกัน</th><th></th></tr></thead><tbody id="bulkAuditTable"></tbody></table>
         </div>
 
+        <div class="card" style="border-color:var(--red-high); margin-top:24px;">
+          <h3 style="margin-top:0;">🧹 ล้างข้อมูลหลังแคมเปญจบ</h3>
+          <p style="font-size:12.5px; color:#9aa8ab; margin-top:-6px;">หาบันทึกพฤติกรรม/ภารกิจที่ทำ<b>หลังวันสิ้นสุดแคมเปญ</b> (ตั้งไว้ในแท็บ "ตั้งค่าแคมเปญ") — <b>ขั้นแรกแค่สแกนดูก่อน ยังไม่ลบอะไรทั้งนั้น</b> ต้องกดยืนยันอีกครั้งถึงจะลบจริง</p>
+          <p style="font-size:11.5px; color:var(--red-high);">⚠️ <b>ข้อจำกัดที่ควรรู้:</b> เครื่องมือนี้ปรับคะแนนสะสม/หมวดคะแนน/จำนวนวันที่บันทึก/Streak ให้ใหม่ตามข้อมูลที่เหลือ แต่<b>ไม่ได้ตรวจสอบโบนัสหลักไมล์ Streak ย้อนหลัง</b> (3/7/14/21 วัน) — ถ้ามีใครได้โบนัสหลักไมล์จากการทำวันที่เกินมาพอดี ตัวเลขอาจสูงกว่าความเป็นจริงเล็กน้อย แนะนำเช็คคนที่มีคะแนนเปลี่ยนเยอะๆ ในตารางด้านล่างด้วยตาอีกที</p>
+          <button class="btn btn-primary" onclick="scanPostCampaignActivity()">🔍 สแกนหาข้อมูลที่เกินมา</button>
+          <div class="msg" id="cleanupScanMsg"></div>
+        </div>
+
+        <div class="card" id="cleanupResultCard" style="display:none; border-color:var(--red-high);">
+          <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+            <h3 style="margin:0;">พบข้อมูลเกินมา (<span id="cleanupCount">0</span> คน)</h3>
+            <button class="btn btn-danger" style="padding:8px 14px; font-size:12.5px;" onclick="confirmPostCampaignCleanup()">🗑️ ยืนยันลบ+ปรับคะแนนทั้งหมด</button>
+          </div>
+          <table><thead><tr><th>ชื่อ</th><th>ห้อง</th><th>วันที่เกินมา</th><th>คะแนนที่จะถูกหัก</th><th>จำนวนวันบันทึกใหม่</th></tr></thead><tbody id="cleanupTable"></tbody></table>
+        </div>
+
         <div class="card" style="max-width:420px;">
           <div class="field"><label>ค้นหาชื่อนักเรียน</label><input type="text" id="auditSearchInput" placeholder="พิมพ์ชื่อ..." oninput="renderAuditSearchResults()"></div>
           <div id="auditSearchResults" style="max-height:220px; overflow-y:auto;"></div>
@@ -549,13 +566,23 @@
 
         <div class="card" style="max-width:420px;">
           <h3 style="margin-top:0;">📅 วันที่บันทึกย้อนหลังได้</h3>
-          <p style="font-size:12.5px; color:#9aa8ab; margin-top:-6px;">ใช้ควบคุมว่า "ภารกิจ" กับ "Quiz" ให้ทำย้อนหลังได้วันไหนบ้าง (ปกติทำได้แค่วันเดียวกันเท่านั้น) — ส่วนบันทึกพฤติกรรม นักเรียนบันทึกของ "เมื่อวาน" เป็นค่าเริ่มต้นทุกวันอยู่แล้ว (24-Hour Recall) ไม่ต้องเปิดเพิ่ม เว้นแต่อยากเปิดย้อนหลังมากกว่า 1 วัน เพิ่มวันที่ตรงนี้ได้เลย เปิดปิดได้เองตลอด ย้อนได้ไม่จำกัดจำนวนวัน ไม่จำเป็นต้องเป็นวันหยุดจริงก็ได้ ลบวันไหนออก วันนั้นก็จะปิดการทำย้อนหลังทันที</p>
+          <p style="font-size:12.5px; color:#9aa8ab; margin-top:-6px;">ใช้ควบคุมว่า "ภารกิจ" กับ "Quiz" ให้ทำย้อนหลังได้วันไหนบ้าง (ปกติทำได้แค่วันเดียวกันเท่านั้น) — ส่วนบันทึกพฤติกรรม นักเรียนบันทึกของ "เมื่อวาน" เป็นค่าเริ่มต้นทุกวันอยู่แล้ว (24-Hour Recall) ไม่ต้องเปิดเพิ่ม เว้นแต่อยากเปิดย้อนหลังมากกว่า 1 วัน เพิ่มวันที่ตรงนี้ได้เลย เปิดปิดได้เองตลอด ย้อนได้ไม่จำกัดจำนวนวัน ไม่จำเป็นต้องเป็นวันหยุดจริงก็ได้ ลบวันไหนออก วันนั้นก็จะปิดการทำย้อนหลังทันที<br><br><b>ใช้ตัวเดียวกันนี้ควบคุม "หลังแคมเปญจบ" ด้วย</b> — หลังพ้นวันสิ้นสุดแคมเปญด้านบนไปแล้ว นักเรียนจะทำ Quiz/ภารกิจ/บันทึกพฤติกรรมไม่ได้อีกเลย จนกว่าจะเพิ่มวันที่ต้องการตรงนี้ (เช่น เปิดพิเศษเพิ่ม 1 วันให้ทำงานค้าง)</p>
           <div class="field" style="display:flex; gap:8px; align-items:flex-end;">
             <div style="flex:1;"><label>เพิ่มวันที่เปิดให้ทำย้อนหลัง</label><input type="date" id="newHolidayDate"></div>
             <button class="btn btn-primary" onclick="addHoliday()">เพิ่ม</button>
           </div>
           <div class="msg" id="holidayMsg"></div>
           <div id="holidayList" style="margin-top:12px;"></div>
+        </div>
+
+        <div class="card" style="max-width:420px;">
+          <h3 style="margin-top:0;">🔔 เปิด/ปิดแจ้งเตือนทั้งหมด</h3>
+          <p style="font-size:12.5px; color:#9aa8ab; margin-top:-6px;">คุมการแจ้งเตือนอัตโนมัติทั้ง 4 ตัว (ประกาศภารกิจเช้า 06:30, เตือนภารกิจเย็น 18:00, เตือน/ชมบันทึกประจำวัน 19:30, เตือนคนห่างหาย 20:00) ในจุดเดียว — ปิดไว้ตอนแคมเปญจบแล้ว เปิดใหม่ได้ทันทีตอนเริ่มรอบถัดไป ไม่ต้องเข้า Firebase Console</p>
+          <div style="display:flex; align-items:center; gap:10px; margin-top:10px; flex-wrap:wrap;">
+            <span class="pill" id="notifyStatusPill">กำลังโหลด…</span>
+            <button class="btn btn-primary" id="notifyToggleBtn" style="width:auto; padding:10px 18px;" onclick="toggleNotificationsEnabled()">…</button>
+          </div>
+          <div class="msg" id="notifySwitchMsg"></div>
         </div>
 
         <div class="card" style="max-width:460px;">
@@ -669,6 +696,30 @@
         </div>
       </div>
 
+      <!-- PRIZE STATS -->
+      <div class="panel" id="p-prizes">
+        <h2>🎁 สรุปสถิติสำหรับแจกรางวัล</h2>
+        <p style="font-size:12.5px; color:#9aa8ab; margin-top:-8px;">คำนวณสดจากข้อมูลปัจจุบันในระบบทุกครั้งที่เปิดหน้านี้ ไม่ต้องกดรีเฟรชเอง</p>
+
+        <div class="card">
+          <h3 style="margin-top:0;">🖊️ ปากกา + เข็มกลัด</h3>
+          <p style="font-size:12.5px; color:#9aa8ab; margin-top:-6px;">เกณฑ์: บันทึกพฤติกรรมประจำวันสะสม ≥ 15 วัน</p>
+          <div id="prizePenList"><div class="empty-note">กำลังโหลด…</div></div>
+        </div>
+
+        <div class="card">
+          <h3 style="margin-top:0;">🔑 พวงกุญแจ</h3>
+          <p style="font-size:12.5px; color:#9aa8ab; margin-top:-6px;">เกณฑ์: ส่งภารกิจสะสม ≥ 15 วัน (นับทุกสถานะ รวมที่ยังไม่ผ่านด้วย — นับความพยายาม ไม่ใช่แค่ที่ผ่าน)</p>
+          <div id="prizeKeychainList"><div class="empty-note">กำลังโหลด…</div></div>
+        </div>
+
+        <div class="card">
+          <h3 style="margin-top:0;">🧊 แก้วเก็บความเย็น</h3>
+          <p style="font-size:12.5px; color:#9aa8ab; margin-top:-6px;">จัดอันดับตามคะแนน Quiz สะสม (correctCount×5 รวมทุกวันที่ทำ) — <b>ข้อควรรู้:</b> ตัวเลขนี้ผสมทั้งความแม่นยำและจำนวนวันที่ทำเข้าด้วยกัน ถ้าอยากได้ % ความแม่นยำล้วนๆ (ไม่นับจำนวนวัน) บอกได้ ทำเพิ่มให้ได้</p>
+          <div id="prizeQuizList"><div class="empty-note">กำลังโหลด…</div></div>
+        </div>
+      </div>
+
     </div>
   </div>
 </div>
@@ -693,7 +744,7 @@
    ใช้ version.json ไฟล์เดียวกับ index.html (แก้เลขคู่กันทุกครั้งที่ deploy)
    เจอเวอร์ชันใหม่แล้วรีเฟรชอัตโนมัติทันที ยกเว้นกำลังพิมพ์อะไรอยู่ (เช่น เหตุผลไม่ผ่านภารกิจ) จะรอรอบถัดไปก่อน
    ========================================================= */
-const APP_VERSION = "2026-08-29-3"; // ต้องตรงกับใน version.json เสมอ แก้คู่กันทุกครั้งที่ deploy
+const APP_VERSION = "2026-08-29-5"; // ต้องตรงกับใน version.json เสมอ แก้คู่กันทุกครั้งที่ deploy
 async function checkForAppUpdate(){
   try{
     const res = await fetch('./version.json?t=' + Date.now(), { cache: 'no-store' });
@@ -809,6 +860,8 @@ function showPanel(id){
   if(id==='p-history') loadMissionHistory();
   if(id==='p-announce') loadAnnouncements();
   if(id==='p-assessment'){ loadAssessmentResults(); loadPostTestSwitchState(); }
+  if(id==='p-campaign') loadNotifySwitchState();
+  if(id==='p-prizes') loadPrizeStats();
 }
 
 /* ---- ประกาศ ---- */
@@ -1217,6 +1270,150 @@ async function repairAllPointMismatches(){
   msgEl.style.color = failed ? 'var(--red-high)' : 'var(--lagoon)';
   msgEl.textContent = `ซ่อมเสร็จแล้ว ${done} คน${failed ? ` (ล้มเหลว ${failed} คน ลองกดสแกนใหม่แล้วซ่อมทีละคนที่เหลือ)` : ''}`;
   await scanAllPointMismatches();
+}
+
+/* ---- ล้างข้อมูลหลังแคมเปญจบ (บันทึก/ภารกิจของวันที่เกินวันสิ้นสุดแคมเปญ) ---- */
+let pendingCleanupTargets = [];
+async function scanPostCampaignActivity(){
+  const msgEl = document.getElementById('cleanupScanMsg');
+  const resultCard = document.getElementById('cleanupResultCard');
+  resultCard.style.display = 'none';
+  pendingCleanupTargets = [];
+  msgEl.style.color = 'var(--lagoon)';
+  msgEl.textContent = 'กำลังสแกน...';
+  try{
+    const campSnap = await db.collection('settings').doc('campaign').get();
+    const endDate = campSnap.exists ? campSnap.data().endDate : null;
+    if(!endDate){
+      msgEl.style.color = 'var(--red-high)';
+      msgEl.textContent = 'ยังไม่ได้ตั้งวันสิ้นสุดแคมเปญ (แท็บ "ตั้งค่าแคมเปญ") — ต้องตั้งก่อนถึงจะรู้ว่าอะไร "เกินมา"';
+      return;
+    }
+    const { startDate, totalDays } = await getCampaignDateInfo();
+    const [allLogsSnap, allMissionsSnap] = await Promise.all([
+      db.collection('dailyLogs').get(),
+      db.collection('missionSubmissions').get(),
+    ]);
+    const logsByStudent = {}, missionsByStudent = {};
+    allLogsSnap.docs.forEach(d=>{
+      const data = d.data();
+      (logsByStudent[data.studentId] = logsByStudent[data.studentId] || []).push({ref:d.ref, data});
+    });
+    allMissionsSnap.docs.forEach(d=>{
+      const data = d.data();
+      (missionsByStudent[data.studentId] = missionsByStudent[data.studentId] || []).push({ref:d.ref, data});
+    });
+
+    const targets = [];
+    studentsCache.forEach(student=>{
+      const allLogs = logsByStudent[student.id] || [];
+      const allMissions = missionsByStudent[student.id] || [];
+      const badLogs = allLogs.filter(l=>l.data.date > endDate);
+      const badMissions = allMissions.filter(m=>m.data.date > endDate);
+      if(badLogs.length===0 && badMissions.length===0) return;
+
+      const goodLogsData = allLogs.filter(l=>l.data.date <= endDate).map(l=>l.data);
+      const goodMissionsData = allMissions.filter(m=>m.data.date <= endDate).map(m=>m.data);
+      const allLogsData = allLogs.map(l=>l.data);
+      const allMissionsData = allMissions.map(m=>m.data);
+
+      // เทียบ "รวมทั้งหมด (มีของเกินมาปน)" กับ "เฉพาะที่อยู่ในช่วงแคมเปญจริง" ด้วยสูตรเดียวกับเครื่องมือซ่อมคะแนนด้านบน
+      const beforeCalc = computePointsFromRaw(allLogsData, allMissionsData, student, startDate, totalDays);
+      const afterCalc = computePointsFromRaw(goodLogsData, goodMissionsData, student, startDate, totalDays);
+      const pointsToRemove = beforeCalc.computedTotal - afterCalc.computedTotal;
+
+      const goodSubmittedDates = goodLogsData.filter(d=>d.submitted && d.date).map(d=>d.date).sort();
+      const newDaysCompleted = goodSubmittedDates.length;
+      const daysCompletedDrop = (student.daysCompleted||0) - newDaysCompleted;
+
+      targets.push({
+        studentId: student.id, name: student.name, classId: student.classId,
+        badLogRefs: badLogs.map(l=>l.ref), badMissionRefs: badMissions.map(m=>m.ref),
+        badDates: Array.from(new Set([...badLogs.map(l=>l.data.date), ...badMissions.map(m=>m.data.date)])).sort(),
+        pointsToRemove, newDaysCompleted, daysCompletedDrop, goodSubmittedDates,
+      });
+    });
+
+    targets.sort((a,b)=> b.pointsToRemove - a.pointsToRemove);
+    pendingCleanupTargets = targets;
+
+    msgEl.style.color = targets.length ? 'var(--red-high)' : 'var(--lagoon)';
+    msgEl.textContent = targets.length
+      ? `พบ ${targets.length} คน มีข้อมูลหลังวันที่ ${endDate} (ยังไม่ได้ลบ — กดยืนยันด้านล่างถึงจะลบจริง)`
+      : `ไม่พบข้อมูลหลังวันที่ ${endDate} เลย — ไม่ต้องทำอะไรเพิ่ม`;
+
+    if(targets.length){
+      document.getElementById('cleanupCount').textContent = targets.length;
+      document.getElementById('cleanupTable').innerHTML = targets.map(t=>`
+        <tr>
+          <td>${t.name}</td><td>${classNameOf(t.classId)}</td>
+          <td>${t.badDates.join(', ')}</td>
+          <td style="color:var(--red-high); font-weight:700;">-${t.pointsToRemove}</td>
+          <td>${t.newDaysCompleted}${t.daysCompletedDrop>0 ? ` (ลด ${t.daysCompletedDrop})` : ''}</td>
+        </tr>`).join('');
+      resultCard.style.display = 'block';
+    }
+  }catch(e){
+    console.error(e);
+    msgEl.style.color = 'var(--red-high)';
+    msgEl.textContent = 'สแกนไม่สำเร็จ: ' + e.message;
+  }
+}
+
+async function confirmPostCampaignCleanup(){
+  if(pendingCleanupTargets.length===0) return;
+  const totalPointsToRemove = pendingCleanupTargets.reduce((s,t)=>s+t.pointsToRemove,0);
+  const warning = `ยืนยันลบข้อมูลหลังแคมเปญจบของ ${pendingCleanupTargets.length} คน?\n\nจะลบบันทึกพฤติกรรม/ภารกิจของวันที่เกินมาทั้งหมด แล้วปรับคะแนนสะสม + จำนวนวันที่บันทึก + Streak ให้ตรงกับข้อมูลที่เหลือใหม่ (รวมคะแนนที่จะถูกหักออกทั้งหมด: ${totalPointsToRemove} แต้ม)\n\nการกระทำนี้ย้อนกลับไม่ได้ (ไม่มี backup อัตโนมัติ)`;
+  if(!confirm(warning)) return;
+
+  const msgEl = document.getElementById('cleanupScanMsg');
+  let done = 0, failed = 0;
+  for(const t of pendingCleanupTargets){
+    try{
+      // ลบเอกสารที่เกินมา (แบ่ง batch ตามลิมิต 500 ops/batch ของ Firestore เผื่อ margin ไว้ที่ 450)
+      const allRefs = [...t.badLogRefs, ...t.badMissionRefs];
+      for(let i=0;i<allRefs.length;i+=450){
+        const batch = db.batch();
+        allRefs.slice(i,i+450).forEach(ref=>batch.delete(ref));
+        await batch.commit();
+      }
+      // ซ่อมคะแนนสะสม/หมวดคะแนน — ใช้เครื่องมือเดิมที่มีอยู่แล้ว (คำนวณจากข้อมูลที่เหลือหลังลบสดๆ ใหม่ ไม่ต้องเขียนสูตรซ้ำ)
+      await repairStudentPoints(t.studentId);
+      // ปรับ daysCompleted/currentStreak/longestStreak ให้ตรงกับข้อมูลที่เหลือจริง (สูตรเดียวกับที่แอปหลักใช้ตอนบันทึกประจำวันสำเร็จ)
+      let currentStreak=0, longestStreak=0;
+      const dates = t.goodSubmittedDates;
+      if(dates.length>0){
+        let run=1, longest=1;
+        for(let i=1;i<dates.length;i++){
+          const prev = new Date(dates[i-1]+'T00:00:00'); prev.setDate(prev.getDate()+1);
+          const prevPlus1 = prev.toISOString().slice(0,10);
+          run = (prevPlus1 === dates[i]) ? run+1 : 1;
+          longest = Math.max(longest, run);
+        }
+        currentStreak = run; longestStreak = Math.max(longest, currentStreak);
+      }
+      await db.collection('students').doc(t.studentId).update({
+        daysCompleted: t.newDaysCompleted, currentStreak, longestStreak,
+        lastCheckinDate: dates[dates.length-1] || '',
+      });
+      const cachedStudent = studentsCache.find(s=>s.id===t.studentId);
+      if(cachedStudent){
+        cachedStudent.daysCompleted = t.newDaysCompleted;
+        cachedStudent.currentStreak = currentStreak;
+        cachedStudent.longestStreak = longestStreak;
+      }
+      done++;
+    }catch(e){
+      console.error('ล้างข้อมูลไม่สำเร็จสำหรับ', t.name, e);
+      failed++;
+    }
+    msgEl.style.color = 'var(--lagoon)';
+    msgEl.textContent = `กำลังล้างข้อมูล... (${done+failed}/${pendingCleanupTargets.length})`;
+  }
+  msgEl.style.color = failed ? 'var(--red-high)' : 'var(--lagoon)';
+  msgEl.textContent = `เสร็จแล้ว ${done} คน${failed ? ` (ล้มเหลว ${failed} คน ลองกดสแกนใหม่อีกครั้งสำหรับคนที่เหลือ)` : ''} — แนะนำกดสแกนอีกรอบเพื่อยืนยันว่าไม่เหลือข้อมูลเกินมาแล้ว`;
+  document.getElementById('cleanupResultCard').style.display = 'none';
+  pendingCleanupTargets = [];
 }
 
 async function loadOverview(){
@@ -2438,6 +2635,49 @@ async function testPush(fnName, msgElId){
 }
 
 
+/* ---- สวิตช์เปิด/ปิดแจ้งเตือนทั้งหมด (settings/campaign.notificationsEnabled) ---- */
+async function loadNotifySwitchState(){
+  try{
+    const snap = await db.collection('settings').doc('campaign').get();
+    const enabled = !snap.exists || snap.data().notificationsEnabled !== false; // ค่าเริ่มต้น = เปิด ถ้ายังไม่เคยตั้ง
+    renderNotifySwitch(enabled);
+  }catch(e){
+    console.error('โหลดสถานะ notificationsEnabled ไม่สำเร็จ:', e);
+    document.getElementById('notifyStatusPill').textContent = 'โหลดสถานะไม่สำเร็จ ลองรีเฟรชหน้า';
+  }
+}
+function renderNotifySwitch(enabled){
+  const pill = document.getElementById('notifyStatusPill');
+  const btn = document.getElementById('notifyToggleBtn');
+  pill.textContent = enabled ? '🟢 เปิดอยู่ — ส่งแจ้งเตือนตามปกติ' : '🔕 ปิดอยู่ — ไม่มีการแจ้งเตือนใดๆ ส่งออกเลย';
+  btn.textContent = enabled ? 'ปิดแจ้งเตือน' : 'เปิดแจ้งเตือน';
+  btn.className = 'btn ' + (enabled ? 'btn-danger' : 'btn-primary');
+}
+async function toggleNotificationsEnabled(){
+  let current;
+  try{
+    const snap = await db.collection('settings').doc('campaign').get();
+    current = !snap.exists || snap.data().notificationsEnabled !== false;
+  }catch(e){
+    console.error(e);
+    setMsg('notifySwitchMsg', 'เช็คสถานะปัจจุบันไม่สำเร็จ ลองใหม่อีกครั้ง', true);
+    return;
+  }
+  const next = !current;
+  const confirmMsg = next
+    ? 'ยืนยันเปิดแจ้งเตือนทั้งหมด?\nจะเริ่มส่งตามตารางเวลาปกติทันทีในรอบถัดไป'
+    : 'ยืนยันปิดแจ้งเตือนทั้งหมด?\nจะไม่มีการแจ้งเตือนใดๆ ส่งออกเลยจนกว่าจะเปิดอีกครั้ง (ใช้เมื่อแคมเปญจบแล้ว)';
+  if(!confirm(confirmMsg)) return;
+  try{
+    await db.collection('settings').doc('campaign').set({notificationsEnabled: next}, {merge:true});
+    renderNotifySwitch(next);
+    setMsg('notifySwitchMsg', next ? 'เปิดแจ้งเตือนแล้ว' : 'ปิดแจ้งเตือนแล้ว');
+  }catch(e){
+    console.error(e);
+    setMsg('notifySwitchMsg', 'บันทึกไม่สำเร็จ: ' + e.message, true);
+  }
+}
+
 /* ---- สวิตช์เปิด/ปิด Post-test (settings/campaign.postTestEnabled) ---- */
 async function loadPostTestSwitchState(){
   try{
@@ -2891,6 +3131,55 @@ async function confirmTestImport(){
     console.error(e);
     previewEl.innerHTML = `<div class="empty-note">บันทึกไม่สำเร็จ: ${e.message}</div>`;
   }
+}
+
+/* =========================================================
+   สรุปสถิติสำหรับแจกรางวัล — ปากกา+เข็มกลัด / พวงกุญแจ / แก้วเก็บความเย็น
+   ========================================================= */
+async function loadPrizeStats(){
+  // 1. ปากกา+เข็มกลัด: daysCompleted >= 15 (ใช้ค่าที่มีอยู่แล้วใน studentsCache ไม่ต้อง query เพิ่ม)
+  const penList = studentsCache.filter(s=>(s.daysCompleted||0)>=15).sort((a,b)=>(b.daysCompleted||0)-(a.daysCompleted||0));
+  document.getElementById('prizePenList').innerHTML = penList.length
+    ? `<table><thead><tr><th>ชื่อ</th><th>ห้อง</th><th>จำนวนวันที่บันทึก</th></tr></thead><tbody>${
+        penList.map(s=>`<tr><td>${s.name}</td><td>${classNameOf(s.classId)}</td><td>${s.daysCompleted||0}</td></tr>`).join('')
+      }</tbody></table><p style="font-size:12px; color:#9aa8ab; margin-top:8px;">รวม ${penList.length} คน</p>`
+    : '<div class="empty-note">ยังไม่มีใครเข้าเกณฑ์</div>';
+
+  // 2. พวงกุญแจ: นับจำนวน "วันที่แตกต่างกัน" ที่มี missionSubmissions อยู่ (ไม่ว่าสถานะไหน) — ยังไม่มีตัวนับสำเร็จรูป ต้อง query รวมมาคำนวณเอง
+  document.getElementById('prizeKeychainList').innerHTML = '<div class="empty-note">กำลังคำนวณ…</div>';
+  try{
+    const missionSnap = await db.collection('missionSubmissions').get();
+    const byStudent = {};
+    missionSnap.docs.forEach(d=>{
+      const data = d.data();
+      if(!data.studentId || !data.date) return;
+      (byStudent[data.studentId] = byStudent[data.studentId] || new Set()).add(data.date);
+    });
+    const keychainList = studentsCache
+      .map(s=>({student:s, days:(byStudent[s.id] ? byStudent[s.id].size : 0)}))
+      .filter(r=>r.days>=15)
+      .sort((a,b)=>b.days-a.days);
+    document.getElementById('prizeKeychainList').innerHTML = keychainList.length
+      ? `<table><thead><tr><th>ชื่อ</th><th>ห้อง</th><th>จำนวนวันที่ส่งภารกิจ</th></tr></thead><tbody>${
+          keychainList.map(r=>`<tr><td>${r.student.name}</td><td>${classNameOf(r.student.classId)}</td><td>${r.days}</td></tr>`).join('')
+        }</tbody></table><p style="font-size:12px; color:#9aa8ab; margin-top:8px;">รวม ${keychainList.length} คน</p>`
+      : '<div class="empty-note">ยังไม่มีใครเข้าเกณฑ์</div>';
+  }catch(e){
+    console.error(e);
+    document.getElementById('prizeKeychainList').innerHTML = `<div class="empty-note">คำนวณไม่สำเร็จ: ${e.message}</div>`;
+  }
+
+  // 3. แก้วเก็บความเย็น: จัดอันดับคะแนน Quiz สะสม (pointsByCategory.quiz มีอยู่แล้ว ไม่ต้อง query เพิ่ม)
+  const quizRanked = studentsCache
+    .map(s=>({student:s, quizPoints:(s.pointsByCategory && s.pointsByCategory.quiz) || 0}))
+    .filter(r=>r.quizPoints>0)
+    .sort((a,b)=>b.quizPoints-a.quizPoints)
+    .slice(0,20);
+  document.getElementById('prizeQuizList').innerHTML = quizRanked.length
+    ? `<table><thead><tr><th>#</th><th>ชื่อ</th><th>ห้อง</th><th>คะแนน Quiz สะสม</th></tr></thead><tbody>${
+        quizRanked.map((r,i)=>`<tr><td>${i+1}</td><td>${r.student.name}</td><td>${classNameOf(r.student.classId)}</td><td>${r.quizPoints}</td></tr>`).join('')
+      }</tbody></table>`
+    : '<div class="empty-note">ยังไม่มีข้อมูล Quiz</div>';
 }
 
 async function resetAllActivityData(){

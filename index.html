@@ -1691,7 +1691,7 @@
    ถ้าเจอเวอร์ชันใหม่กว่าที่ฝังมากับโค้ดตอนนี้ จะรีเฟรชอัตโนมัติทันที (ไม่ต้องรอให้ใครกดเอง กันเครื่องค้างเวอร์ชันเก่าไม่รู้ตัว)
    ยกเว้นตอนกำลังพิมพ์อะไรอยู่ในช่องกรอกข้อความ (เช่น เขียนสะท้อนตัวเอง) จะรอรอบถัดไปก่อน กันข้อมูลที่พิมพ์ค้างอยู่หายกะทันหัน
    ========================================================= */
-const APP_VERSION = "2026-08-29-3"; // ต้องตรงกับใน version.json เสมอ แก้คู่กันทุกครั้งที่ deploy
+const APP_VERSION = "2026-08-29-5"; // ต้องตรงกับใน version.json เสมอ แก้คู่กันทุกครั้งที่ deploy
 async function checkForAppUpdate(){
   try{
     const res = await fetch('./version.json?t=' + Date.now(), { cache: 'no-store' });
@@ -3406,6 +3406,16 @@ function dayNumberForDate(dateStr){
   return Math.min(Math.max(diff,1), state.totalDays);
 }
 
+// เช็คว่าวันที่นี้ยังทำ Quiz/ภารกิจ/บันทึกได้ไหม — อยู่ในช่วงแคมเปญปกติ (<= วันจบ) หรือแอดมินเปิดพิเศษไว้ (อยู่ใน holidays) เท่านั้นถึงจะทำได้
+// เดิมไม่มีการเช็คนี้เลย ทำให้ "วันนี้" ตามปฏิทินจริงทำได้เสมอ แม้แคมเปญจะจบไปแล้วก็ตาม
+function isDateAllowedForSubmission(dateStr){
+  const endDate = state.campaign && state.campaign.endDate;
+  if(!endDate) return true; // ยังไม่ได้ตั้งวันจบแคมเปญไว้เลย ปล่อยผ่านตามเดิม (กันแอปพังถ้ายังไม่เคยตั้งค่า)
+  if(dateStr <= endDate) return true;
+  const holidays = state.campaign.holidays || [];
+  return holidays.includes(dateStr);
+}
+
 // วันหยุดที่ครูเปิดให้ทำภารกิจย้อนหลังได้ (ใช้รายการวันหยุดชุดเดียวกับที่ตั้งไว้สำหรับบันทึกวันนี้)
 // ต่างจาก getBackfillableDates() ตรงเช็คว่า "ยังไม่เคยส่งภารกิจ" ของวันนั้น ไม่ใช่เช็คบันทึกพฤติกรรม
 async function getMissionBackfillableDates(){
@@ -3554,6 +3564,11 @@ function removeMissionPhoto(index){
 async function submitMission(){
   const mission = state.todaysMission;
   const msgEl = document.getElementById('missionSubmitMsg');
+  if(!isDateAllowedForSubmission(state.missionTargetDate)){
+    msgEl.style.color = 'var(--red-high)';
+    msgEl.textContent = '⚠️ แคมเปญนี้จบไปแล้ว ครูยังไม่ได้เปิดให้ทำวันที่นี้เพิ่มเติม';
+    return;
+  }
   const needsPhotoOnly = mission.evidenceType === 'photo';
   const needsTextOnly = mission.evidenceType === 'text';
   const isBoth = mission.evidenceType === 'both';
@@ -3765,10 +3780,15 @@ function goNextQuizQuestion(){
 
 async function finishQuiz(){
   if(state.quizFinished) return; // กันเรียกซ้ำ (เผื่อ renderQuizQuestion ถูกเรียกซ้ำด้วยเหตุผลอะไรก็ตามหลังจบไปแล้ว)
+  const targetDate = state.quizTargetDate || state.todaysDateStr;
+  if(!isDateAllowedForSubmission(targetDate)){
+    state.quizFinished = true;
+    showToast('⚠️ แคมเปญนี้จบไปแล้ว ครูยังไม่ได้เปิดให้ทำวันที่นี้เพิ่มเติม คะแนน Quiz รอบนี้จะไม่ถูกบันทึก');
+    return;
+  }
   state.quizFinished = true;
   const correctCount = state.quizAnswers.filter(a=>a.correct).length;
   const points = correctCount * 5;
-  const targetDate = state.quizTargetDate || state.todaysDateStr;
   await db.collection('dailyLogs').doc(docIdFor(targetDate)).set({
     studentId: state.selectedStudent.id,
     classId: state.selectedClassId,
@@ -3971,6 +3991,10 @@ function renderOtherBehaviorList(){
 
 async function submitDailyLog(){
   if(state.targetLog && state.targetLog.submitted) return; // กันเรียกซ้ำถ้าบันทึกของวันนี้ไปแล้ว (เผื่อกดซ้ำก่อน UI ทันอัปเดต)
+  if(!isDateAllowedForSubmission(state.targetDate)){
+    showToast('⚠️ แคมเปญนี้จบไปแล้ว ครูยังไม่ได้เปิดให้บันทึกวันที่นี้เพิ่มเติม');
+    return;
+  }
   const btn = document.getElementById('submitLogBtn');
   if(btn.disabled) return; // กันกดซ้ำระหว่างกำลังบันทึกอยู่ (เน็ตช้าอาจกดซ้ำโดยไม่ตั้งใจ)
   btn.disabled = true; btn.textContent = 'กำลังบันทึก...';
