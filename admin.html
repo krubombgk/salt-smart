@@ -757,7 +757,7 @@
    ใช้ version.json ไฟล์เดียวกับ index.html (แก้เลขคู่กันทุกครั้งที่ deploy)
    เจอเวอร์ชันใหม่แล้วรีเฟรชอัตโนมัติทันที ยกเว้นกำลังพิมพ์อะไรอยู่ (เช่น เหตุผลไม่ผ่านภารกิจ) จะรอรอบถัดไปก่อน
    ========================================================= */
-const APP_VERSION = "2026-08-29-9"; // ต้องตรงกับใน version.json เสมอ แก้คู่กันทุกครั้งที่ deploy
+const APP_VERSION = "2026-09-28-1"; // ต้องตรงกับใน version.json เสมอ แก้คู่กันทุกครั้งที่ deploy
 async function checkForAppUpdate(){
   try{
     const res = await fetch('./version.json?t=' + Date.now(), { cache: 'no-store' });
@@ -1342,6 +1342,12 @@ async function scanPostCampaignActivity(){
       const goodSubmittedDates = goodLogsData.filter(d=>d.submitted && d.date).map(d=>d.date).sort();
       const newDaysCompleted = goodSubmittedDates.length;
       const daysCompletedDrop = (student.daysCompleted||0) - newDaysCompleted;
+
+      // ถ้าคะแนน/จำนวนวันปัจจุบันตรงกับค่าที่ "ควรจะเป็น" หลังตัดของเกินออกแล้ว แปลว่าเคยกดยืนยันไปแล้วและได้ผลจริง
+      // ไม่ต้องขึ้นมาอีก — ก่อนหน้านี้มีบั๊ก: เอกสารดิบที่วันเกินมายังอยู่เสมอ (ลบไม่ได้ตาม rules โดยตั้งใจ)
+      // ทำให้สแกนซ้ำเจอ "รายชื่อเดิม" ทุกครั้งไม่ว่าจะกดยืนยันไปแล้วกี่รอบ ทั้งที่จริงๆ ปรับคะแนนสำเร็จแล้ว — เช็คนี้แก้ปัญหานั้นโดยตรง
+      const alreadyFixed = (student.totalPoints||0) === afterCalc.computedTotal && (student.daysCompleted||0) === newDaysCompleted;
+      if(alreadyFixed) return;
 
       targets.push({
         studentId: student.id, name: student.name, classId: student.classId,
